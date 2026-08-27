@@ -53,7 +53,9 @@ namespace AvPurplePen.Views
             // SizeToContent must be turned off; otherwise it re-measures on every
             // layout pass during a resize and overrides the height constraints.
             Opened += (s, e) => {
-                MinHeight = Height;
+                // Height remains NaN when SizeToContent supplies the window height.
+                // Bounds contains the actual arranged size once the window has opened.
+                MinHeight = Bounds.Height;
                 //MaxHeight = Height;
                 //SizeToContent = SizeToContent.Manual;
             };
