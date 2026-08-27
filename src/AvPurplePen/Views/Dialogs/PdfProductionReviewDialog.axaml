@@ -1,0 +1,124 @@
+<!--
+    PdfProductionReviewDialog.axaml
+    Final production check for a planned course-PDF export.
+-->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PurplePen.ViewModels"
+        xmlns:core="using:PurplePen"
+        xmlns:resx="using:AvPurplePen"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="AvPurplePen.Views.PdfProductionReviewDialog"
+        Classes="dialog"
+        x:DataType="vm:PdfProductionReviewDialogViewModel"
+        Title="{resx:Localize PdfProductionReviewDialog_Text}"
+        Icon="/Assets/transparent.ico"
+        d:DesignWidth="650" d:DesignHeight="600"
+        Width="650" Height="600"
+        MinWidth="520" MinHeight="440"
+        CanResize="True"
+        CanMinimize="False"
+        CanMaximize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Design.DataContext>
+        <vm:PdfProductionReviewDialogViewModel/>
+    </Design.DataContext>
+
+    <DockPanel Margin="14">
+        <StackPanel DockPanel.Dock="Bottom"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8"
+                    Margin="0,12,0,0">
+            <Button Content="{resx:Localize PdfProductionReviewDialog_backButton_Text}"
+                    Width="120"
+                    HorizontalContentAlignment="Center"
+                    IsCancel="True"
+                    Click="BackButton_Click"/>
+            <Button Content="{resx:Localize PdfProductionReviewDialog_createButton_Text}"
+                    Width="150"
+                    HorizontalContentAlignment="Center"
+                    IsDefault="True"
+                    Click="CreateButton_Click"/>
+        </StackPanel>
+
+        <ScrollViewer>
+            <StackPanel Spacing="10">
+                <TextBlock Text="{resx:Localize PdfProductionReviewDialog_intro_Text}"
+                           TextWrapping="Wrap"/>
+
+                <Grid ColumnDefinitions="*,Auto" RowDefinitions="Auto,Auto,Auto,Auto" Margin="0,2">
+                    <TextBlock Grid.Row="0" Text="{resx:Localize PdfProductionReviewDialog_mapViewsLabel_Text}"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding Summary.MapViews}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="1" Text="{resx:Localize PdfProductionReviewDialog_frontSheetsLabel_Text}"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding Summary.FrontSheets}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="2" Text="{resx:Localize PdfProductionReviewDialog_backsideSheetsLabel_Text}"/>
+                    <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding Summary.BacksideSheets}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="3" Text="{resx:Localize PdfProductionReviewDialog_totalPagesLabel_Text}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding Summary.TotalPdfPages}" FontWeight="SemiBold"/>
+                </Grid>
+
+                <TextBlock Text="{resx:Localize PdfProductionReviewDialog_coursesHeader_Text}" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" Padding="8">
+                    <ItemsControl ItemsSource="{Binding Courses}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="core:PdfProductionCourseSummary">
+                                <Grid ColumnDefinitions="*,Auto" Margin="0,2">
+                                    <TextBlock Text="{Binding CourseName}" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Column="1" Text="{Binding MapViews}" Margin="12,0,0,0"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <TextBlock Text="{resx:Localize PdfProductionReviewDialog_paperHeader_Text}" FontWeight="SemiBold" Margin="0,6,0,0"/>
+                <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" Padding="8">
+                    <ItemsControl ItemsSource="{Binding Papers}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="core:PdfProductionPaperSummary">
+                                <Grid ColumnDefinitions="*,Auto,Auto" Margin="0,2">
+                                    <TextBlock Text="{Binding PaperName}"/>
+                                    <TextBlock Grid.Column="1" IsVisible="{Binding Landscape}" Text="{resx:Localize PdfProductionReviewDialog_landscape_Text}" Margin="12,0,0,0"/>
+                                    <TextBlock Grid.Column="1" IsVisible="{Binding Portrait}" Text="{resx:Localize PdfProductionReviewDialog_portrait_Text}" Margin="12,0,0,0"/>
+                                    <TextBlock Grid.Column="2" Text="{Binding FrontSheets}" Margin="12,0,0,0"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Border>
+
+                <StackPanel IsVisible="{Binding HasClassPlan}" Spacing="4" Margin="0,6,0,0">
+                    <TextBlock Text="{resx:Localize PdfProductionReviewDialog_classPlanHeader_Text}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{resx:Localize PdfProductionReviewDialog_classPlanHelp_Text}" TextWrapping="Wrap"/>
+                    <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" Padding="8">
+                        <ItemsControl ItemsSource="{Binding Classes}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="core:PdfProductionClassSummary">
+                                    <Grid ColumnDefinitions="*,*,Auto" Margin="0,2">
+                                        <TextBlock Text="{Binding CourseName}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding ClassName}" Margin="12,0,0,0" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Participants}" Margin="12,0,0,0"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel IsVisible="{Binding HasWarnings}" Spacing="4" Margin="0,6,0,0">
+                    <TextBlock Text="{resx:Localize PdfProductionReviewDialog_warningsHeader_Text}" FontWeight="SemiBold"/>
+                    <TextBlock IsVisible="{Binding HasCourseOnlyWarning}" Text="{resx:Localize PdfProductionReviewDialog_courseOnlyWarning_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasRgbWarning}" Text="{resx:Localize PdfProductionReviewDialog_rgbWarning_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasNoDescriptionsWarning}" Text="{resx:Localize PdfProductionReviewDialog_noDescriptionsWarning_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasPdfMapMultiUpWarning}" Text="{resx:Localize PdfProductionReviewDialog_pdfMapMultiUpWarning_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasMultiplePagesWarning}" Text="{resx:Localize PdfProductionReviewDialog_multiplePagesWarning_Text}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

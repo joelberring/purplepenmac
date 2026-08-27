@@ -1,0 +1,984 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <OutputType>WinExe</OutputType>
+    <ApplicationIcon>Images\PurplePen.ico</ApplicationIcon>
+    <StartupObject></StartupObject>
+    <IsWebBootstrapper>false</IsWebBootstrapper>
+    <PublishUrl>publish\</PublishUrl>
+    <Install>true</Install>
+    <InstallFrom>Disk</InstallFrom>
+    <UpdateEnabled>false</UpdateEnabled>
+    <UpdateMode>Foreground</UpdateMode>
+    <UpdateInterval>7</UpdateInterval>
+    <UpdateIntervalUnits>Days</UpdateIntervalUnits>
+    <UpdatePeriodically>false</UpdatePeriodically>
+    <UpdateRequired>false</UpdateRequired>
+    <MapFileExtensions>true</MapFileExtensions>
+    <ApplicationRevision>0</ApplicationRevision>
+    <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
+    <UseApplicationTrust>false</UseApplicationTrust>
+    <BootstrapperEnabled>true</BootstrapperEnabled>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <UseWindowsForms>true</UseWindowsForms>
+    <UseWPF>true</UseWPF>
+    <ImportWindowsDesktopTargets>true</ImportWindowsDesktopTargets>
+    <Configurations>Debug;Release;StorePkg</Configurations>
+    <ApplicationManifest>Properties\app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DefineConstants>TRACE;DEBUG;TEST;PORTING</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <UseVSHostingProcess>true</UseVSHostingProcess>
+    <CodeAnalysisRuleSet>..\Tools\PurplePenRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DefineConstants>TRACE;TEST</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'StorePkg|AnyCPU'">
+    <OutputPath>bin\StorePkg\</OutputPath>
+    <DefineConstants>TRACE;TEST,MSSTORE</DefineConstants>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Optimize>true</Optimize>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net48|AnyCPU'">
+    <DefineConstants>$(DefineConstants);PORTING</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net10.0-windows|AnyCPU'">
+    <DefineConstants>$(DefineConstants);PORTING</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="SharpZipLib" />
+    <PackageReference Include="Newtonsoft.Json" />
+
+    <PackageReference Include="Microsoft.VisualStudio.Threading.Analyzers">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
+
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="CoursePartBanner.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="CourseSelector.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="DescriptionControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="DotGrid.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="MapView\MapViewer.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Update="NewEventBitmapScale.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="NewEventDirectory.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="NewEventFinal.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="NewEventMapFile.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="NewEventStandards.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="NewEventNumbering.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="NewEventPaperSize.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="NewEventPrintScale.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="NewEventTitle.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="PaperSizeControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Update="Properties\Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+    <Compile Update="TitleDetailButton.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <None Include="..\..\doc\userdocs\Sample\Sample Event Exchange.ppen" />
+    <None Include="..\..\doc\userdocs\Sample\Sample Event.ppen">
+      <Link>Samples\Sample Event.ppen</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\doc\userdocs\Sample\SampleMap.ocd">
+      <Link>Samples\SampleMap.ocd</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\Help\output\Purple Pen Help.chm">
+      <Link>Purple Pen Help.chm</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Properties\app.manifest">
+      <SubType>Designer</SubType>
+    </None>
+    <None Update="Properties\Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+    <Content Include="..\FontInstaller\output\Roboto Font Installer.exe">
+      <Link>Roboto Font Installer.exe</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="..\MapModel\GdiPlusNative\$(Configuration)\GDIPlusNative.dll">
+      <Link>GDIPlusNative.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+<Content Include="..\x64\$(Configuration)\GDIPlusNative64.dll">
+      <Link>GDIPlusNative64.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Images\Livelox64x64.png" />
+    <Content Include="USWebCoatedSWOP.icc">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <BootstrapperPackage Include="Microsoft.Net.Client.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1 Client Profile</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.2.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 2.0 %28x86%29</ProductName>
+      <Install>true</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.0">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.0 %28x86%29</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+    <BootstrapperPackage Include="Microsoft.Net.Framework.3.5.SP1">
+      <Visible>False</Visible>
+      <ProductName>.NET Framework 3.5 SP1</ProductName>
+      <Install>false</Install>
+    </BootstrapperPackage>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="MapView\Properties\" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Images\DeleteHandle.cur" />
+    <EmbeddedResource Include="Images\MoveHandle.cur" />
+    <EmbeddedResource Include="MapView\DragCursor.cur" />
+    <None Include="MapView\MapViewer.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CrashReporter.NET\CrashReporter.NET.csproj" />
+    <ProjectReference Include="..\DotSpatialProjectionsLite\DotSpatial.Projections\DotSpatial.Projections.csproj" />
+    <ProjectReference Include="..\MapModel\Graphics2D\Graphics2D.csproj" />
+    <ProjectReference Include="..\MapModel\MapModel\MapModel.csproj" />
+    <ProjectReference Include="..\MapModel\Map_GDIPlus\Map_GDIPlus.csproj" />
+    <ProjectReference Include="..\MapModel\Map_PDF\Map_PDF.csproj" />
+    <ProjectReference Include="..\PdfConverter\PdfConverter.csproj" />
+    <ProjectReference Include="..\PurplePenCore\PurplePenCore.csproj" />
+  </ItemGroup>
+  <ItemGroup Label="Compile items now included by globbing that were not in the original project file">
+    <Compile Remove="MapView\Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup Label="EmbeddedResource items now included by globbing that were not in the original project file">
+    <EmbeddedResource Remove="ViewAdditionalCourses.zh-HK.resx" />
+    <EmbeddedResource Remove="ViewAdditionalCourses.vec.resx" />
+    <EmbeddedResource Remove="ViewAdditionalCourses.sl.resx" />
+    <EmbeddedResource Remove="ViewAdditionalCourses.ru.resx" />
+    <EmbeddedResource Remove="ViewAdditionalCourses.ku.resx" />
+    <EmbeddedResource Remove="ViewAdditionalCourses.it.resx" />
+    <EmbeddedResource Remove="ViewAdditionalCourses.id.resx" />
+    <EmbeddedResource Remove="ViewAdditionalCourses.he.resx" />
+    <EmbeddedResource Remove="ViewAdditionalCourses.en-GB.resx" />
+    <EmbeddedResource Remove="ViewAdditionalCourses.ca.resx" />
+    <EmbeddedResource Remove="UnusedControls.zh-HK.resx" />
+    <EmbeddedResource Remove="UnusedControls.vec.resx" />
+    <EmbeddedResource Remove="UnusedControls.sl.resx" />
+    <EmbeddedResource Remove="UnusedControls.ru.resx" />
+    <EmbeddedResource Remove="UnusedControls.ku.resx" />
+    <EmbeddedResource Remove="UnusedControls.it.resx" />
+    <EmbeddedResource Remove="UnusedControls.id.resx" />
+    <EmbeddedResource Remove="UnusedControls.he.resx" />
+    <EmbeddedResource Remove="UnusedControls.en-GB.resx" />
+    <EmbeddedResource Remove="UnusedControls.ca.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.zh-HK.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.vec.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.sl.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.ru.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.ku.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.it.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.id.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.he.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.en-GB.resx" />
+    <EmbeddedResource Remove="TitleDetailButton.ca.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.zh-HK.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.vec.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.sl.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.ru.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.ku.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.it.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.id.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.he.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.en-GB.resx" />
+    <EmbeddedResource Remove="TeamVariationsForm.ca.resx" />
+    <EmbeddedResource Remove="StatusBarText.zh-HK.resx" />
+    <EmbeddedResource Remove="StatusBarText.vec.resx" />
+    <EmbeddedResource Remove="StatusBarText.sl.resx" />
+    <EmbeddedResource Remove="StatusBarText.ru.resx" />
+    <EmbeddedResource Remove="StatusBarText.ku.resx" />
+    <EmbeddedResource Remove="StatusBarText.it.resx" />
+    <EmbeddedResource Remove="StatusBarText.id.resx" />
+    <EmbeddedResource Remove="StatusBarText.he.resx" />
+    <EmbeddedResource Remove="StatusBarText.en-GB.resx" />
+    <EmbeddedResource Remove="StatusBarText.ca.resx" />
+    <EmbeddedResource Remove="SetUILanguage.zh-HK.resx" />
+    <EmbeddedResource Remove="SetUILanguage.vec.resx" />
+    <EmbeddedResource Remove="SetUILanguage.sl.resx" />
+    <EmbeddedResource Remove="SetUILanguage.ru.resx" />
+    <EmbeddedResource Remove="SetUILanguage.ku.resx" />
+    <EmbeddedResource Remove="SetUILanguage.it.resx" />
+    <EmbeddedResource Remove="SetUILanguage.id.resx" />
+    <EmbeddedResource Remove="SetUILanguage.he.resx" />
+    <EmbeddedResource Remove="SetUILanguage.en-GB.resx" />
+    <EmbeddedResource Remove="SetUILanguage.ca.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.vec.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.sl.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.ru.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.ku.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.it.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.id.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.he.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.en-GB.resx" />
+    <EmbeddedResource Remove="SetPrintAreaDialog.ca.resx" />
+    <EmbeddedResource Remove="SelectVariations.zh-HK.resx" />
+    <EmbeddedResource Remove="SelectVariations.vec.resx" />
+    <EmbeddedResource Remove="SelectVariations.sl.resx" />
+    <EmbeddedResource Remove="SelectVariations.ru.resx" />
+    <EmbeddedResource Remove="SelectVariations.ku.resx" />
+    <EmbeddedResource Remove="SelectVariations.it.resx" />
+    <EmbeddedResource Remove="SelectVariations.id.resx" />
+    <EmbeddedResource Remove="SelectVariations.he.resx" />
+    <EmbeddedResource Remove="SelectVariations.en-GB.resx" />
+    <EmbeddedResource Remove="SelectVariations.ca.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.zh-HK.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.vec.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.sl.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.ru.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.ku.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.it.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.id.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.he.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.en-GB.resx" />
+    <EmbeddedResource Remove="SelectLocationsForMove.ca.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.zh-HK.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.vec.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.sl.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.ru.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.ku.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.it.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.id.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.he.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.en-GB.resx" />
+    <EmbeddedResource Remove="SelectionDescriptionText.ca.resx" />
+    <EmbeddedResource Remove="ReportText.zh-HK.resx" />
+    <EmbeddedResource Remove="ReportText.vec.resx" />
+    <EmbeddedResource Remove="ReportText.sl.resx" />
+    <EmbeddedResource Remove="ReportText.ru.resx" />
+    <EmbeddedResource Remove="ReportText.ku.resx" />
+    <EmbeddedResource Remove="ReportText.it.resx" />
+    <EmbeddedResource Remove="ReportText.id.resx" />
+    <EmbeddedResource Remove="ReportText.he.resx" />
+    <EmbeddedResource Remove="ReportText.en-GB.resx" />
+    <EmbeddedResource Remove="ReportText.ca.resx" />
+    <EmbeddedResource Remove="ReportForm.zh-HK.resx" />
+    <EmbeddedResource Remove="ReportForm.vec.resx" />
+    <EmbeddedResource Remove="ReportForm.sl.resx" />
+    <EmbeddedResource Remove="ReportForm.ru.resx" />
+    <EmbeddedResource Remove="ReportForm.ku.resx" />
+    <EmbeddedResource Remove="ReportForm.it.resx" />
+    <EmbeddedResource Remove="ReportForm.id.resx" />
+    <EmbeddedResource Remove="ReportForm.he.resx" />
+    <EmbeddedResource Remove="ReportForm.en-GB.resx" />
+    <EmbeddedResource Remove="ReportForm.ca.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.vec.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.sl.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.ru.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.ku.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.it.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.id.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.he.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.en-GB.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.cs.resx" />
+    <EmbeddedResource Remove="PunchPatternDialog.ca.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.vec.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.sl.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.ru.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.ku.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.it.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.id.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.he.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.en-GB.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.cs.resx" />
+    <EmbeddedResource Remove="PunchcardLayoutDialog.ca.resx" />
+    <EmbeddedResource Remove="PrintPunches.zh-HK.resx" />
+    <EmbeddedResource Remove="PrintPunches.vec.resx" />
+    <EmbeddedResource Remove="PrintPunches.sl.resx" />
+    <EmbeddedResource Remove="PrintPunches.ru.resx" />
+    <EmbeddedResource Remove="PrintPunches.ku.resx" />
+    <EmbeddedResource Remove="PrintPunches.it.resx" />
+    <EmbeddedResource Remove="PrintPunches.id.resx" />
+    <EmbeddedResource Remove="PrintPunches.he.resx" />
+    <EmbeddedResource Remove="PrintPunches.en-GB.resx" />
+    <EmbeddedResource Remove="PrintPunches.ca.resx" />
+    <EmbeddedResource Remove="PrinterMargins.zh-HK.resx" />
+    <EmbeddedResource Remove="PrinterMargins.vec.resx" />
+    <EmbeddedResource Remove="PrinterMargins.sl.resx" />
+    <EmbeddedResource Remove="PrinterMargins.ru.resx" />
+    <EmbeddedResource Remove="PrinterMargins.ku.resx" />
+    <EmbeddedResource Remove="PrinterMargins.it.resx" />
+    <EmbeddedResource Remove="PrinterMargins.id.resx" />
+    <EmbeddedResource Remove="PrinterMargins.he.resx" />
+    <EmbeddedResource Remove="PrinterMargins.en-GB.resx" />
+    <EmbeddedResource Remove="PrinterMargins.ca.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.zh-HK.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.vec.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.sl.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.ru.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.ku.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.it.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.id.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.he.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.en-GB.resx" />
+    <EmbeddedResource Remove="PrintDescriptions.ca.resx" />
+    <EmbeddedResource Remove="PrintCourses.zh-HK.resx" />
+    <EmbeddedResource Remove="PrintCourses.vec.resx" />
+    <EmbeddedResource Remove="PrintCourses.sl.resx" />
+    <EmbeddedResource Remove="PrintCourses.ru.resx" />
+    <EmbeddedResource Remove="PrintCourses.ku.resx" />
+    <EmbeddedResource Remove="PrintCourses.it.resx" />
+    <EmbeddedResource Remove="PrintCourses.id.resx" />
+    <EmbeddedResource Remove="PrintCourses.he.resx" />
+    <EmbeddedResource Remove="PrintCourses.en-GB.resx" />
+    <EmbeddedResource Remove="PrintCourses.ca.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.zh-HK.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.vec.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.sl.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.ru.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.ku.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.it.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.id.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.he.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.en-GB.resx" />
+    <EmbeddedResource Remove="PdfConversionInProgress.ca.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.zh-HK.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.vec.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.sl.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.ru.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.ku.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.it.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.id.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.he.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.en-GB.resx" />
+    <EmbeddedResource Remove="PaperSizeControl.ca.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.vec.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.sl.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.ru.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.ku.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.it.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.id.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.he.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.en-GB.resx" />
+    <EmbeddedResource Remove="OverwritingOcadFilesDialog.ca.resx" />
+    <EmbeddedResource Remove="OperationInProgress.zh-HK.resx" />
+    <EmbeddedResource Remove="OperationInProgress.vec.resx" />
+    <EmbeddedResource Remove="OperationInProgress.sl.resx" />
+    <EmbeddedResource Remove="OperationInProgress.ru.resx" />
+    <EmbeddedResource Remove="OperationInProgress.ku.resx" />
+    <EmbeddedResource Remove="OperationInProgress.it.resx" />
+    <EmbeddedResource Remove="OperationInProgress.id.resx" />
+    <EmbeddedResource Remove="OperationInProgress.he.resx" />
+    <EmbeddedResource Remove="OperationInProgress.en-GB.resx" />
+    <EmbeddedResource Remove="OperationInProgress.ca.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.vec.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.sl.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.ru.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.ku.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.it.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.id.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.he.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.en-GB.resx" />
+    <EmbeddedResource Remove="OkCancelDialog.ca.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.zh-HK.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.vec.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.sl.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.ru.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.ku.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.it.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.id.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.he.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.en-GB.resx" />
+    <EmbeddedResource Remove="NonPrintableObjects.ca.resx" />
+    <EmbeddedResource Remove="NewEventWizard.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventWizard.vec.resx" />
+    <EmbeddedResource Remove="NewEventWizard.sl.resx" />
+    <EmbeddedResource Remove="NewEventWizard.ru.resx" />
+    <EmbeddedResource Remove="NewEventWizard.ku.resx" />
+    <EmbeddedResource Remove="NewEventWizard.it.resx" />
+    <EmbeddedResource Remove="NewEventWizard.id.resx" />
+    <EmbeddedResource Remove="NewEventWizard.he.resx" />
+    <EmbeddedResource Remove="NewEventWizard.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventWizard.ca.resx" />
+    <EmbeddedResource Remove="NewEventTitle.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventTitle.vec.resx" />
+    <EmbeddedResource Remove="NewEventTitle.sl.resx" />
+    <EmbeddedResource Remove="NewEventTitle.ru.resx" />
+    <EmbeddedResource Remove="NewEventTitle.ku.resx" />
+    <EmbeddedResource Remove="NewEventTitle.it.resx" />
+    <EmbeddedResource Remove="NewEventTitle.id.resx" />
+    <EmbeddedResource Remove="NewEventTitle.he.resx" />
+    <EmbeddedResource Remove="NewEventTitle.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventTitle.ca.resx" />
+    <EmbeddedResource Remove="NewEventStandards.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventStandards.vec.resx" />
+    <EmbeddedResource Remove="NewEventStandards.sl.resx" />
+    <EmbeddedResource Remove="NewEventStandards.ru.resx" />
+    <EmbeddedResource Remove="NewEventStandards.ku.resx" />
+    <EmbeddedResource Remove="NewEventStandards.it.resx" />
+    <EmbeddedResource Remove="NewEventStandards.id.resx" />
+    <EmbeddedResource Remove="NewEventStandards.he.resx" />
+    <EmbeddedResource Remove="NewEventStandards.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventStandards.ca.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.vec.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.sl.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.ru.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.ku.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.it.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.id.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.he.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventPrintScale.ca.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.vec.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.sl.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.ru.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.ku.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.it.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.id.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.he.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventPaperSize.ca.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.vec.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.sl.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.ru.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.ku.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.it.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.id.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.he.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventNumbering.ca.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.vec.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.sl.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.ru.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.ku.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.it.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.id.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.he.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventMapFile.ca.resx" />
+    <EmbeddedResource Remove="NewEventFinal.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventFinal.vec.resx" />
+    <EmbeddedResource Remove="NewEventFinal.sl.resx" />
+    <EmbeddedResource Remove="NewEventFinal.ru.resx" />
+    <EmbeddedResource Remove="NewEventFinal.ku.resx" />
+    <EmbeddedResource Remove="NewEventFinal.it.resx" />
+    <EmbeddedResource Remove="NewEventFinal.id.resx" />
+    <EmbeddedResource Remove="NewEventFinal.he.resx" />
+    <EmbeddedResource Remove="NewEventFinal.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventFinal.ca.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.vec.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.sl.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.ru.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.ku.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.it.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.id.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.he.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventDirectory.ca.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.zh-HK.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.vec.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.sl.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.ru.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.ku.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.it.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.id.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.he.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.en-GB.resx" />
+    <EmbeddedResource Remove="NewEventBitmapScale.ca.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.vec.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.sl.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.ru.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.ku.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.it.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.id.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.he.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.en-GB.resx" />
+    <EmbeddedResource Remove="MoveControlChoiceDialog.ca.resx" />
+    <EmbeddedResource Remove="MoveAllControls.zh-HK.resx" />
+    <EmbeddedResource Remove="MoveAllControls.vec.resx" />
+    <EmbeddedResource Remove="MoveAllControls.sl.resx" />
+    <EmbeddedResource Remove="MoveAllControls.ru.resx" />
+    <EmbeddedResource Remove="MoveAllControls.ku.resx" />
+    <EmbeddedResource Remove="MoveAllControls.it.resx" />
+    <EmbeddedResource Remove="MoveAllControls.id.resx" />
+    <EmbeddedResource Remove="MoveAllControls.he.resx" />
+    <EmbeddedResource Remove="MoveAllControls.en-GB.resx" />
+    <EmbeddedResource Remove="MoveAllControls.ca.resx" />
+    <EmbeddedResource Remove="MissingFonts.zh-HK.resx" />
+    <EmbeddedResource Remove="MissingFonts.vec.resx" />
+    <EmbeddedResource Remove="MissingFonts.sl.resx" />
+    <EmbeddedResource Remove="MissingFonts.ru.resx" />
+    <EmbeddedResource Remove="MissingFonts.ku.resx" />
+    <EmbeddedResource Remove="MissingFonts.it.resx" />
+    <EmbeddedResource Remove="MissingFonts.id.resx" />
+    <EmbeddedResource Remove="MissingFonts.he.resx" />
+    <EmbeddedResource Remove="MissingFonts.en-GB.resx" />
+    <EmbeddedResource Remove="MissingFonts.ca.resx" />
+    <EmbeddedResource Remove="MiscText.zh-HK.resx" />
+    <EmbeddedResource Remove="MiscText.vec.resx" />
+    <EmbeddedResource Remove="MiscText.sl.resx" />
+    <EmbeddedResource Remove="MiscText.ru.resx" />
+    <EmbeddedResource Remove="MiscText.ku.resx" />
+    <EmbeddedResource Remove="MiscText.it.resx" />
+    <EmbeddedResource Remove="MiscText.id.resx" />
+    <EmbeddedResource Remove="MiscText.he.resx" />
+    <EmbeddedResource Remove="MiscText.en-GB.resx" />
+    <EmbeddedResource Remove="MiscText.ca.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.vec.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.sl.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.ru.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.ku.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.it.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.id.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.he.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.en-GB.resx" />
+    <EmbeddedResource Remove="MapIssueChoiceDialog.ca.resx" />
+    <EmbeddedResource Remove="MainFrame.zh-HK.resx" />
+    <EmbeddedResource Remove="MainFrame.vec.resx" />
+    <EmbeddedResource Remove="MainFrame.sl.resx" />
+    <EmbeddedResource Remove="MainFrame.ru.resx" />
+    <EmbeddedResource Remove="MainFrame.ku.resx" />
+    <EmbeddedResource Remove="MainFrame.it.resx" />
+    <EmbeddedResource Remove="MainFrame.id.resx" />
+    <EmbeddedResource Remove="MainFrame.he.resx" />
+    <EmbeddedResource Remove="MainFrame.en-GB.resx" />
+    <EmbeddedResource Remove="MainFrame.ca.resx" />
+    <EmbeddedResource Remove="Livelox\ExportToLiveloxDialog.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.vec.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.sl.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.ru.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.ku.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.it.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.id.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.he.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.en-GB.resx" />
+    <EmbeddedResource Remove="LinePropertiesDialog.ca.resx" />
+    <EmbeddedResource Remove="LicenseForm.zh-HK.resx" />
+    <EmbeddedResource Remove="LicenseForm.vec.resx" />
+    <EmbeddedResource Remove="LicenseForm.sl.resx" />
+    <EmbeddedResource Remove="LicenseForm.ru.resx" />
+    <EmbeddedResource Remove="LicenseForm.ku.resx" />
+    <EmbeddedResource Remove="LicenseForm.it.resx" />
+    <EmbeddedResource Remove="LicenseForm.id.resx" />
+    <EmbeddedResource Remove="LicenseForm.he.resx" />
+    <EmbeddedResource Remove="LicenseForm.en-GB.resx" />
+    <EmbeddedResource Remove="LicenseForm.ca.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.vec.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.sl.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.ru.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.ku.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.it.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.id.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.he.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.en-GB.resx" />
+    <EmbeddedResource Remove="LegAssignmentsDialog.ca.resx" />
+    <EmbeddedResource Remove="InitialScreen.zh-HK.resx" />
+    <EmbeddedResource Remove="InitialScreen.vec.resx" />
+    <EmbeddedResource Remove="InitialScreen.sl.resx" />
+    <EmbeddedResource Remove="InitialScreen.ru.resx" />
+    <EmbeddedResource Remove="InitialScreen.ku.resx" />
+    <EmbeddedResource Remove="InitialScreen.it.resx" />
+    <EmbeddedResource Remove="InitialScreen.id.resx" />
+    <EmbeddedResource Remove="InitialScreen.he.resx" />
+    <EmbeddedResource Remove="InitialScreen.en-GB.resx" />
+    <EmbeddedResource Remove="InitialScreen.ca.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.zh-HK.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.vec.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.sl.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.ru.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.ku.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.it.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.id.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.he.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.en-GB.resx" />
+    <EmbeddedResource Remove="EnterSymbolText.ca.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.vec.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.sl.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.ru.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.ku.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.it.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.id.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.he.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.en-GB.resx" />
+    <EmbeddedResource Remove="DownloadProgressDialog.ca.resx" />
+    <EmbeddedResource Remove="DotGrid.zh-HK.resx" />
+    <EmbeddedResource Remove="DotGrid.vec.resx" />
+    <EmbeddedResource Remove="DotGrid.sl.resx" />
+    <EmbeddedResource Remove="DotGrid.ru.resx" />
+    <EmbeddedResource Remove="DotGrid.ku.resx" />
+    <EmbeddedResource Remove="DotGrid.it.resx" />
+    <EmbeddedResource Remove="DotGrid.id.resx" />
+    <EmbeddedResource Remove="DotGrid.he.resx" />
+    <EmbeddedResource Remove="DotGrid.en-GB.resx" />
+    <EmbeddedResource Remove="DotGrid.ca.resx" />
+    <EmbeddedResource Remove="DescriptionControl.zh-HK.resx" />
+    <EmbeddedResource Remove="DescriptionControl.vec.resx" />
+    <EmbeddedResource Remove="DescriptionControl.sl.resx" />
+    <EmbeddedResource Remove="DescriptionControl.ru.resx" />
+    <EmbeddedResource Remove="DescriptionControl.ku.resx" />
+    <EmbeddedResource Remove="DescriptionControl.it.resx" />
+    <EmbeddedResource Remove="DescriptionControl.id.resx" />
+    <EmbeddedResource Remove="DescriptionControl.he.resx" />
+    <EmbeddedResource Remove="DescriptionControl.en-GB.resx" />
+    <EmbeddedResource Remove="DescriptionControl.ca.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.zh-HK.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.vec.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.sl.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.ru.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.ku.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.it.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.id.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.he.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.en-GB.resx" />
+    <EmbeddedResource Remove="CustomSymbolText.ca.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.zh-HK.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.vec.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.sl.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.ru.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.ku.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.it.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.id.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.he.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.en-GB.resx" />
+    <EmbeddedResource Remove="CreateRouteGadget.ca.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.zh-HK.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.vec.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.sl.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.ru.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.ku.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.it.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.id.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.he.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.en-GB.resx" />
+    <EmbeddedResource Remove="CreatePdfCourses.ca.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.zh-HK.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.vec.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.sl.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.ru.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.ku.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.it.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.id.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.he.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.en-GB.resx" />
+    <EmbeddedResource Remove="CreateOcadFiles.ca.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.zh-HK.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.vec.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.sl.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.ru.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.ku.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.it.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.id.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.he.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.en-GB.resx" />
+    <EmbeddedResource Remove="CreateKmlFiles.ca.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.zh-HK.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.vec.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.sl.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.ru.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.ku.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.it.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.id.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.he.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.en-GB.resx" />
+    <EmbeddedResource Remove="CreateImageFiles.ca.resx" />
+    <EmbeddedResource Remove="CreateGpx.zh-HK.resx" />
+    <EmbeddedResource Remove="CreateGpx.vec.resx" />
+    <EmbeddedResource Remove="CreateGpx.sl.resx" />
+    <EmbeddedResource Remove="CreateGpx.ru.resx" />
+    <EmbeddedResource Remove="CreateGpx.ku.resx" />
+    <EmbeddedResource Remove="CreateGpx.it.resx" />
+    <EmbeddedResource Remove="CreateGpx.id.resx" />
+    <EmbeddedResource Remove="CreateGpx.he.resx" />
+    <EmbeddedResource Remove="CreateGpx.en-GB.resx" />
+    <EmbeddedResource Remove="CreateGpx.ca.resx" />
+    <EmbeddedResource Remove="CourseSelector.zh-HK.resx" />
+    <EmbeddedResource Remove="CourseSelector.vec.resx" />
+    <EmbeddedResource Remove="CourseSelector.sl.resx" />
+    <EmbeddedResource Remove="CourseSelector.ru.resx" />
+    <EmbeddedResource Remove="CourseSelector.ku.resx" />
+    <EmbeddedResource Remove="CourseSelector.it.resx" />
+    <EmbeddedResource Remove="CourseSelector.id.resx" />
+    <EmbeddedResource Remove="CourseSelector.he.resx" />
+    <EmbeddedResource Remove="CourseSelector.en-GB.resx" />
+    <EmbeddedResource Remove="CourseSelector.ca.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.zh-HK.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.vec.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.sl.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.ru.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.ku.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.it.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.id.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.he.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.en-GB.resx" />
+    <EmbeddedResource Remove="CoursePartProperties.ca.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.zh-HK.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.vec.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.sl.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.ru.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.ku.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.it.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.id.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.he.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.en-GB.resx" />
+    <EmbeddedResource Remove="CoursePartBanner.ca.resx" />
+    <EmbeddedResource Remove="CourseLoad.zh-HK.resx" />
+    <EmbeddedResource Remove="CourseLoad.vec.resx" />
+    <EmbeddedResource Remove="CourseLoad.sl.resx" />
+    <EmbeddedResource Remove="CourseLoad.ru.resx" />
+    <EmbeddedResource Remove="CourseLoad.ku.resx" />
+    <EmbeddedResource Remove="CourseLoad.it.resx" />
+    <EmbeddedResource Remove="CourseLoad.id.resx" />
+    <EmbeddedResource Remove="CourseLoad.he.resx" />
+    <EmbeddedResource Remove="CourseLoad.en-GB.resx" />
+    <EmbeddedResource Remove="CourseLoad.ca.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.vec.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.sl.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.ru.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.ku.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.it.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.id.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.he.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.en-GB.resx" />
+    <EmbeddedResource Remove="CourseAppearanceDialog.ca.resx" />
+    <EmbeddedResource Remove="CommandNameText.zh-HK.resx" />
+    <EmbeddedResource Remove="CommandNameText.vec.resx" />
+    <EmbeddedResource Remove="CommandNameText.sl.resx" />
+    <EmbeddedResource Remove="CommandNameText.ru.resx" />
+    <EmbeddedResource Remove="CommandNameText.ku.resx" />
+    <EmbeddedResource Remove="CommandNameText.it.resx" />
+    <EmbeddedResource Remove="CommandNameText.id.resx" />
+    <EmbeddedResource Remove="CommandNameText.he.resx" />
+    <EmbeddedResource Remove="CommandNameText.en-GB.resx" />
+    <EmbeddedResource Remove="CommandNameText.ca.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.vec.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.sl.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.ru.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.ku.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.it.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.id.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.he.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.en-GB.resx" />
+    <EmbeddedResource Remove="ColorChooserDialog.ca.resx" />
+    <EmbeddedResource Remove="ChangeText.zh-HK.resx" />
+    <EmbeddedResource Remove="ChangeText.vec.resx" />
+    <EmbeddedResource Remove="ChangeText.sl.resx" />
+    <EmbeddedResource Remove="ChangeText.ru.resx" />
+    <EmbeddedResource Remove="ChangeText.ku.resx" />
+    <EmbeddedResource Remove="ChangeText.it.resx" />
+    <EmbeddedResource Remove="ChangeText.id.resx" />
+    <EmbeddedResource Remove="ChangeText.he.resx" />
+    <EmbeddedResource Remove="ChangeText.en-GB.resx" />
+    <EmbeddedResource Remove="ChangeText.ca.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.zh-HK.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.vec.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.sl.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.ru.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.ku.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.it.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.id.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.he.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.en-GB.resx" />
+    <EmbeddedResource Remove="ChangeSpecialCourses.ca.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.zh-HK.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.vec.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.sl.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.ru.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.ku.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.it.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.id.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.he.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.en-GB.resx" />
+    <EmbeddedResource Remove="ChangeMapFile.ca.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.zh-HK.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.vec.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.sl.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.ru.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.ku.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.it.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.id.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.he.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.en-GB.resx" />
+    <EmbeddedResource Remove="ChangeCourseOrder.ca.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.zh-HK.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.vec.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.sl.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.ru.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.ku.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.it.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.id.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.he.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.en-GB.resx" />
+    <EmbeddedResource Remove="ChangeAllCodes.ca.resx" />
+    <EmbeddedResource Remove="BaseDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="BaseDialog.vec.resx" />
+    <EmbeddedResource Remove="BaseDialog.sl.resx" />
+    <EmbeddedResource Remove="BaseDialog.ru.resx" />
+    <EmbeddedResource Remove="BaseDialog.ku.resx" />
+    <EmbeddedResource Remove="BaseDialog.it.resx" />
+    <EmbeddedResource Remove="BaseDialog.id.resx" />
+    <EmbeddedResource Remove="BaseDialog.he.resx" />
+    <EmbeddedResource Remove="BaseDialog.en-GB.resx" />
+    <EmbeddedResource Remove="BaseDialog.ca.resx" />
+    <EmbeddedResource Remove="AutoNumbering.zh-HK.resx" />
+    <EmbeddedResource Remove="AutoNumbering.vec.resx" />
+    <EmbeddedResource Remove="AutoNumbering.sl.resx" />
+    <EmbeddedResource Remove="AutoNumbering.ru.resx" />
+    <EmbeddedResource Remove="AutoNumbering.ku.resx" />
+    <EmbeddedResource Remove="AutoNumbering.it.resx" />
+    <EmbeddedResource Remove="AutoNumbering.id.resx" />
+    <EmbeddedResource Remove="AutoNumbering.he.resx" />
+    <EmbeddedResource Remove="AutoNumbering.en-GB.resx" />
+    <EmbeddedResource Remove="AutoNumbering.ca.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.zh-HK.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.vec.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.sl.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.ru.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.ku.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.it.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.id.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.he.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.en-GB.resx" />
+    <EmbeddedResource Remove="AllControlsProperties.ca.resx" />
+    <EmbeddedResource Remove="AddTextLine.zh-HK.resx" />
+    <EmbeddedResource Remove="AddTextLine.vec.resx" />
+    <EmbeddedResource Remove="AddTextLine.sl.resx" />
+    <EmbeddedResource Remove="AddTextLine.ru.resx" />
+    <EmbeddedResource Remove="AddTextLine.ku.resx" />
+    <EmbeddedResource Remove="AddTextLine.it.resx" />
+    <EmbeddedResource Remove="AddTextLine.id.resx" />
+    <EmbeddedResource Remove="AddTextLine.he.resx" />
+    <EmbeddedResource Remove="AddTextLine.en-GB.resx" />
+    <EmbeddedResource Remove="AddTextLine.ca.resx" />
+    <EmbeddedResource Remove="AddForkDialog.zh-HK.resx" />
+    <EmbeddedResource Remove="AddForkDialog.vec.resx" />
+    <EmbeddedResource Remove="AddForkDialog.sl.resx" />
+    <EmbeddedResource Remove="AddForkDialog.ru.resx" />
+    <EmbeddedResource Remove="AddForkDialog.ku.resx" />
+    <EmbeddedResource Remove="AddForkDialog.it.resx" />
+    <EmbeddedResource Remove="AddForkDialog.id.resx" />
+    <EmbeddedResource Remove="AddForkDialog.he.resx" />
+    <EmbeddedResource Remove="AddForkDialog.en-GB.resx" />
+    <EmbeddedResource Remove="AddForkDialog.ca.resx" />
+    <EmbeddedResource Remove="AddCourse.zh-HK.resx" />
+    <EmbeddedResource Remove="AddCourse.vec.resx" />
+    <EmbeddedResource Remove="AddCourse.sl.resx" />
+    <EmbeddedResource Remove="AddCourse.ru.resx" />
+    <EmbeddedResource Remove="AddCourse.ku.resx" />
+    <EmbeddedResource Remove="AddCourse.it.resx" />
+    <EmbeddedResource Remove="AddCourse.id.resx" />
+    <EmbeddedResource Remove="AddCourse.he.resx" />
+    <EmbeddedResource Remove="AddCourse.en-GB.resx" />
+    <EmbeddedResource Remove="AddCourse.ca.resx" />
+    <EmbeddedResource Remove="AboutForm.zh-HK.resx" />
+    <EmbeddedResource Remove="AboutForm.vec.resx" />
+    <EmbeddedResource Remove="AboutForm.sl.resx" />
+    <EmbeddedResource Remove="AboutForm.ru.resx" />
+    <EmbeddedResource Remove="AboutForm.ku.resx" />
+    <EmbeddedResource Remove="AboutForm.it.resx" />
+    <EmbeddedResource Remove="AboutForm.id.resx" />
+    <EmbeddedResource Remove="AboutForm.he.resx" />
+    <EmbeddedResource Remove="AboutForm.en-GB.resx" />
+    <EmbeddedResource Remove="AboutForm.ca.resx" />
+  </ItemGroup>
+  <ItemGroup Condition=" '$(TargetFramework)' == 'net48' ">
+    <Reference Include="Microsoft.VisualBasic" />
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Update="CommandNameText.*.Designer.cs">
+      <DependentUpon>CommandNameText.resx</DependentUpon>
+    </Compile>
+    <Compile Update="MiscText.*.Designer.cs">
+      <DependentUpon>MiscText.resx</DependentUpon>
+    </Compile>
+    <Compile Update="StatusBarText.*.Designer.cs">
+      <DependentUpon>StatusBarText.resx</DependentUpon>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="CommandNameText.*.resx">
+      <DependentUpon>CommandNameText.resx</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Update="MiscText.*.resx">
+      <DependentUpon>MiscText.resx</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Update="StatusBarText.*.resx">
+      <DependentUpon>StatusBarText.resx</DependentUpon>
+    </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+</Project>

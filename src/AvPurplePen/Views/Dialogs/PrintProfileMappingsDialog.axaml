@@ -1,0 +1,101 @@
+<!--
+    PrintProfileMappingsDialog.axaml
+    Resolves ambiguous source-map colours for a selected print profile.
+-->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PurplePen.ViewModels"
+        xmlns:core="using:PurplePen"
+        xmlns:resx="using:AvPurplePen"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        x:Class="AvPurplePen.Views.PrintProfileMappingsDialog"
+        Classes="dialog"
+        x:DataType="vm:PrintProfileMappingsDialogViewModel"
+        Title="{resx:Localize PrintProfileMappingsDialog_Title}"
+        Icon="/Assets/transparent.ico"
+        d:DesignWidth="760" d:DesignHeight="520"
+        Width="760" Height="520"
+        CanResize="True"
+        CanMinimize="False"
+        CanMaximize="False"
+        WindowStartupLocation="CenterOwner"
+        ShowInTaskbar="False">
+
+    <Design.DataContext>
+        <vm:PrintProfileMappingsDialogViewModel/>
+    </Design.DataContext>
+
+    <DockPanel Margin="12">
+        <StackPanel DockPanel.Dock="Bottom"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Spacing="8"
+                    Margin="0,12,0,0">
+            <Button Content="{resx:Localize PrintProfileMappingsDialog_applyButton_Text}"
+                    Width="100"
+                    HorizontalContentAlignment="Center"
+                    IsDefault="True"
+                    IsEnabled="{Binding CanApplyMappings}"
+                    Click="ApplyButton_Click"/>
+            <Button Content="{resx:Localize CancelButton}"
+                    Width="100"
+                    HorizontalContentAlignment="Center"
+                    IsCancel="True"
+                    Click="CancelButton_Click"/>
+        </StackPanel>
+
+        <StackPanel Spacing="10">
+            <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_instructions_Text}"
+                       TextWrapping="Wrap"/>
+            <Border Background="{DynamicResource SemiGrey1}" Padding="10" CornerRadius="4">
+                <StackPanel Spacing="3">
+                    <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_stepsHeader_Text}" FontWeight="SemiBold"/>
+                    <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step1_Text}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step2_Text}" TextWrapping="Wrap"/>
+                    <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step3_Text}" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Border>
+            <TextBlock Text="{Binding ProfileName}"
+                       FontWeight="Bold"/>
+            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding MappingItems}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:PrintProfileMappingItemViewModel">
+                            <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" Padding="8" Margin="0,3">
+                                <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto,Auto">
+                                    <TextBlock Grid.Column="0" Text="{resx:Localize PrintProfileMappingsDialog_profileColorHeader_Text}" FontWeight="SemiBold"/>
+                                    <TextBlock Grid.Column="2" Text="{resx:Localize PrintProfileMappingsDialog_mapColorHeader_Text}" FontWeight="SemiBold"/>
+                                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="0,5,0,0">
+                                        <Border Width="42" Height="30" Background="{Binding TargetPreviewColor}" BorderBrush="Black" BorderThickness="1" CornerRadius="2"/>
+                                        <StackPanel Spacing="1">
+                                            <TextBlock Text="{Binding RuleName}" FontWeight="SemiBold"/>
+                                            <TextBlock Text="{Binding TargetCmyk}"/>
+                                            <TextBlock IsVisible="{Binding TargetUsesOverprint}" Text="{resx:Localize PrintProfileMappingsDialog_overprint_Text}"/>
+                                            <TextBlock IsVisible="{Binding TargetUsesKnockout}" Text="{resx:Localize PrintProfileMappingsDialog_knockout_Text}"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    <ComboBox Grid.Row="1" Grid.Column="2"
+                                              ItemsSource="{Binding Candidates}"
+                                              SelectedItem="{Binding SelectedColor, Mode=TwoWay}"
+                                              Margin="0,5,0,0">
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate x:DataType="core:SourceMapColor">
+                                                <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap"/>
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
+                                        <Border Width="42" Height="24" Background="{Binding SelectedPreviewColor}" BorderBrush="Black" BorderThickness="1" CornerRadius="2"/>
+                                        <TextBlock Text="{Binding SelectedColorDetails}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
+    </DockPanel>
+</Window>
