@@ -180,17 +180,44 @@ namespace PurplePen.ViewModels
             grTarget.CreateFont(fontKey, FontName, emHeight, TextEffects);
             grTarget.CreateSolidBrush(brushKey, textColor);
 
-            // Measure text to center it vertically.
+            // Measure all lines to center the complete text block vertically.
             ITextMetrics textMetricsProvider = Services.TextMetricsProvider;
             ITextFaceMetrics textFaceMetrics = textMetricsProvider.GetTextFaceMetrics(FontName, emHeight, TextEffects);
-            SizeF textSize = textFaceMetrics.GetTextSize(text);
+            string[] lines = GetTextLines(text);
+            SizeF textSize = GetTextSize(lines, textFaceMetrics);
 
             float yOffset = (regionHeight - textSize.Height) / 2;
             if (yOffset < 0) yOffset = 0;
 
-            grTarget.DrawText(text, fontKey, brushKey, new PointF(0, yOffset));
+            for (int index = 0; index < lines.Length; ++index) {
+                grTarget.DrawText(lines[index], fontKey, brushKey, new PointF(0, yOffset + index * textFaceMetrics.RecommendedLineSpacing));
+            }
 
             grTarget.PopAntiAliasing();
+        }
+
+        /// <summary>Splits user text into display lines while accepting every platform newline convention.</summary>
+        private static string[] GetTextLines(string text)
+        {
+            return text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+        }
+
+        /// <summary>Measures a multi-line text block with the font's normal line spacing.</summary>
+        private static SizeF GetTextSize(string[] lines, ITextFaceMetrics textFaceMetrics)
+        {
+            float width = 0;
+            float height = 0;
+
+            foreach (string line in lines) {
+                SizeF lineSize = textFaceMetrics.GetTextSize(line);
+                width = Math.Max(width, lineSize.Width);
+                height = Math.Max(height, lineSize.Height);
+            }
+
+            if (lines.Length > 1)
+                height += (lines.Length - 1) * textFaceMetrics.RecommendedLineSpacing;
+
+            return new SizeF(width, height);
         }
 
         /// <summary>

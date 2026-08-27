@@ -85,7 +85,12 @@
                                 Margin="0,0,0,8">
             <StackPanel Spacing="6">
                 <TextBox x:Name="textBoxMain"
-                         Text="{Binding UserText, Mode=TwoWay}"/>
+                         Text="{Binding UserText, Mode=TwoWay}"
+                         AcceptsReturn="True"
+                         TextWrapping="Wrap"
+                         MinHeight="82"
+                         MaxHeight="150"
+                         ScrollViewer.VerticalScrollBarVisibility="Auto"/>
                 <Button x:Name="insertSpecialButton"
                         IsVisible="{Binding AllowSpecialTextInsert}"
                         HorizontalAlignment="Left"

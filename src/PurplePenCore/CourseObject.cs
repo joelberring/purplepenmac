@@ -1169,7 +1169,7 @@ namespace PurplePen
 
         protected override void AddToMap(Map map, SymDef symdef)
         {
-            TextSymbol sym = new TextSymbol((TextSymDef)symdef, new string[1] { text }, topLeft, 0, 0, TextSymDefHorizAlignment.Default, TextSymDefVertAlignment.Default);
+            TextSymbol sym = new TextSymbol((TextSymDef)symdef, GetTextLines(), topLeft, 0, 0, TextSymDefHorizAlignment.Default, TextSymDefVertAlignment.Default);
 
             /*Show size of text
              * PointF[] pts = { topLeft, new PointF(topLeft.X, topLeft.Y - size.Height), new PointF(topLeft.X + size.Width, topLeft.Y - size.Height), new PointF(topLeft.X + size.Width, topLeft.Y), topLeft };
@@ -1202,7 +1202,52 @@ namespace PurplePen
 
             ITextMetrics textMetrics = Services.TextMetricsProvider;
             ITextFaceMetrics fontMetrics = textMetrics.GetTextFaceMetrics(SafeFontName, emHeight, textEffects);
-            return fontMetrics.GetTextSize(text);
+            return GetTextSize(fontMetrics);
+        }
+
+        /// <summary>Splits stored text into the explicit lines used by map rendering.</summary>
+        protected string[] GetTextLines()
+        {
+            return text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
+        }
+
+        /// <summary>Measures all text lines using the font's normal line spacing.</summary>
+        protected SizeF GetTextSize(ITextFaceMetrics metrics)
+        {
+            string[] lines = GetTextLines();
+            float width = 0;
+            float height = 0;
+
+            foreach (string line in lines) {
+                SizeF lineSize = metrics.GetTextSize(line);
+                width = Math.Max(width, lineSize.Width);
+                height = Math.Max(height, lineSize.Height);
+            }
+
+            if (lines.Length > 1)
+                height += (lines.Length - 1) * metrics.RecommendedLineSpacing;
+
+            return new SizeF(width, height);
+        }
+
+        /// <summary>Draws each stored text line at the font's normal line spacing.</summary>
+        protected void DrawTextLines(IGraphicsTarget graphicsTarget, object drawFontKey, object brushKey, PointF location, ITextFaceMetrics metrics)
+        {
+            string[] lines = GetTextLines();
+            for (int index = 0; index < lines.Length; ++index) {
+                PointF lineLocation = new PointF(location.X, location.Y + index * metrics.RecommendedLineSpacing);
+                graphicsTarget.DrawText(lines[index], drawFontKey, brushKey, lineLocation);
+            }
+        }
+
+        /// <summary>Draws the outline of each stored text line at the font's normal line spacing.</summary>
+        protected void DrawTextLinesOutline(IGraphicsTarget graphicsTarget, object drawFontKey, object penKey, PointF location, ITextFaceMetrics metrics)
+        {
+            string[] lines = GetTextLines();
+            for (int index = 0; index < lines.Length; ++index) {
+                PointF lineLocation = new PointF(location.X, location.Y + index * metrics.RecommendedLineSpacing);
+                graphicsTarget.DrawTextOutline(lines[index], drawFontKey, penKey, lineLocation);
+            }
         }
 
         public override string ToString()
@@ -1230,10 +1275,10 @@ namespace PurplePen
 
             if (erasing) {
                 // Erase a rectangle that encloses the text.
-                SizeF textSize = metrics.GetTextSize(text);
+                SizeF textSize = GetTextSize(metrics);
                 Size expandedSize = new Size((int)Math.Ceiling(textSize.Width) + 4, (int)Math.Ceiling(textSize.Height) + 4);
                 g.FillRectangle(brush, new RectangleF(topLeftPixel[0].X - 2, topLeftPixel[0].Y - 2, expandedSize.Width, expandedSize.Height));
-                g.DrawText(text, fontKey, brush, topLeftPixel[0]);
+                DrawTextLines(g, fontKey, brush, topLeftPixel[0], metrics);
             }
             else {
                 g.PushAntiAliasing(true);
@@ -1241,8 +1286,8 @@ namespace PurplePen
                 // Outline in white, makes the red text pop much better.
                 object whitePenKey = new object();
                 g.CreatePen(whitePenKey, CmykColor.FromCmyk(0, 0, 0, 0), 2, LineCapMode.Round, LineJoinMode.Round, 5);
-                g.DrawTextOutline(text, fontKey, whitePenKey, topLeftPixel[0]);
-                g.DrawText(text, fontKey, brush, topLeftPixel[0]);
+                DrawTextLinesOutline(g, fontKey, whitePenKey, topLeftPixel[0], metrics);
+                DrawTextLines(g, fontKey, brush, topLeftPixel[0], metrics);
 
                 g.PopAntiAliasing();
             }
