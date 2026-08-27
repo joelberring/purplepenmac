@@ -741,6 +741,12 @@
   <data name="MainFrame_addControlToolStripButton_Text" xml:space="preserve">
     <value>Add Control</value>
   </data>
+  <data name="MainFrame_keepAddingControlsToggleButton_Text" xml:space="preserve">
+    <value>Continue</value>
+  </data>
+  <data name="MainFrame_keepAddingControlsToggleButton_ToolTipText" xml:space="preserve">
+    <value>Keep adding controls until you press Esc or select another tool</value>
+  </data>
   <data name="CommandNameText_AddStart" xml:space="preserve">
     <value>Add Start</value>
   </data>

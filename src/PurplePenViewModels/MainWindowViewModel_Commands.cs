@@ -655,8 +655,14 @@ namespace PurplePen.ViewModels
         {
             if (controller == null) { return; }
 
-            controller.BeginAddControlMode(ControlPointKind.Normal, MapExchangeType.None);
+            controller.BeginAddControlMode(ControlPointKind.Normal, MapExchangeType.None, KeepAddingControls);
         }
+
+        /// <summary>
+        /// Whether normal-control placement remains active after each placed control.
+        /// </summary>
+        [ObservableProperty]
+        private bool keepAddingControls;
 
         /// <summary>
         /// Executes the Add/Start command. Begins adding a start control.

@@ -59,11 +59,12 @@ namespace PurplePen
         float courseObjRatio;
         MapIssueKind mapIssueKind;
         CourseAppearance appearance;
+        bool keepAddingControls;
 
         PointCourseObj highlight;    // the highlight of the control we are creating.
         CourseObj[] additionalHighlights;  // additional highlights to show also. 
 
-        public AddControlMode(Controller controller, SelectionMgr selectionMgr, UndoMgr undoMgr, EventDB eventDB, SymbolDB symbolDB, bool allControls, ControlPointKind controlKind, MapExchangeType mapExchangeType, MapIssueKind mapIssueKind)
+        public AddControlMode(Controller controller, SelectionMgr selectionMgr, UndoMgr undoMgr, EventDB eventDB, SymbolDB symbolDB, bool allControls, ControlPointKind controlKind, MapExchangeType mapExchangeType, MapIssueKind mapIssueKind, bool keepAddingControls)
         {
             this.controller = controller;
             this.selectionMgr = selectionMgr;
@@ -74,6 +75,7 @@ namespace PurplePen
             this.controlKind = controlKind;
             this.mapExchangeType = mapExchangeType;
             this.mapIssueKind = mapIssueKind;
+            this.keepAddingControls = keepAddingControls;
             this.appearance = controller.GetCourseAppearance();
             this.courseObjRatio = selectionMgr.ActiveCourseView.CourseObjRatio(appearance);
         }
@@ -347,7 +349,8 @@ namespace PurplePen
 
             undoMgr.EndCommand(1321);
 
-            controller.DefaultCommandMode();
+            if (!keepAddingControls)
+                controller.DefaultCommandMode();
 
             return false;
         }
