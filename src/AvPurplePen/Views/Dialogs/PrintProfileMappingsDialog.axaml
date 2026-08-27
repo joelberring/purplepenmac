@@ -46,20 +46,24 @@
                     Click="CancelButton_Click"/>
         </StackPanel>
 
-        <StackPanel Spacing="10">
-            <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_instructions_Text}"
-                       TextWrapping="Wrap"/>
-            <Border Background="{DynamicResource SemiGrey1}" Padding="10" CornerRadius="4">
-                <StackPanel Spacing="3">
-                    <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_stepsHeader_Text}" FontWeight="SemiBold"/>
-                    <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step1_Text}" TextWrapping="Wrap"/>
-                    <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step2_Text}" TextWrapping="Wrap"/>
-                    <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step3_Text}" TextWrapping="Wrap"/>
-                </StackPanel>
-            </Border>
-            <TextBlock Text="{Binding ProfileName}"
-                       FontWeight="Bold"/>
-            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+        <Grid RowDefinitions="Auto,*" RowSpacing="10">
+            <StackPanel Grid.Row="0" Spacing="10">
+                <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_instructions_Text}"
+                           TextWrapping="Wrap"/>
+                <Border Background="{DynamicResource SemiGrey1}" Padding="10" CornerRadius="4">
+                    <StackPanel Spacing="3">
+                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_stepsHeader_Text}" FontWeight="SemiBold"/>
+                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step1_Text}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step2_Text}" TextWrapping="Wrap"/>
+                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step3_Text}" TextWrapping="Wrap"/>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="{Binding ProfileName}"
+                           FontWeight="Bold"/>
+            </StackPanel>
+            <ScrollViewer Grid.Row="1"
+                          HorizontalScrollBarVisibility="Disabled"
+                          VerticalScrollBarVisibility="Auto">
                 <ItemsControl ItemsSource="{Binding MappingItems}">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate x:DataType="vm:PrintProfileMappingItemViewModel">
@@ -96,6 +100,6 @@
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
             </ScrollViewer>
-        </StackPanel>
+        </Grid>
     </DockPanel>
 </Window>
