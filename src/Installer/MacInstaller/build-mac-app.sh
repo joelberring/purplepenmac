@@ -852,6 +852,9 @@ notarize_app() {
 # ---------------------------------------------------------------------------
 
 # build_zip: produce the distribution .zip from the (stapled) app bundle.
+# The outer folder intentionally includes the first-open guide. Copying the
+# signed app bundle with ditto preserves its signature when a signed release is
+# built, while the guide remains easy to find before opening the app.
 build_zip() {
     step "Building .zip"
 
@@ -861,9 +864,14 @@ build_zip() {
     fi
 
     local zip_path="$OUTPUT_DIR/$DIST_BASENAME.zip"
+    local zip_stage="$BUILD_DIR/zip-package/$APP_NAME"
     rm -f "$zip_path"
+    rm -rf "$zip_stage"
+    mkdir -p "$zip_stage"
 
-    ditto -c -k --sequesterRsrc --keepParent "$APP_BUNDLE" "$zip_path"
+    ditto "$APP_BUNDLE" "$zip_stage/$APP_NAME.app"
+    cp "$SCRIPT_DIR/README - FIRST OPEN.txt" "$zip_stage/README - FIRST OPEN.txt"
+    ditto -c -k --sequesterRsrc --keepParent "$zip_stage" "$zip_path"
 
     info "Wrote $zip_path ($(du -h "$zip_path" | cut -f1 | tr -d ' '))"
 }
