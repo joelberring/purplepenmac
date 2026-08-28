@@ -5,6 +5,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace PurplePen
@@ -383,6 +385,102 @@ namespace PurplePen
                 RelativeDrawOrder = relativeDrawOrder,
                 OverprintIntent = PrintProfileOverprintIntent.Knockout,
             };
+        }
+    }
+
+    /// <summary>Loads and persists user print profiles without changing the source map.</summary>
+    public static class PrintProfileCatalog
+    {
+        /// <summary>Gets every built-in and user-imported print profile.</summary>
+        public static List<PrintProfile> CreateAll()
+        {
+            List<PrintProfile> profiles = BuiltInPrintProfiles.CreateAll();
+            foreach (PrintProfile profile in LoadUserProfiles()) {
+                if (!profiles.Any(candidate => String.Equals(candidate.Id, profile.Id, StringComparison.Ordinal)))
+                    profiles.Add(profile);
+            }
+
+            return profiles;
+        }
+
+        /// <summary>Finds a built-in or user-imported profile by its stable ID.</summary>
+        public static PrintProfile FindById(string profileId)
+        {
+            return CreateAll().FirstOrDefault(profile => String.Equals(profile.Id, profileId, StringComparison.Ordinal));
+        }
+
+        /// <summary>Imports a JSON profile and saves it for future Purple Pen sessions.</summary>
+        /// <param name="fileName">The JSON profile to import.</param>
+        /// <returns>The validated imported profile.</returns>
+        public static PrintProfile Import(string fileName)
+        {
+            if (String.IsNullOrWhiteSpace(fileName))
+                throw new ArgumentException("A print-profile file is required.", nameof(fileName));
+
+            PrintProfile profile = PrintProfileSerializer.Deserialize(File.ReadAllText(fileName));
+            ValidateProfile(profile);
+            Directory.CreateDirectory(UserProfileDirectory);
+            File.WriteAllText(Path.Combine(UserProfileDirectory, GetSafeFileName(profile.Id) + ".json"), PrintProfileSerializer.Serialize(profile));
+            return profile;
+        }
+
+        /// <summary>Exports the selected profile as a portable JSON document.</summary>
+        /// <param name="profile">The profile to export.</param>
+        /// <param name="fileName">The destination JSON file.</param>
+        public static void Export(PrintProfile profile, string fileName)
+        {
+            if (profile == null)
+                throw new ArgumentNullException(nameof(profile));
+            if (String.IsNullOrWhiteSpace(fileName))
+                throw new ArgumentException("A destination file is required.", nameof(fileName));
+
+            File.WriteAllText(fileName, PrintProfileSerializer.Serialize(profile));
+        }
+
+        /// <summary>Gets the folder which contains user-imported print profiles.</summary>
+        public static string UserProfileDirectory => Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PurplePen", "PrintProfiles");
+
+        private static IEnumerable<PrintProfile> LoadUserProfiles()
+        {
+            if (!Directory.Exists(UserProfileDirectory))
+                yield break;
+
+            foreach (string fileName in Directory.EnumerateFiles(UserProfileDirectory, "*.json")) {
+                PrintProfile profile = null;
+                try {
+                    profile = PrintProfileSerializer.Deserialize(File.ReadAllText(fileName));
+                    ValidateProfile(profile);
+                }
+                catch (IOException) {
+                }
+                catch (UnauthorizedAccessException) {
+                }
+                catch (JsonException) {
+                }
+                catch (ArgumentException) {
+                }
+
+                if (profile != null)
+                    yield return profile;
+            }
+        }
+
+        private static void ValidateProfile(PrintProfile profile)
+        {
+            if (String.IsNullOrWhiteSpace(profile.Id))
+                throw new ArgumentException("A print profile must have an ID.", nameof(profile));
+            if (String.IsNullOrWhiteSpace(profile.Name))
+                throw new ArgumentException("A print profile must have a name.", nameof(profile));
+            if (profile.ColorRules == null)
+                throw new ArgumentException("A print profile must contain colour rules.", nameof(profile));
+        }
+
+        private static string GetSafeFileName(string profileId)
+        {
+            char[] invalidCharacters = Path.GetInvalidFileNameChars();
+            string safeFileName = new string(profileId.Select(character => invalidCharacters.Contains(character) ? '_' : character).ToArray());
+            return String.IsNullOrWhiteSpace(safeFileName) ? "print-profile" : safeFileName;
         }
     }
 }

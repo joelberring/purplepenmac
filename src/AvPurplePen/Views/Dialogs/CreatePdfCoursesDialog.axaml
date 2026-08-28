@@ -104,7 +104,7 @@
 
                         <!-- Include (base map or just course) / Color model. -->
                         <Grid ColumnDefinitions="Auto,8,*"
-                              RowDefinitions="Auto,4,Auto,4,Auto,4,Auto"
+                              RowDefinitions="Auto,4,Auto,4,Auto,4,Auto,Auto"
                               Margin="0,4,0,0">
                             <TextBlock Grid.Row="0" Grid.Column="0"
                                        Text="{resx:Localize CreatePdfCourses_labelPrintBaseMap_Text}"
@@ -131,18 +131,31 @@
                             <TextBlock Grid.Row="4" Grid.Column="0"
                                        Text="{resx:Localize CreatePdfCourses_labelPrintProfile_Text}"
                                        VerticalAlignment="Center"/>
-                            <ComboBox x:Name="comboBoxPrintProfile"
-                                      Grid.Row="4" Grid.Column="2"
-                                      HorizontalAlignment="Stretch"
-                                      SelectedIndex="{Binding PrintProfileIndex, Mode=TwoWay}">
-                                <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxPrintProfile_None}"/>
-                                <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxPrintProfile_BlForest}"/>
-                                <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxPrintProfile_BlSprint}"/>
-                            </ComboBox>
+                            <StackPanel Grid.Row="4" Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                                <ComboBox x:Name="comboBoxPrintProfile"
+                                          Width="220"
+                                          SelectedIndex="{Binding PrintProfileIndex, Mode=TwoWay}"
+                                          ItemsSource="{Binding PrintProfiles}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:PrintProfileChoice">
+                                            <StackPanel>
+                                                <TextBlock IsVisible="{Binding IsNone}" Text="{resx:Localize CreatePdfCourses_comboBoxPrintProfile_None}"/>
+                                                <TextBlock IsVisible="{Binding IsProfile}" Text="{Binding Name}"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <Button Content="{resx:Localize CreatePdfCourses_importPrintProfile_Text}"
+                                        Click="ImportPrintProfileButton_Click"/>
+                                <Button Content="{resx:Localize CreatePdfCourses_exportPrintProfile_Text}"
+                                        Click="ExportPrintProfileButton_Click"/>
+                            </StackPanel>
                             <TextBlock Grid.Row="6" Grid.ColumnSpan="3"
                                        Text="{resx:Localize CreatePdfCourses_printProfileHelp_Text}"
                                        TextWrapping="Wrap"
                                        Margin="0,4,0,0"/>
+                            <TextBlock Grid.Row="7" Grid.ColumnSpan="3" Text="{Binding PrintProfileMessage}"
+                                       TextWrapping="Wrap"/>
                         </Grid>
 
                         <!-- "Print Map Exchanges on Same Map" — only shown when

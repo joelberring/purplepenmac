@@ -504,7 +504,7 @@ namespace PurplePen
             if (String.IsNullOrEmpty(coursePdfSettings.PrintProfileId))
                 return;
 
-            PrintProfile profile = BuiltInPrintProfiles.FindById(coursePdfSettings.PrintProfileId);
+            PrintProfile profile = PrintProfileCatalog.FindById(coursePdfSettings.PrintProfileId);
             if (profile == null)
                 return;
 

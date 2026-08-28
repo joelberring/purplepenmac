@@ -3812,4 +3812,13 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="CourseControlOverviewDialog_Control" xml:space="preserve"><value>Kontroll</value></data>
   <data name="CourseControlOverviewDialog_Length" xml:space="preserve"><value>Längd</value></data>
   <data name="CourseControlOverviewDialog_Climb" xml:space="preserve"><value>Stigning</value></data>
+  <data name="CreatePdfCourses_importPrintProfile_Text" xml:space="preserve"><value>Importera…</value></data>
+  <data name="CreatePdfCourses_exportPrintProfile_Text" xml:space="preserve"><value>Exportera…</value></data>
+  <data name="CreatePdfCourses_importPrintProfileDialog_Text" xml:space="preserve"><value>Importera tryckprofil</value></data>
+  <data name="CreatePdfCourses_exportPrintProfileDialog_Text" xml:space="preserve"><value>Exportera tryckprofil</value></data>
+  <data name="CreatePdfCourses_printProfileImported_Text" xml:space="preserve"><value>Tryckprofilen är importerad och sparad.</value></data>
+  <data name="CreatePdfCourses_printProfileExported_Text" xml:space="preserve"><value>Tryckprofilen är exporterad.</value></data>
+  <data name="CreatePdfCourses_printProfileImportError_Text" xml:space="preserve"><value>Det gick inte att importera den valda tryckprofilen.</value></data>
+  <data name="CreatePdfCourses_printProfileExportError_Text" xml:space="preserve"><value>Det gick inte att exportera tryckprofilen.</value></data>
+  <data name="CreatePdfCourses_selectPrintProfile_Text" xml:space="preserve"><value>Välj först en tryckprofil.</value></data>
 </root>

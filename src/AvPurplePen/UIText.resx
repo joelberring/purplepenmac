@@ -4036,4 +4036,13 @@ Purple Pen cannot install this kind of file for you. Open it yourself to install
   <data name="CourseControlOverviewDialog_Control" xml:space="preserve"><value>Control</value></data>
   <data name="CourseControlOverviewDialog_Length" xml:space="preserve"><value>Length</value></data>
   <data name="CourseControlOverviewDialog_Climb" xml:space="preserve"><value>Climb</value></data>
+  <data name="CreatePdfCourses_importPrintProfile_Text" xml:space="preserve"><value>Import…</value></data>
+  <data name="CreatePdfCourses_exportPrintProfile_Text" xml:space="preserve"><value>Export…</value></data>
+  <data name="CreatePdfCourses_importPrintProfileDialog_Text" xml:space="preserve"><value>Import Print Profile</value></data>
+  <data name="CreatePdfCourses_exportPrintProfileDialog_Text" xml:space="preserve"><value>Export Print Profile</value></data>
+  <data name="CreatePdfCourses_printProfileImported_Text" xml:space="preserve"><value>Print profile imported and saved.</value></data>
+  <data name="CreatePdfCourses_printProfileExported_Text" xml:space="preserve"><value>Print profile exported.</value></data>
+  <data name="CreatePdfCourses_printProfileImportError_Text" xml:space="preserve"><value>Could not import the selected print profile.</value></data>
+  <data name="CreatePdfCourses_printProfileExportError_Text" xml:space="preserve"><value>Could not export the selected print profile.</value></data>
+  <data name="CreatePdfCourses_selectPrintProfile_Text" xml:space="preserve"><value>Select a print profile first.</value></data>
 </root>

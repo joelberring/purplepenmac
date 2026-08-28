@@ -111,6 +111,67 @@ namespace AvPurplePen.Views
             }
         }
 
+        /// <summary>Imports and stores a reusable print profile.</summary>
+        private async void ImportPrintProfileButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not CreatePdfCoursesDialogViewModel vm)
+                return;
+
+            FilePickerOpenOptions options = new FilePickerOpenOptions {
+                Title = UIText.ResourceManager.GetString("CreatePdfCourses_importPrintProfileDialog_Text") ?? "Import print profile",
+                AllowMultiple = false,
+                FileTypeFilter = new[] { new FilePickerFileType("Print profile JSON") { Patterns = new[] { "*.json" } } },
+            };
+            IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(options);
+            if (files.Count == 0)
+                return;
+
+            try {
+                PrintProfile profile = PrintProfileCatalog.Import(files[0].Path.LocalPath);
+                vm.RefreshPrintProfiles(profile.Id);
+                vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileImported_Text") ?? "Print profile imported.";
+            }
+            catch (IOException) {
+                vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileImportError_Text") ?? "Could not import the print profile.";
+            }
+            catch (ArgumentException) {
+                vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileImportError_Text") ?? "Could not import the print profile.";
+            }
+        }
+
+        /// <summary>Exports the selected print profile as portable JSON.</summary>
+        private async void ExportPrintProfileButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not CreatePdfCoursesDialogViewModel vm)
+                return;
+
+            PrintProfile? profile = PrintProfileCatalog.FindById(vm.PrintProfileId);
+            if (profile == null) {
+                vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_selectPrintProfile_Text") ?? "Select a print profile first.";
+                return;
+            }
+
+            FilePickerSaveOptions options = new FilePickerSaveOptions {
+                Title = UIText.ResourceManager.GetString("CreatePdfCourses_exportPrintProfileDialog_Text") ?? "Export print profile",
+                SuggestedFileName = profile.Id + ".json",
+                FileTypeChoices = new[] { new FilePickerFileType("Print profile JSON") { Patterns = new[] { "*.json" } } },
+            };
+            IStorageFile? file = await StorageProvider.SaveFilePickerAsync(options);
+            if (file == null)
+                return;
+
+            try {
+                PrintProfileCatalog.Export(profile, file.Path.LocalPath);
+                vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileExported_Text") ?? "Print profile exported.";
+            }
+            catch (IOException) {
+                vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileExportError_Text") ?? "Could not export the print profile.";
+            }
+            catch (UnauthorizedAccessException) {
+                vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileExportError_Text") ?? "Could not export the print profile.";
+            }
+        }
+
         /// <summary>
         /// Pulls the CourseSelector's selection state back into the ViewModel
         /// and closes with OK.

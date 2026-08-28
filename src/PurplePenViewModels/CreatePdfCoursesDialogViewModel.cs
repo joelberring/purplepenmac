@@ -9,6 +9,7 @@
 
 using CommunityToolkit.Mvvm.ComponentModel;
 using System;
+using System.Collections.ObjectModel;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -24,6 +25,12 @@ namespace PurplePen.ViewModels
     /// </summary>
     public partial class CreatePdfCoursesDialogViewModel : ViewModelBase
     {
+        /// <summary>Initializes a PDF dialog with the currently installed print profiles.</summary>
+        public CreatePdfCoursesDialogViewModel()
+        {
+            RefreshPrintProfiles(null);
+        }
+
         // ===== Inputs (set by caller before showing) =====
 
         /// <summary>The event database used to populate the course list.</summary>
@@ -77,12 +84,16 @@ namespace PurplePen.ViewModels
         [ObservableProperty]
         private int colorModelIndex;
 
-        /// <summary>
-        /// 0 = no print profile, 1 = BL forest, 2 = BL sprint.
-        /// Bound to the print-profile preflight combo's SelectedIndex.
-        /// </summary>
+        /// <summary>Index of the selected profile in <see cref="PrintProfiles"/>.</summary>
         [ObservableProperty]
         private int printProfileIndex;
+
+        /// <summary>Localized feedback from profile import or export actions.</summary>
+        [ObservableProperty]
+        private string printProfileMessage = "";
+
+        /// <summary>Profiles available to select for this PDF export.</summary>
+        public ObservableCollection<PrintProfileChoice> PrintProfiles { get; } = new ObservableCollection<PrintProfileChoice>();
 
         /// <summary>"Print Map Exchanges on Same Map" checkbox.</summary>
         [ObservableProperty]
@@ -176,12 +187,9 @@ namespace PurplePen.ViewModels
         {
             get
             {
-                if (PrintProfileIndex == 1)
-                    return "bl-forest-2026-08-27";
-                else if (PrintProfileIndex == 2)
-                    return "bl-sprint-2025-05-01";
-                else
-                    return String.Empty;
+                return PrintProfileIndex > 0 && PrintProfileIndex < PrintProfiles.Count
+                    ? PrintProfiles[PrintProfileIndex].Id
+                    : String.Empty;
             }
         }
 
@@ -191,6 +199,28 @@ namespace PurplePen.ViewModels
         {
             if (value != 0)
                 ColorModelIndex = 1;
+        }
+
+        /// <summary>Reloads imported profiles and optionally selects one by its stable ID.</summary>
+        /// <param name="profileId">The profile to select, or null to retain the current selection.</param>
+        public void RefreshPrintProfiles(string? profileId)
+        {
+            string selectedId = profileId ?? PrintProfileId;
+            PrintProfiles.Clear();
+            PrintProfiles.Add(new PrintProfileChoice { IsNone = true });
+            foreach (PrintProfile profile in PrintProfileCatalog.CreateAll()) {
+                PrintProfiles.Add(new PrintProfileChoice { Id = profile.Id, Name = profile.Name });
+            }
+
+            int selectedIndex = 0;
+            for (int index = 1; index < PrintProfiles.Count; ++index) {
+                if (String.Equals(PrintProfiles[index].Id, selectedId, StringComparison.Ordinal)) {
+                    selectedIndex = index;
+                    break;
+                }
+            }
+
+            PrintProfileIndex = selectedIndex;
         }
 
         // ===== Settings: assembles / decomposes a CoursePdfSettings =====
@@ -267,12 +297,7 @@ namespace PurplePen.ViewModels
                 if (colorIndex > 1) colorIndex = 1;
                 ColorModelIndex = colorIndex;
 
-                if (value.PrintProfileId == "bl-forest-2026-08-27")
-                    PrintProfileIndex = 1;
-                else if (value.PrintProfileId == "bl-sprint-2025-05-01")
-                    PrintProfileIndex = 2;
-                else
-                    PrintProfileIndex = 0;
+                RefreshPrintProfiles(value.PrintProfileId);
 
                 ConfirmedPrintProfileRuleIds = value.ConfirmedPrintProfileRuleIds == null
                     ? new List<string>()
@@ -303,5 +328,21 @@ namespace PurplePen.ViewModels
                 UseOtherDirectory = !value.mapDirectory && !value.fileDirectory;
             }
         }
+    }
+
+    /// <summary>A selectable print profile in the PDF export dialog.</summary>
+    public sealed class PrintProfileChoice
+    {
+        /// <summary>Stable profile identifier; empty for the no-profile choice.</summary>
+        public string Id { get; set; } = "";
+
+        /// <summary>Display name supplied by the profile.</summary>
+        public string Name { get; set; } = "";
+
+        /// <summary>Whether this represents normal PDF export with no profile.</summary>
+        public bool IsNone { get; set; }
+
+        /// <summary>Whether this represents an installed profile.</summary>
+        public bool IsProfile => !IsNone;
     }
 }

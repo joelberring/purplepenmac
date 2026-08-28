@@ -2443,7 +2443,7 @@ namespace PurplePen.ViewModels
                 return false;
             }
 
-            PrintProfile? profile = BuiltInPrintProfiles.FindById(settings.PrintProfileId);
+            PrintProfile? profile = PrintProfileCatalog.FindById(settings.PrintProfileId);
 
             if (profile == null) {
                 await ErrorMessage("The selected print profile is not available in this version of Purple Pen.");
