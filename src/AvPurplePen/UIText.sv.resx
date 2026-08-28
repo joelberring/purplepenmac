@@ -3797,4 +3797,9 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="PdfProductionReviewDialog_createButton_Text" xml:space="preserve">
     <value>Skapa PDF-filer</value>
   </data>
+  <data name="MainFrame_showLegConnectionsMenu_Text" xml:space="preserve"><value>Visa sträckor in/ut</value></data>
+  <data name="LegConnectionsDialog_Title" xml:space="preserve"><value>Sträckor in/ut</value></data>
+  <data name="LegConnectionsDialog_Intro" xml:space="preserve"><value>Banor och kontrollriktningar som är kopplade till den valda kontrollen.</value></data>
+  <data name="LegConnectionsDialog_Incoming" xml:space="preserve"><value>Inkommande</value></data>
+  <data name="LegConnectionsDialog_Outgoing" xml:space="preserve"><value>Utgående</value></data>
 </root>

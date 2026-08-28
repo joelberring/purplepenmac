@@ -42,6 +42,7 @@ namespace PurplePen.ViewModels
             CanRotate = (controller.CanRotate() == CommandStatus.Enabled);
             CanStretch = (controller.CanStretch() == CommandStatus.Enabled);
             CanChangeText = (controller.CanChangeText() == CommandStatus.Enabled);
+            CanShowLegConnections = controller.GetSelectedControl().IsNotNone;
             CanChangeLineAppearance = (controller.CanChangeLineAppearance() == CommandStatus.Enabled);
             CanAddTextLine = (controller.CanAddTextLine() == CommandStatus.Enabled);
             CanAddMapFlip = (controller.CanAddMapFlipControl() == CommandStatus.Enabled);
@@ -1290,6 +1291,40 @@ namespace PurplePen.ViewModels
 
         [ObservableProperty, NotifyCanExecuteChangedFor(nameof(ChangeLineAppearanceCommand))]
         private bool canChangeLineAppearance;
+
+        /// <summary>Shows all incoming and outgoing legs for the selected control.</summary>
+        [RelayCommand(CanExecute = nameof(CanShowLegConnections))]
+        private async Task ShowLegConnections()
+        {
+            if (controller == null) { return; }
+
+            Id<ControlPoint> selectedControl = controller.GetSelectedControl();
+            if (selectedControl.IsNone) { return; }
+
+            EventDB eventDb = controller.GetEventDB();
+            LegConnectionsDialogViewModel vm = new LegConnectionsDialogViewModel {
+                ControlName = Util.ControlPointName(eventDb, selectedControl, NameStyle.Long)
+            };
+
+            foreach (KeyValuePair<Id<Course>, Course> coursePair in eventDb.AllCoursePairs) {
+                CourseDesignator designator = new CourseDesignator(coursePair.Key);
+                foreach (QueryEvent.LegInfo leg in QueryEvent.EnumLegs(eventDb, designator)) {
+                    Id<ControlPoint> fromControl = eventDb.GetCourseControl(leg.courseControlId1).control;
+                    Id<ControlPoint> toControl = eventDb.GetCourseControl(leg.courseControlId2).control;
+                    if (toControl == selectedControl) {
+                        vm.Incoming.Add(new LegConnectionItem { CourseName = coursePair.Value.name, OtherControlName = Util.ControlPointName(eventDb, fromControl, NameStyle.Long) });
+                    }
+                    if (fromControl == selectedControl) {
+                        vm.Outgoing.Add(new LegConnectionItem { CourseName = coursePair.Value.name, OtherControlName = Util.ControlPointName(eventDb, toControl, NameStyle.Long) });
+                    }
+                }
+            }
+
+            await Services.DialogService.ShowDialogAsync(vm);
+        }
+
+        [ObservableProperty, NotifyCanExecuteChangedFor(nameof(ShowLegConnectionsCommand))]
+        private bool canShowLegConnections;
 
         /// <summary>
         /// Executes the Item/Change Displayed Courses command.

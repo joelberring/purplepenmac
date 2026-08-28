@@ -405,6 +405,8 @@
                                     Icon="/Assets/Toolbar/delete.png"/>
                     <NativeMenuItem Header="{resx:Localize MainFrame_deleteForkMenu_Text}"
                                     Command="{Binding DeleteForkCommand}"/>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_showLegConnectionsMenu_Text}"
+                                    Command="{Binding ShowLegConnectionsCommand}"/>
                     <NativeMenuItemSeparator/>
                     <NativeMenuItem Header="{resx:Localize MainFrame_addBendMenu_Text}"
                                     Gesture="{OnPlatform Default='Ctrl+B', macOS='Cmd+B'}" Command="{Binding AddBendCommand}"

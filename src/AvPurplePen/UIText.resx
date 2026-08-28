@@ -4021,4 +4021,9 @@ Purple Pen cannot install this kind of file for you. Open it yourself to install
   <data name="PdfProductionReviewDialog_createButton_Text" xml:space="preserve">
     <value>Create PDF Files</value>
   </data>
+  <data name="MainFrame_showLegConnectionsMenu_Text" xml:space="preserve"><value>Show Legs In/Out</value></data>
+  <data name="LegConnectionsDialog_Title" xml:space="preserve"><value>Legs In/Out</value></data>
+  <data name="LegConnectionsDialog_Intro" xml:space="preserve"><value>Courses and control directions connected to the selected control.</value></data>
+  <data name="LegConnectionsDialog_Incoming" xml:space="preserve"><value>Incoming</value></data>
+  <data name="LegConnectionsDialog_Outgoing" xml:space="preserve"><value>Outgoing</value></data>
 </root>

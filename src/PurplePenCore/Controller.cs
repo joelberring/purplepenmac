@@ -4312,6 +4312,14 @@ namespace PurplePen
             return eventDB;
         }
 
+        /// <summary>Gets the currently selected control point, if a control is selected.</summary>
+        public Id<ControlPoint> GetSelectedControl()
+        {
+            return selectionMgr.Selection.SelectionKind == SelectionKind.Control
+                ? selectionMgr.Selection.SelectedControl
+                : Id<ControlPoint>.None;
+        }
+
         public void ShowProgressDialog(bool knownDuration, Action onCancelPressed = null)
         {
             ui.ShowProgressDialog(knownDuration, onCancelPressed);
