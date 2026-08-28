@@ -3802,4 +3802,14 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="LegConnectionsDialog_Intro" xml:space="preserve"><value>Banor och kontrollriktningar som är kopplade till den valda kontrollen.</value></data>
   <data name="LegConnectionsDialog_Incoming" xml:space="preserve"><value>Inkommande</value></data>
   <data name="LegConnectionsDialog_Outgoing" xml:space="preserve"><value>Utgående</value></data>
+  <data name="MainFrame_courseControlOverviewMenu_Text" xml:space="preserve"><value>Kontroll- och banöversikt</value></data>
+  <data name="CourseControlOverviewDialog_Title" xml:space="preserve"><value>Kontroll- och banöversikt</value></data>
+  <data name="CourseControlOverviewDialog_Courses" xml:space="preserve"><value>Banor</value></data>
+  <data name="CourseControlOverviewDialog_Controls" xml:space="preserve"><value>Kontroller</value></data>
+  <data name="CourseControlOverviewDialog_CoursesIntro" xml:space="preserve"><value>Översikt över varje bana, med beräknad längd.</value></data>
+  <data name="CourseControlOverviewDialog_ControlsIntro" xml:space="preserve"><value>Banor som besöker varje kontroll samt dess inkommande och utgående sträckor.</value></data>
+  <data name="CourseControlOverviewDialog_Name" xml:space="preserve"><value>Namn</value></data>
+  <data name="CourseControlOverviewDialog_Control" xml:space="preserve"><value>Kontroll</value></data>
+  <data name="CourseControlOverviewDialog_Length" xml:space="preserve"><value>Längd</value></data>
+  <data name="CourseControlOverviewDialog_Climb" xml:space="preserve"><value>Stigning</value></data>
 </root>

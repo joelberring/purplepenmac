@@ -1326,6 +1326,68 @@ namespace PurplePen.ViewModels
         [ObservableProperty, NotifyCanExecuteChangedFor(nameof(ShowLegConnectionsCommand))]
         private bool canShowLegConnections;
 
+        /// <summary>Shows a combined overview of all courses and control connections.</summary>
+        [RelayCommand]
+        private async Task ShowCourseControlOverview()
+        {
+            if (controller == null) { return; }
+
+            EventDB eventDb = controller.GetEventDB();
+            CourseControlOverviewDialogViewModel vm = new CourseControlOverviewDialogViewModel();
+            Dictionary<Id<ControlPoint>, HashSet<string>> controlCourses = new Dictionary<Id<ControlPoint>, HashSet<string>>();
+            Dictionary<Id<ControlPoint>, int> incoming = new Dictionary<Id<ControlPoint>, int>();
+            Dictionary<Id<ControlPoint>, int> outgoing = new Dictionary<Id<ControlPoint>, int>();
+
+            foreach (KeyValuePair<Id<ControlPoint>, ControlPoint> controlPair in eventDb.AllControlPointPairs) {
+                controlCourses.Add(controlPair.Key, new HashSet<string>());
+                incoming.Add(controlPair.Key, 0);
+                outgoing.Add(controlPair.Key, 0);
+            }
+
+            foreach (KeyValuePair<Id<Course>, Course> coursePair in eventDb.AllCoursePairs.OrderBy(pair => pair.Value.name, StringComparer.CurrentCulture)) {
+                CourseDesignator designator = new CourseDesignator(coursePair.Key);
+                CourseView courseView = CourseView.CreateViewingCourseView(eventDb, designator);
+                string length = courseView.Kind == CourseView.CourseViewKind.Score
+                    ? ""
+                    : Util.GetLengthInKm(courseView.MinTotalLength, courseView.MaxTotalLength, 1);
+                string climb = courseView.Kind == CourseView.CourseViewKind.Score || courseView.TotalClimb < 0
+                    ? ""
+                    : Convert.ToString(Math.Round(courseView.TotalClimb / 5, MidpointRounding.AwayFromZero) * 5.0) + " m";
+                vm.Courses.Add(new CourseOverviewItem {
+                    Name = courseView.CourseName,
+                    ControlCount = courseView.TotalNormalControls,
+                    Length = length,
+                    Climb = climb,
+                });
+
+                foreach (Id<CourseControl> courseControlId in QueryEvent.EnumCourseControlIds(eventDb, designator)) {
+                    Id<ControlPoint> controlId = eventDb.GetCourseControl(courseControlId).control;
+                    if (controlCourses.TryGetValue(controlId, out HashSet<string>? courses)) {
+                        courses.Add(courseView.CourseName);
+                    }
+                }
+
+                foreach (QueryEvent.LegInfo leg in QueryEvent.EnumLegs(eventDb, designator)) {
+                    Id<ControlPoint> fromControl = eventDb.GetCourseControl(leg.courseControlId1).control;
+                    Id<ControlPoint> toControl = eventDb.GetCourseControl(leg.courseControlId2).control;
+                    if (outgoing.ContainsKey(fromControl)) { outgoing[fromControl]++; }
+                    if (incoming.ContainsKey(toControl)) { incoming[toControl]++; }
+                }
+            }
+
+            foreach (KeyValuePair<Id<ControlPoint>, ControlPoint> controlPair in eventDb.AllControlPointPairs.OrderBy(pair => Util.ControlPointName(eventDb, pair.Key, NameStyle.Medium), StringComparer.CurrentCulture)) {
+                List<string> courses = controlCourses[controlPair.Key].OrderBy(name => name, StringComparer.CurrentCulture).ToList();
+                vm.Controls.Add(new ControlOverviewItem {
+                    Name = Util.ControlPointName(eventDb, controlPair.Key, NameStyle.Medium),
+                    Courses = string.Join(", ", courses),
+                    Incoming = incoming[controlPair.Key],
+                    Outgoing = outgoing[controlPair.Key],
+                });
+            }
+
+            await Services.DialogService.ShowDialogAsync(vm);
+        }
+
         /// <summary>
         /// Executes the Item/Change Displayed Courses command.
         /// Shows the ChangeSpecialCourses dialog and applies the result via the controller.

@@ -1,0 +1,66 @@
+<!--
+    CourseControlOverviewDialog.axaml
+    A concise overview of courses and controls in the current event.
+-->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PurplePen.ViewModels"
+        xmlns:resx="using:AvPurplePen"
+        x:Class="AvPurplePen.Views.CourseControlOverviewDialog"
+        x:DataType="vm:CourseControlOverviewDialogViewModel"
+        Title="{resx:Localize CourseControlOverviewDialog_Title}"
+        Width="880" Height="600" MinWidth="640" MinHeight="420"
+        WindowStartupLocation="CenterOwner" CanMinimize="False" CanMaximize="False">
+    <DockPanel Margin="14">
+        <Button DockPanel.Dock="Bottom" Content="{resx:Localize CancelButton}" Width="100"
+                HorizontalAlignment="Right" Margin="0,12,0,0" Click="CloseButton_Click"/>
+        <TabControl>
+            <TabItem Header="{resx:Localize CourseControlOverviewDialog_Courses}">
+                <Grid Margin="10" RowDefinitions="Auto,*" RowSpacing="8">
+                    <TextBlock Text="{resx:Localize CourseControlOverviewDialog_CoursesIntro}" TextWrapping="Wrap"/>
+                    <Grid Grid.Row="1" RowDefinitions="Auto,*" ColumnDefinitions="3*,Auto,Auto,Auto" ColumnSpacing="12">
+                        <TextBlock Text="{resx:Localize CourseControlOverviewDialog_Name}" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="1" Text="{resx:Localize CourseControlOverviewDialog_Controls}" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="2" Text="{resx:Localize CourseControlOverviewDialog_Length}" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="3" Text="{resx:Localize CourseControlOverviewDialog_Climb}" FontWeight="Bold"/>
+                        <ListBox Grid.Row="1" Grid.ColumnSpan="4" ItemsSource="{Binding Courses}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:CourseOverviewItem">
+                                    <Grid ColumnDefinitions="3*,Auto,Auto,Auto" ColumnSpacing="12" Margin="4,3">
+                                        <TextBlock Text="{Binding Name}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding ControlCount}" HorizontalAlignment="Right"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Length}" HorizontalAlignment="Right"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Climb}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Grid>
+            </TabItem>
+            <TabItem Header="{resx:Localize CourseControlOverviewDialog_Controls}">
+                <Grid Margin="10" RowDefinitions="Auto,*" RowSpacing="8">
+                    <TextBlock Text="{resx:Localize CourseControlOverviewDialog_ControlsIntro}" TextWrapping="Wrap"/>
+                    <Grid Grid.Row="1" RowDefinitions="Auto,*" ColumnDefinitions="2*,4*,Auto,Auto" ColumnSpacing="12">
+                        <TextBlock Text="{resx:Localize CourseControlOverviewDialog_Control}" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="1" Text="{resx:Localize CourseControlOverviewDialog_Courses}" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="2" Text="{resx:Localize LegConnectionsDialog_Incoming}" FontWeight="Bold"/>
+                        <TextBlock Grid.Column="3" Text="{resx:Localize LegConnectionsDialog_Outgoing}" FontWeight="Bold"/>
+                        <ListBox Grid.Row="1" Grid.ColumnSpan="4" ItemsSource="{Binding Controls}">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate x:DataType="vm:ControlOverviewItem">
+                                    <Grid ColumnDefinitions="2*,4*,Auto,Auto" ColumnSpacing="12" Margin="4,3">
+                                        <TextBlock Text="{Binding Name}"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Courses}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="2" Text="{Binding Incoming}" HorizontalAlignment="Right"/>
+                                        <TextBlock Grid.Column="3" Text="{Binding Outgoing}" HorizontalAlignment="Right"/>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Grid>
+            </TabItem>
+        </TabControl>
+    </DockPanel>
+</Window>

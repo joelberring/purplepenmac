@@ -457,6 +457,9 @@
             <!-- === Reports Menu === -->
             <NativeMenuItem Header="{resx:Localize MainFrame_reportMenu_Text}">
                 <NativeMenu>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_courseControlOverviewMenu_Text}"
+                                    Command="{Binding ShowCourseControlOverviewCommand}"/>
+                    <NativeMenuItemSeparator/>
                     <NativeMenuItem Header="{resx:Localize MainFrame_courseSummaryMenu_Text}"
                                     Command="{Binding ShowCourseSummaryCommand}"
                                     CommandParameter="{resx:Localize MainFrame_courseSummaryMenu_Text}"/>
