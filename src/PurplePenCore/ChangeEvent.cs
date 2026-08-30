@@ -148,7 +148,9 @@ namespace PurplePen
         {
             Debug.Assert(newControlId.IsNotNone);
 
-            foreach (Id<CourseControl> variantCourseControlId in QueryEvent.AllVariationsOfCourseControl(eventDB, courseControlId)) {
+            Id<CourseControl>[] courseControlsToChange = QueryEvent.AllVariationsOfCourseControl(eventDB, courseControlId).ToArray();
+            RemoveRouteChoiceCandidatesForChangedCourseControls(eventDB, courseControlsToChange);
+            foreach (Id<CourseControl> variantCourseControlId in courseControlsToChange) {
                 CourseControl courseControl = eventDB.GetCourseControl(variantCourseControlId);
                 Debug.Assert(eventDB.GetControl(courseControl.control).kind == ControlPointKind.Normal);
                 Debug.Assert(eventDB.GetControl(newControlId).kind == ControlPointKind.Normal);
@@ -487,6 +489,24 @@ namespace PurplePen
             eventDB.ReplaceCourse(courseId, course);
         }
 
+        // Change the optional competition class assigned to a course. An empty value means
+        // that the course has no class assignment yet.
+        public static void ChangeCourseClassName(EventDB eventDB, Id<Course> courseId, string newClassName)
+        {
+            Course course = eventDB.GetCourse(courseId);
+
+            course = (Course)course.Clone();
+            course.className = string.IsNullOrWhiteSpace(newClassName) ? null : newClassName.Trim();
+
+            eventDB.ReplaceCourse(courseId, course);
+        }
+
+        /// <summary>Changes a persisted event class as one undoable object replacement.</summary>
+        public static void ChangeEventClass(EventDB eventDB, Id<EventClass> classId, EventClass eventClass)
+        {
+            eventDB.ReplaceEventClass(classId, eventClass);
+        }
+
         // Change the sort order of a course.
         public static void ChangeCourseSortOrder(EventDB eventDB, Id<Course> courseId, int newSortOrder)
         {
@@ -571,6 +591,30 @@ namespace PurplePen
                 }
             }
 
+            // Training overlays are course-specific. Duplicate their association and remap any
+            // attached directed leg to the corresponding copied course control.
+            foreach (Id<TrainingExercise> trainingExerciseId in eventDB.AllTrainingExerciseIds.ToList()) {
+                TrainingExercise trainingExercise = eventDB.GetTrainingExercise(trainingExerciseId);
+                if (trainingExercise.courseDesignator.CourseId == oldCourseId) {
+                    TrainingExercise duplicate = (TrainingExercise)trainingExercise.Clone();
+                    duplicate.courseDesignator = trainingExercise.courseDesignator.AllParts ?
+                        new CourseDesignator(newCourseId) : new CourseDesignator(newCourseId, trainingExercise.courseDesignator.Part);
+                    if (duplicate.legStartCourseControlId.IsNotNone)
+                        duplicate.legStartCourseControlId = mapCourseControl[duplicate.legStartCourseControlId];
+                    eventDB.AddTrainingExercise(duplicate);
+                }
+            }
+
+            foreach (Id<RouteChoiceCandidate> candidateId in eventDB.AllRouteChoiceCandidateIds.ToList()) {
+                RouteChoiceCandidate candidate = eventDB.GetRouteChoiceCandidate(candidateId);
+                if (candidate.courseDesignator.CourseId == oldCourseId) {
+                    RouteChoiceCandidate duplicate = (RouteChoiceCandidate)candidate.Clone();
+                    duplicate.courseDesignator = candidate.courseDesignator.AllParts ? new CourseDesignator(newCourseId) : new CourseDesignator(newCourseId, candidate.courseDesignator.Part);
+                    duplicate.legStartCourseControlId = mapCourseControl[candidate.legStartCourseControlId];
+                    eventDB.AddRouteChoiceCandidate(duplicate);
+                }
+            }
+
             return newCourseId;
         }
 
@@ -610,6 +654,10 @@ namespace PurplePen
             control.location = newLocation;
 
             eventDB.ReplaceControlPoint(controlId, control);
+
+            // Candidate routes have fixed endpoint vertices. Keep every route that uses
+            // this control anchored after the control itself has moved.
+            ReanchorRouteChoiceCandidatesForControl(eventDB, controlId);
 
             // If there are any leg gaps that need to be repositioned, do that.
             if (legGapChangeList.Count > 0) {
@@ -813,6 +861,27 @@ namespace PurplePen
                 eventDB.ReplaceLeg(legId, leg);
             }
 
+            // Training overlays and route choices are map-coordinate geometry, so they
+            // must follow the same transform as controls, specials, and leg bends.
+            foreach (Id<TrainingExercise> exerciseId in eventDB.AllTrainingExerciseIds.ToArray()) {
+                TrainingExercise exercise = (TrainingExercise)eventDB.GetTrainingExercise(exerciseId).Clone();
+                if (exercise.locations != null)
+                    exercise.locations = Geometry.TransformPoints(exercise.locations, matrix);
+                if ((exercise.kind == TrainingExerciseKind.Corridor || exercise.kind == TrainingExerciseKind.AttackPoint) &&
+                    exercise.width > 0 && scale != 1.0F)
+                    exercise.width *= scale;
+                if (exercise.kind == TrainingExerciseKind.Corridor && exercise.whiteMargin > 0 && scale != 1.0F)
+                    exercise.whiteMargin *= scale;
+                eventDB.ReplaceTrainingExercise(exerciseId, exercise);
+            }
+
+            foreach (Id<RouteChoiceCandidate> candidateId in eventDB.AllRouteChoiceCandidateIds.ToArray()) {
+                RouteChoiceCandidate candidate = (RouteChoiceCandidate)eventDB.GetRouteChoiceCandidate(candidateId).Clone();
+                if (candidate.locations != null)
+                    candidate.locations = Geometry.TransformPoints(candidate.locations, matrix);
+                eventDB.ReplaceRouteChoiceCandidate(candidateId, candidate);
+            }
+
             // Move custom number placement, if needed.
             foreach (Id<CourseControl> courseControlId in eventDB.AllCourseControlIds.ToArray()) {
                 CourseControl courseControl = eventDB.GetCourseControl(courseControlId);
@@ -959,6 +1028,10 @@ namespace PurplePen
             Course course = eventDB.GetCourse(courseId);
             List<Id<CourseControl>> allCourseControls = QueryEvent.EnumCourseControlIds(eventDB, new CourseDesignator(courseId)).ToList();
 
+            // Both the removed control and every leg ending there are about to be
+            // rewritten. Remove their annotations before their identities disappear.
+            RemoveRouteChoiceCandidatesForChangedCourseControls(eventDB, new[] { courseControlIdRemove });
+
             // This the course control to change to. Could be None.
             CourseControl courseControlRemove = eventDB.GetCourseControl(courseControlIdRemove);
             ControlPointKind kindToRemove = eventDB.GetControl(courseControlRemove.control).kind;
@@ -1036,6 +1109,10 @@ namespace PurplePen
                 Debug.Fail("Did not remove the course control we were removing.");
             }
 
+            // A route belongs to one exact leg. Remove it if either endpoint was
+            // removed or if a surviving start now leads to a different endpoint.
+            ReconcileRouteChoiceCandidatesForCourse(eventDB, courseId);
+
             return removedControls;
         }
 
@@ -1081,14 +1158,15 @@ namespace PurplePen
 
         public static void ReplaceControlInCourse(EventDB eventDB, Id<Course> courseId, Id<ControlPoint> oldControlId, Id<ControlPoint> newControlId)
         {
-            foreach (Id<CourseControl> courseControlId in QueryEvent.EnumCourseControlIds(eventDB, new CourseDesignator(courseId)).ToList()) {
-                if (eventDB.GetCourseControl(courseControlId).control == oldControlId) {
-                    // Replace the course control with a new one.
-                    CourseControl newCourseControl = (CourseControl) eventDB.GetCourseControl(courseControlId).Clone();
-                    newCourseControl.control = newControlId;
-                    newCourseControl.customNumberPlacement = false;
-                    eventDB.ReplaceCourseControl(courseControlId, newCourseControl);
-                }
+            List<Id<CourseControl>> courseControlsToReplace = QueryEvent.EnumCourseControlIds(eventDB, new CourseDesignator(courseId))
+                .Where(courseControlId => eventDB.GetCourseControl(courseControlId).control == oldControlId).ToList();
+            RemoveRouteChoiceCandidatesForChangedCourseControls(eventDB, courseControlsToReplace);
+            foreach (Id<CourseControl> courseControlId in courseControlsToReplace) {
+                // Replace the course control with a new one.
+                CourseControl newCourseControl = (CourseControl) eventDB.GetCourseControl(courseControlId).Clone();
+                newCourseControl.control = newControlId;
+                newCourseControl.customNumberPlacement = false;
+                eventDB.ReplaceCourseControl(courseControlId, newCourseControl);
             }
         }
 
@@ -1131,6 +1209,14 @@ namespace PurplePen
         {
             CourseControl newCourseControl;
             Id<CourseControl> newCourseControlId;
+
+            // A candidate belongs to the directed leg, not merely its first control.
+            // Inserting into an existing leg therefore changes that candidate's meaning,
+            // even when the newly inserted control happens to share the old end's location.
+            if (courseControl1.IsNotNone)
+                RemoveRouteChoiceCandidatesForLegStart(eventDB, courseId, courseControl1);
+            if (legInsertionLoc == LegInsertionLoc.PostJoin && courseControl2.IsNotNone)
+                RemoveRouteChoiceCandidatesEndingAt(eventDB, courseId, courseControl2);
 
             // When adding a new course controls, they fit into variations fine because we are never adding or changing an split, just
             // fitting into existing splits.
@@ -1217,6 +1303,7 @@ namespace PurplePen
                 }
             }
 
+            ReconcileRouteChoiceCandidatesForCourse(eventDB, courseId);
             return newCourseControlId;
         }
 
@@ -1260,6 +1347,7 @@ namespace PurplePen
             Id<CourseControl> newCourseControlId;
             if (courseControlId.IsNotNone) {
                 // Start control already exists. Replace it.
+                RemoveRouteChoiceCandidatesForChangedCourseControls(eventDB, new[] { courseControlId });
                 CourseControl startControl = (CourseControl) eventDB.GetCourseControl(courseControlId).Clone();
                 startControl.control = controlId;
                 eventDB.ReplaceCourseControl(courseControlId, startControl);
@@ -1334,6 +1422,7 @@ namespace PurplePen
             }
             else if (eventDB.GetControl(eventDB.GetCourseControl(lastId).control).kind == ControlPointKind.Finish) {
                 // Last control exists and is a finish control. Replace it.
+                RemoveRouteChoiceCandidatesForChangedCourseControls(eventDB, new[] { lastId });
                 CourseControl last = (CourseControl) eventDB.GetCourseControl(lastId).Clone();
                 last.control = controlId;
                 eventDB.ReplaceCourseControl(lastId, last);
@@ -1372,6 +1461,255 @@ namespace PurplePen
             Special special = new Special(specialKind, new PointF[1] { location });
             special.orientation = orientation;
             return eventDB.AddSpecial(special);
+        }
+
+        /// <summary>Add a contour-only training area to a course. The caller should wrap this
+        /// operation in the normal UndoMgr command used by the controller.</summary>
+        /// <param name="eventDB">Event database to modify.</param>
+        /// <param name="courseDesignator">Course (and optional part) owning the exercise.</param>
+        /// <param name="polygon">At least three map-coordinate vertices.</param>
+        /// <param name="maskOpacity">Opacity of the information mask, from zero to one.</param>
+        /// <param name="allowedSymbolIds">Symbols to retain; null or empty selects standard contours.</param>
+        public static Id<TrainingExercise> AddContourOnlyTrainingExercise(EventDB eventDB, CourseDesignator courseDesignator, PointF[] polygon, float maskOpacity = 1.0F, string[] allowedSymbolIds = null)
+        {
+            TrainingExercise exercise = CreateContourOnlyTrainingExercise(courseDesignator, polygon, maskOpacity, allowedSymbolIds);
+            ValidateTrainingExerciseForChange(eventDB, exercise);
+            return eventDB.AddTrainingExercise(exercise);
+        }
+
+        /// <summary>Adds a point or line training exercise to a concrete course.</summary>
+        public static Id<TrainingExercise> AddTrainingExercise(EventDB eventDB, CourseDesignator courseDesignator, TrainingExerciseKind kind, PointF[] locations, float width, string instruction)
+        {
+            if (kind != TrainingExerciseKind.Corridor && kind != TrainingExerciseKind.AttackPoint && kind != TrainingExerciseKind.Line)
+                throw new ArgumentException("Only point and line training exercises are supported.", "kind");
+            TrainingExercise exercise = new TrainingExercise(kind, courseDesignator, locations);
+            exercise.width = width;
+            exercise.instruction = instruction ?? "";
+            ValidateTrainingExerciseForChange(eventDB, exercise);
+            return eventDB.AddTrainingExercise(exercise);
+        }
+
+        /// <summary>Update the geometry and map-symbol selection of a contour-only training area.</summary>
+        public static void ChangeContourOnlyTrainingExercise(EventDB eventDB, Id<TrainingExercise> exerciseId, CourseDesignator courseDesignator, PointF[] polygon, float maskOpacity = 1.0F, string[] allowedSymbolIds = null)
+        {
+            eventDB.CheckTrainingExerciseId(exerciseId);
+            TrainingExercise existing = eventDB.GetTrainingExercise(exerciseId);
+            if (existing.kind != TrainingExerciseKind.ContourOnly)
+                throw new ArgumentException("The training exercise is not a contour-only area.", "exerciseId");
+
+            TrainingExercise replacement = (TrainingExercise)existing.Clone();
+            replacement.courseDesignator = courseDesignator == null ? null : courseDesignator.Clone();
+            replacement.locations = polygon == null ? null : (PointF[])polygon.Clone();
+            replacement.maskOpacity = maskOpacity;
+            replacement.allowedSymbolIds = allowedSymbolIds == null ? new string[0] : (string[])allowedSymbolIds.Clone();
+            ValidateTrainingExerciseForChange(eventDB, replacement);
+            eventDB.ReplaceTrainingExercise(exerciseId, replacement);
+        }
+
+        /// <summary>Delete a training exercise. The removal is undoable when called in a controller command.</summary>
+        public static void DeleteTrainingExercise(EventDB eventDB, Id<TrainingExercise> exerciseId)
+        {
+            eventDB.CheckTrainingExerciseId(exerciseId);
+            eventDB.RemoveTrainingExercise(exerciseId);
+        }
+
+        /// <summary>Changes the map geometry of an existing training exercise.</summary>
+        /// <param name="eventDB">Event database containing the exercise.</param>
+        /// <param name="exerciseId">Exercise to update.</param>
+        /// <param name="locations">Replacement vertices or center point.</param>
+        public static void ChangeTrainingExerciseLocations(EventDB eventDB, Id<TrainingExercise> exerciseId, PointF[] locations)
+        {
+            eventDB.CheckTrainingExerciseId(exerciseId);
+            TrainingExercise existing = eventDB.GetTrainingExercise(exerciseId);
+            TrainingExercise replacement = (TrainingExercise)existing.Clone();
+            replacement.locations = locations == null ? null : (PointF[])locations.Clone();
+            ValidateTrainingExerciseForChange(eventDB, replacement);
+            eventDB.ReplaceTrainingExercise(exerciseId, replacement);
+        }
+
+        private static TrainingExercise CreateContourOnlyTrainingExercise(CourseDesignator courseDesignator, PointF[] polygon, float maskOpacity, string[] allowedSymbolIds)
+        {
+            if (polygon == null || polygon.Length < 3)
+                throw new ArgumentException("A contour-only training area needs at least three points.", "polygon");
+            for (int i = 0; i < polygon.Length; ++i) {
+                if (float.IsNaN(polygon[i].X) || float.IsNaN(polygon[i].Y) || float.IsInfinity(polygon[i].X) || float.IsInfinity(polygon[i].Y))
+                    throw new ArgumentException("The polygon contains a non-finite point.", "polygon");
+            }
+
+            TrainingExercise exercise = new TrainingExercise(TrainingExerciseKind.ContourOnly, courseDesignator, polygon);
+            exercise.maskOpacity = maskOpacity;
+            exercise.allowedSymbolIds = allowedSymbolIds == null ? new string[0] : (string[])allowedSymbolIds.Clone();
+            return exercise;
+        }
+
+        private static void ValidateTrainingExerciseForChange(EventDB eventDB, TrainingExercise exercise)
+        {
+            EventDB.ValidateInfo validateInfo = new EventDB.ValidateInfo();
+            validateInfo.eventDB = eventDB;
+            exercise.Validate(new Id<TrainingExercise>(-1), validateInfo);
+        }
+
+        /// <summary>Adds a manually drawn route-choice candidate to a course leg.</summary>
+        public static Id<RouteChoiceCandidate> AddRouteChoiceCandidate(EventDB eventDB, CourseDesignator courseDesignator,
+                                                                         Id<CourseControl> legStartCourseControlId,
+                                                                         string name, string source, PointF[] locations, string notes)
+        {
+            PointF[] canonicalLocations = CanonicalizeRouteChoiceEndpoints(eventDB, legStartCourseControlId, locations);
+            RouteChoiceCandidate candidate = new RouteChoiceCandidate(courseDesignator, legStartCourseControlId, name, source, canonicalLocations, notes);
+            EventDB.ValidateInfo validateInfo = new EventDB.ValidateInfo { eventDB = eventDB };
+            candidate.Validate(new Id<RouteChoiceCandidate>(-1), validateInfo);
+            return eventDB.AddRouteChoiceCandidate(candidate);
+        }
+
+        /// <summary>Replaces a route-choice candidate while preserving its identity.</summary>
+        public static void ChangeRouteChoiceCandidate(EventDB eventDB, Id<RouteChoiceCandidate> candidateId,
+                                                       string name, string source, PointF[] locations, string notes)
+        {
+            eventDB.CheckRouteChoiceCandidateId(candidateId);
+            RouteChoiceCandidate replacement = (RouteChoiceCandidate)eventDB.GetRouteChoiceCandidate(candidateId).Clone();
+            replacement.name = name ?? "";
+            replacement.source = source ?? "";
+            replacement.notes = notes ?? "";
+            replacement.locations = CanonicalizeRouteChoiceEndpoints(eventDB, replacement.legStartCourseControlId, locations);
+            EventDB.ValidateInfo validateInfo = new EventDB.ValidateInfo { eventDB = eventDB };
+            replacement.Validate(candidateId, validateInfo);
+            eventDB.ReplaceRouteChoiceCandidate(candidateId, replacement);
+        }
+
+        /// <summary>Anchors route geometry to the physical controls at both ends of its associated leg.</summary>
+        private static PointF[] CanonicalizeRouteChoiceEndpoints(EventDB eventDB, Id<CourseControl> legStartCourseControlId, PointF[] locations)
+        {
+            if (locations == null || locations.Length < 2)
+                return locations == null ? null : (PointF[])locations.Clone();
+
+            eventDB.CheckCourseControlId(legStartCourseControlId);
+            CourseControl startCourseControl = eventDB.GetCourseControl(legStartCourseControlId);
+            if (startCourseControl.nextCourseControl.IsNone)
+                return (PointF[])locations.Clone();
+
+            CourseControl endCourseControl = eventDB.GetCourseControl(startCourseControl.nextCourseControl);
+            PointF[] canonicalLocations = (PointF[])locations.Clone();
+            canonicalLocations[0] = eventDB.GetControl(startCourseControl.control).location;
+            canonicalLocations[canonicalLocations.Length - 1] = eventDB.GetControl(endCourseControl.control).location;
+            return canonicalLocations;
+        }
+
+        /// <summary>Reanchors candidates that use a control as either endpoint of their leg.</summary>
+        private static void ReanchorRouteChoiceCandidatesForControl(EventDB eventDB, Id<ControlPoint> controlId)
+        {
+            foreach (Id<RouteChoiceCandidate> candidateId in eventDB.AllRouteChoiceCandidateIds.ToArray()) {
+                RouteChoiceCandidate candidate = eventDB.GetRouteChoiceCandidate(candidateId);
+                if (!eventDB.IsCourseControlPresent(candidate.legStartCourseControlId))
+                    continue;
+
+                CourseControl start = eventDB.GetCourseControl(candidate.legStartCourseControlId);
+                bool usesControl = start.control == controlId;
+                if (start.nextCourseControl.IsNotNone && eventDB.IsCourseControlPresent(start.nextCourseControl))
+                    usesControl |= eventDB.GetCourseControl(start.nextCourseControl).control == controlId;
+                if (!usesControl || candidate.locations == null || candidate.locations.Length < 2)
+                    continue;
+
+                RouteChoiceCandidate replacement = (RouteChoiceCandidate)candidate.Clone();
+                replacement.locations = CanonicalizeRouteChoiceEndpoints(eventDB, replacement.legStartCourseControlId, replacement.locations);
+                eventDB.ReplaceRouteChoiceCandidate(candidateId, replacement);
+            }
+        }
+
+        /// <summary>Removes candidates whose leg vanished or changed.</summary>
+        private static void ReconcileRouteChoiceCandidatesForCourse(EventDB eventDB, Id<Course> courseId)
+        {
+            // The all-variations enumerator is deliberately a graph traversal and is not
+            // a concrete runner route. Candidates are supported only for linear courses.
+            if (QueryEvent.HasVariations(eventDB, courseId)) {
+                foreach (Id<RouteChoiceCandidate> candidateId in eventDB.AllRouteChoiceCandidateIds.ToArray()) {
+                    RouteChoiceCandidate candidate = eventDB.GetRouteChoiceCandidate(candidateId);
+                    if (candidate.courseDesignator != null && candidate.courseDesignator.CourseId == courseId)
+                        eventDB.RemoveRouteChoiceCandidate(candidateId);
+                }
+                return;
+            }
+
+            HashSet<Id<CourseControl>> courseControls = new HashSet<Id<CourseControl>>(
+                QueryEvent.EnumCourseControlIds(eventDB, new CourseDesignator(courseId)));
+
+            foreach (Id<RouteChoiceCandidate> candidateId in eventDB.AllRouteChoiceCandidateIds.ToArray()) {
+                RouteChoiceCandidate candidate = eventDB.GetRouteChoiceCandidate(candidateId);
+                if (candidate.courseDesignator == null || candidate.courseDesignator.CourseId != courseId)
+                    continue;
+
+                if (!courseControls.Contains(candidate.legStartCourseControlId) || candidate.locations == null || candidate.locations.Length < 2) {
+                    eventDB.RemoveRouteChoiceCandidate(candidateId);
+                    continue;
+                }
+
+                CourseControl start = eventDB.GetCourseControl(candidate.legStartCourseControlId);
+                if (start.nextCourseControl.IsNone || !courseControls.Contains(start.nextCourseControl)) {
+                    eventDB.RemoveRouteChoiceCandidate(candidateId);
+                    continue;
+                }
+
+                CourseControl end = eventDB.GetCourseControl(start.nextCourseControl);
+                PointF expectedStart = eventDB.GetControl(start.control).location;
+                PointF expectedEnd = eventDB.GetControl(end.control).location;
+                if (Geometry.Distance(candidate.locations[0], expectedStart) > 0.001 ||
+                    Geometry.Distance(candidate.locations[candidate.locations.Length - 1], expectedEnd) > 0.001) {
+                    // The surviving start now leads to a different control. A route for the
+                    // old leg must not be silently repurposed as a route for the new leg.
+                    eventDB.RemoveRouteChoiceCandidate(candidateId);
+                }
+            }
+        }
+
+        /// <summary>Removes candidates that represented the supplied leg before it is rewritten.</summary>
+        private static void RemoveRouteChoiceCandidatesForLegStart(EventDB eventDB, Id<Course> courseId, Id<CourseControl> legStartCourseControlId)
+        {
+            foreach (Id<RouteChoiceCandidate> candidateId in eventDB.AllRouteChoiceCandidateIds.ToArray()) {
+                RouteChoiceCandidate candidate = eventDB.GetRouteChoiceCandidate(candidateId);
+                if (candidate.courseDesignator != null && candidate.courseDesignator.CourseId == courseId &&
+                    candidate.legStartCourseControlId == legStartCourseControlId)
+                    eventDB.RemoveRouteChoiceCandidate(candidateId);
+            }
+        }
+
+        /// <summary>Removes candidates whose directed leg currently ends at a rewritten control.</summary>
+        private static void RemoveRouteChoiceCandidatesEndingAt(EventDB eventDB, Id<Course> courseId, Id<CourseControl> legEndCourseControlId)
+        {
+            foreach (Id<RouteChoiceCandidate> candidateId in eventDB.AllRouteChoiceCandidateIds.ToArray()) {
+                RouteChoiceCandidate candidate = eventDB.GetRouteChoiceCandidate(candidateId);
+                if (candidate.courseDesignator == null || candidate.courseDesignator.CourseId != courseId ||
+                    !eventDB.IsCourseControlPresent(candidate.legStartCourseControlId))
+                    continue;
+
+                if (eventDB.GetCourseControl(candidate.legStartCourseControlId).nextCourseControl == legEndCourseControlId)
+                    eventDB.RemoveRouteChoiceCandidate(candidateId);
+            }
+        }
+
+        /// <summary>Removes candidates touching any course control whose associated control or leg is being rewritten.</summary>
+        private static void RemoveRouteChoiceCandidatesForChangedCourseControls(EventDB eventDB, IEnumerable<Id<CourseControl>> changedCourseControlIds)
+        {
+            HashSet<Id<CourseControl>> changed = new HashSet<Id<CourseControl>>(changedCourseControlIds);
+            if (changed.Count == 0)
+                return;
+
+            foreach (Id<RouteChoiceCandidate> candidateId in eventDB.AllRouteChoiceCandidateIds.ToArray()) {
+                RouteChoiceCandidate candidate = eventDB.GetRouteChoiceCandidate(candidateId);
+                if (changed.Contains(candidate.legStartCourseControlId)) {
+                    eventDB.RemoveRouteChoiceCandidate(candidateId);
+                    continue;
+                }
+
+                if (eventDB.IsCourseControlPresent(candidate.legStartCourseControlId) &&
+                    changed.Contains(eventDB.GetCourseControl(candidate.legStartCourseControlId).nextCourseControl))
+                    eventDB.RemoveRouteChoiceCandidate(candidateId);
+            }
+        }
+
+        /// <summary>Deletes a route-choice candidate.</summary>
+        public static void DeleteRouteChoiceCandidate(EventDB eventDB, Id<RouteChoiceCandidate> candidateId)
+        {
+            eventDB.CheckRouteChoiceCandidateId(candidateId);
+            eventDB.RemoveRouteChoiceCandidate(candidateId);
         }
 
         // Add a line or area special to the event. The special is visible in all courses.
@@ -1454,6 +1792,15 @@ namespace PurplePen
             // Remember the set of course controls.
             List<Id<CourseControl>> courseControls = new List<Id<CourseControl>>(QueryEvent.EnumCourseControlIds(eventDB, new CourseDesignator(courseId)));
 
+            // Remove the persisted classes before their course so no class is left with a dangling course reference.
+            List<Id<EventClass>> eventClasses = eventDB.AllEventClassPairs
+                .Where(pair => pair.Value.CourseId == courseId)
+                .Select(pair => pair.Key)
+                .ToList();
+            foreach (Id<EventClass> classId in eventClasses) {
+                eventDB.RemoveEventClass(classId);
+            }
+
             // Remove the course.
             eventDB.RemoveCourse(courseId);
 
@@ -1483,6 +1830,17 @@ namespace PurplePen
                     special.courses = newCourses;
                     eventDB.ReplaceSpecial(specialId, special);
                 }
+            }
+
+            // Training overlays cannot outlive the course or its course controls.
+            foreach (Id<TrainingExercise> trainingExerciseId in eventDB.AllTrainingExerciseIds.ToList()) {
+                if (eventDB.GetTrainingExercise(trainingExerciseId).courseDesignator.CourseId == courseId)
+                    eventDB.RemoveTrainingExercise(trainingExerciseId);
+            }
+
+            foreach (Id<RouteChoiceCandidate> candidateId in eventDB.AllRouteChoiceCandidateIds.ToList()) {
+                if (eventDB.GetRouteChoiceCandidate(candidateId).courseDesignator.CourseId == courseId)
+                    eventDB.RemoveRouteChoiceCandidate(candidateId);
             }
         }
 
@@ -2056,6 +2414,9 @@ namespace PurplePen
                 eventDB.ReplaceCourseControl(splitCourseControlIds[i], splitCourseControls[i]);
             }
 
+            // Route-choice candidates have one unambiguous directed leg. Once a course
+            // has a variation graph there is no all-variations leg sequence to attach to.
+            ReconcileRouteChoiceCandidatesForCourse(eventDB, courseDesignator.CourseId);
             return true;
         }
 

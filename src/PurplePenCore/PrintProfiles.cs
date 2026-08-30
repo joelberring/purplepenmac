@@ -165,6 +165,22 @@ namespace PurplePen
 
         /// <summary>Gets or sets the effective colour rules.</summary>
         public List<PrintProfileColorRule> ColorRules { get; set; } = new List<PrintProfileColorRule>();
+
+        /// <summary>Gets or sets immutable snapshots of earlier saved versions.</summary>
+        public List<PrintProfileHistoryEntry> History { get; set; } = new List<PrintProfileHistoryEntry>();
+    }
+
+    /// <summary>Stores one prior serialized profile version and a short change summary.</summary>
+    public sealed class PrintProfileHistoryEntry
+    {
+        public string VersionDate { get; set; } = String.Empty;
+        public string Summary { get; set; } = String.Empty;
+        public string ProfileJson { get; set; } = String.Empty;
+        public List<string> AddedRules { get; set; } = new List<string>();
+        public List<string> RemovedRules { get; set; } = new List<string>();
+        public List<string> ChangedRules { get; set; } = new List<string>();
+        public bool MetadataChanged { get; set; }
+        public bool LayerOrderChanged { get; set; }
     }
 
     /// <summary>Serializes and deserializes the public JSON representation of print profiles.</summary>
@@ -437,6 +453,53 @@ namespace PurplePen
             File.WriteAllText(fileName, PrintProfileSerializer.Serialize(profile));
         }
 
+        /// <summary>Saves a user-authored profile without modifying built-in profile definitions.</summary>
+        public static void SaveUserProfile(PrintProfile profile)
+        {
+            if (profile == null)
+                throw new ArgumentNullException(nameof(profile));
+
+            ValidateProfile(profile);
+            Directory.CreateDirectory(UserProfileDirectory);
+            string path = Path.Combine(UserProfileDirectory, GetSafeFileName(profile.Id) + ".json");
+            if (File.Exists(path)) {
+                try {
+                    PrintProfile previous = PrintProfileSerializer.Deserialize(File.ReadAllText(path));
+                    profile.History ??= new List<PrintProfileHistoryEntry>();
+                    profile.History.Insert(0, new PrintProfileHistoryEntry {
+                        VersionDate = previous.VersionDate,
+                        Summary = CreateDiffSummary(previous, profile),
+                        ProfileJson = PrintProfileSerializer.Serialize(previous),
+                        AddedRules = profile.ColorRules.Where(rule => !previous.ColorRules.Any(old => old.Id == rule.Id)).Select(rule => rule.Name).ToList(),
+                        RemovedRules = previous.ColorRules.Where(old => !profile.ColorRules.Any(rule => rule.Id == old.Id)).Select(rule => rule.Name).ToList(),
+                        ChangedRules = profile.ColorRules.Where(rule => previous.ColorRules.Any(old => old.Id == rule.Id && PrintProfileRuleChanged(old, rule))).Select(rule => rule.Name).ToList(),
+                        MetadataChanged = previous.Name != profile.Name || previous.VersionDate != profile.VersionDate || previous.PrinterName != profile.PrinterName || previous.PaperSpecification != profile.PaperSpecification || previous.IccProfile != profile.IccProfile,
+                        LayerOrderChanged = !previous.ColorRules.Select(rule => rule.Id).SequenceEqual(profile.ColorRules.Select(rule => rule.Id)),
+                    });
+                }
+                catch (IOException) { }
+                catch (ArgumentException) { }
+            }
+            File.WriteAllText(path, PrintProfileSerializer.Serialize(profile));
+        }
+
+        private static string CreateDiffSummary(PrintProfile previous, PrintProfile current)
+        {
+            int added = current.ColorRules.Count(rule => !previous.ColorRules.Any(old => old.Id == rule.Id));
+            int removed = previous.ColorRules.Count(rule => !current.ColorRules.Any(next => next.Id == rule.Id));
+            int changed = current.ColorRules.Count(rule => previous.ColorRules.Any(old => old.Id == rule.Id && PrintProfileRuleChanged(old, rule)));
+            bool metadata = previous.Name != current.Name || previous.VersionDate != current.VersionDate || previous.PrinterName != current.PrinterName || previous.PaperSpecification != current.PaperSpecification || previous.IccProfile != current.IccProfile;
+            bool layers = !previous.ColorRules.Select(rule => rule.Id).SequenceEqual(current.ColorRules.Select(rule => rule.Id));
+            return String.Format("Rules +{0}/-{1}/~{2}; metadata {3}; layers {4}", added, removed, changed, metadata ? "changed" : "unchanged", layers ? "changed" : "unchanged");
+        }
+
+        private static bool PrintProfileRuleChanged(PrintProfileColorRule first, PrintProfileColorRule second)
+        {
+            return first.Name != second.Name || first.RelativeDrawOrder != second.RelativeDrawOrder || first.OverprintIntent != second.OverprintIntent ||
+                   first.EffectiveCmyk.Cyan != second.EffectiveCmyk.Cyan || first.EffectiveCmyk.Magenta != second.EffectiveCmyk.Magenta || first.EffectiveCmyk.Yellow != second.EffectiveCmyk.Yellow || first.EffectiveCmyk.Black != second.EffectiveCmyk.Black ||
+                   !first.Identifier.Names.SequenceEqual(second.Identifier.Names);
+        }
+
         /// <summary>Gets the folder which contains user-imported print profiles.</summary>
         public static string UserProfileDirectory => Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "PurplePen", "PrintProfiles");
@@ -468,12 +531,53 @@ namespace PurplePen
 
         private static void ValidateProfile(PrintProfile profile)
         {
+            if (profile == null)
+                throw new ArgumentNullException(nameof(profile));
+            if (profile.SchemaVersion != PrintProfile.CurrentSchemaVersion)
+                throw new ArgumentException("The print-profile JSON schema version is not supported.", nameof(profile));
             if (String.IsNullOrWhiteSpace(profile.Id))
                 throw new ArgumentException("A print profile must have an ID.", nameof(profile));
             if (String.IsNullOrWhiteSpace(profile.Name))
                 throw new ArgumentException("A print profile must have a name.", nameof(profile));
-            if (profile.ColorRules == null)
+            if (profile.Requirements == null)
+                throw new ArgumentException("A print profile must contain production requirements.", nameof(profile));
+            if (profile.ColorRules == null || profile.ColorRules.Count == 0)
                 throw new ArgumentException("A print profile must contain colour rules.", nameof(profile));
+            if (profile.History == null)
+                throw new ArgumentException("A print profile must contain a history collection.", nameof(profile));
+            if (!Enum.IsDefined(typeof(PrintProfileMapKind), profile.MapKind))
+                throw new ArgumentException("A print profile has an invalid map kind.", nameof(profile));
+
+            HashSet<string> ruleIds = new HashSet<string>(StringComparer.Ordinal);
+            foreach (PrintProfileColorRule rule in profile.ColorRules) {
+                if (rule == null || String.IsNullOrWhiteSpace(rule.Id) || String.IsNullOrWhiteSpace(rule.Name))
+                    throw new ArgumentException("Each print-profile colour rule must have an ID and name.", nameof(profile));
+                if (!ruleIds.Add(rule.Id))
+                    throw new ArgumentException("Print-profile colour rule IDs must be unique.", nameof(profile));
+                if (rule.Identifier == null || rule.EffectiveCmyk == null || rule.Identifier.Names == null || rule.Identifier.OcadIds == null ||
+                    rule.MustBeAboveRuleIds == null || rule.MustBeBelowRuleIds == null)
+                    throw new ArgumentException("Each print-profile colour rule must contain complete matching and colour data.", nameof(profile));
+                if (!Enum.IsDefined(typeof(PrintProfileColorKind), rule.ColorKind) || !Enum.IsDefined(typeof(PrintProfileOverprintIntent), rule.OverprintIntent))
+                    throw new ArgumentException("A print-profile colour rule contains an invalid enum value.", nameof(profile));
+                if (!IsCmykComponentValid(rule.EffectiveCmyk.Cyan) || !IsCmykComponentValid(rule.EffectiveCmyk.Magenta) ||
+                    !IsCmykComponentValid(rule.EffectiveCmyk.Yellow) || !IsCmykComponentValid(rule.EffectiveCmyk.Black))
+                    throw new ArgumentException("A print-profile CMYK value must be between 0 and 100.", nameof(profile));
+                if (rule.Identifier.Names.Any(String.IsNullOrWhiteSpace) || rule.MustBeAboveRuleIds.Any(String.IsNullOrWhiteSpace) || rule.MustBeBelowRuleIds.Any(String.IsNullOrWhiteSpace))
+                    throw new ArgumentException("A print-profile rule cannot contain empty identifiers or relationships.", nameof(profile));
+            }
+
+            if (String.IsNullOrWhiteSpace(profile.CourseColorRuleId) || !ruleIds.Contains(profile.CourseColorRuleId))
+                throw new ArgumentException("The course colour rule must reference a profile colour rule.", nameof(profile));
+            if (profile.ColorRules.Any(rule => rule.MustBeAboveRuleIds.Concat(rule.MustBeBelowRuleIds).Any(reference => !ruleIds.Contains(reference))))
+                throw new ArgumentException("A print-profile rule relationship must reference an existing rule.", nameof(profile));
+            if (profile.History.Any(entry => entry == null || entry.AddedRules == null || entry.RemovedRules == null || entry.ChangedRules == null))
+                throw new ArgumentException("A print-profile history entry is incomplete.", nameof(profile));
+        }
+
+        /// <summary>Checks whether a CMYK percentage is finite and in its supported range.</summary>
+        private static bool IsCmykComponentValid(float component)
+        {
+            return !Single.IsNaN(component) && !Single.IsInfinity(component) && component >= 0 && component <= 100;
         }
 
         private static string GetSafeFileName(string profileId)

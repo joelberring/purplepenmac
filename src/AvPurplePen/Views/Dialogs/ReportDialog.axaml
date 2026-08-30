@@ -49,16 +49,24 @@
 
     <DockPanel Margin="12">
 
-        <!-- Bottom button bar: Print on the left, Close on the right. -->
+        <!-- Bottom button bar: printing/export on the left, Close on the right. -->
         <Grid DockPanel.Dock="Bottom"
               ColumnDefinitions="Auto,*,Auto"
               Margin="0,8,0,0">
-            <Button Grid.Column="0"
+            <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+            <Button
                     x:Name="buttonPrint"
                     Content="{resx:Localize ReportForm_printButton_Text}"
                     Click="PrintButton_Click"
                     Width="110"
                     HorizontalContentAlignment="Center"/>
+            <Button
+                    x:Name="buttonExportPdf"
+                    Content="{resx:Localize ReportForm_exportPdfButton_Text}"
+                    Click="ExportPdfButton_Click"
+                    Width="125"
+                    HorizontalContentAlignment="Center"/>
+            </StackPanel>
             <Button Grid.Column="2"
                     x:Name="buttonClose"
                     Content="{resx:Localize ReportForm_okButton_Text}"

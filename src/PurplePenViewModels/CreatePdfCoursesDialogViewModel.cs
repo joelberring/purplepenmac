@@ -8,6 +8,7 @@
 // an incoming one.
 
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using System;
 using System.Collections.ObjectModel;
 using System.Collections.Generic;
@@ -29,6 +30,7 @@ namespace PurplePen.ViewModels
         public CreatePdfCoursesDialogViewModel()
         {
             RefreshPrintProfiles(null);
+            LoadPrintTemplates();
         }
 
         // ===== Inputs (set by caller before showing) =====
@@ -36,6 +38,9 @@ namespace PurplePen.ViewModels
         /// <summary>The event database used to populate the course list.</summary>
         [ObservableProperty]
         private EventDB? eventDB;
+
+        /// <summary>Read-only snapshots of the open map's colours, used when editing and pairing print profiles.</summary>
+        public List<SourceMapColor> CurrentMapColors { get; set; } = new List<SourceMapColor>();
 
         /// <summary>
         /// Whether the "Print Map Exchanges on Same Map" checkbox is visible.
@@ -88,12 +93,34 @@ namespace PurplePen.ViewModels
         [ObservableProperty]
         private int printProfileIndex;
 
+        /// <summary>0 = none, 1 = runner, 2 = coach, 3 = answer.</summary>
+        [ObservableProperty]
+        private int trainingExerciseRenderProfileIndex;
+
         /// <summary>Localized feedback from profile import or export actions.</summary>
         [ObservableProperty]
         private string printProfileMessage = "";
 
         /// <summary>Profiles available to select for this PDF export.</summary>
         public ObservableCollection<PrintProfileChoice> PrintProfiles { get; } = new ObservableCollection<PrintProfileChoice>();
+
+        /// <summary>Colour rules in the currently selected profile, for visual review before export.</summary>
+        public ObservableCollection<PrintProfileRulePreview> SelectedPrintProfileRules { get; } = new ObservableCollection<PrintProfileRulePreview>();
+
+        /// <summary>Version date of the selected profile.</summary>
+        [ObservableProperty]
+        private string selectedPrintProfileVersionDate = "";
+
+        /// <summary>Whether the selected profile targets a forest map.</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(SelectedPrintProfileIsSprint))]
+        private bool selectedPrintProfileIsForest;
+
+        /// <summary>Whether the selected profile targets a sprint map.</summary>
+        public bool SelectedPrintProfileIsSprint => !SelectedPrintProfileIsForest;
+
+        /// <summary>Whether the visual print-profile review should be displayed.</summary>
+        public bool HasSelectedPrintProfile => PrintProfileIndex > 0 && SelectedPrintProfileRules.Count > 0;
 
         /// <summary>"Print Map Exchanges on Same Map" checkbox.</summary>
         [ObservableProperty]
@@ -119,6 +146,139 @@ namespace PurplePen.ViewModels
         /// </summary>
         [ObservableProperty]
         private decimal copies = 1m;
+
+        /// <summary>Measured length of a nominal 100 mm calibration line.</summary>
+        [ObservableProperty, NotifyPropertyChangedFor(nameof(CalculatedCalibrationFactor))]
+        private decimal measuredCalibrationMm = 100m;
+
+        /// <summary>Printer correction factor used by PDF page layout.</summary>
+        [ObservableProperty]
+        private double scaleCalibrationFactor = 1.0;
+
+        /// <summary>Named reusable PDF print templates stored in user settings.</summary>
+        public ObservableCollection<PrintWorkshopTemplate> PrintTemplates { get; } = new ObservableCollection<PrintWorkshopTemplate>();
+
+        /// <summary>Physical sheet preview in front/back order.</summary>
+        public ObservableCollection<PrintWorkshopPreviewItem> WorkshopPreview { get; } = new ObservableCollection<PrintWorkshopPreviewItem>();
+
+        [ObservableProperty, NotifyCanExecuteChangedFor(nameof(ApplyPrintTemplateCommand)), NotifyCanExecuteChangedFor(nameof(DeletePrintTemplateCommand))]
+        private PrintWorkshopTemplate? selectedPrintTemplate;
+
+        [ObservableProperty]
+        private string printTemplateName = "";
+
+        /// <summary>Calculated factor from a measured 100 mm test line.</summary>
+        // The measured value is the printed length of a nominal 100 mm line.
+        // Use measured/100: CoursePageLayout's scaleRatio is inverse physical
+        // size, so this correction increases/decreases the exported map scale
+        // in the direction needed to make the paper measurement 100 mm.
+        public double CalculatedCalibrationFactor => MeasuredCalibrationMm <= 0 ? 1.0 : (double)MeasuredCalibrationMm / 100.0;
+
+        private void LoadPrintTemplates()
+        {
+            if (UserSettings.Current?.PrintWorkshopTemplates == null)
+                return;
+            foreach (PrintWorkshopTemplate template in UserSettings.Current.PrintWorkshopTemplates)
+                PrintTemplates.Add(template.Clone());
+        }
+
+        private bool CanApplyPrintTemplate() => SelectedPrintTemplate != null;
+        private bool CanDeletePrintTemplate() => SelectedPrintTemplate != null;
+
+        /// <summary>Applies saved layout, duplex and calibration settings.</summary>
+        [RelayCommand(CanExecute = nameof(CanApplyPrintTemplate))]
+        private void ApplyPrintTemplate()
+        {
+            if (SelectedPrintTemplate == null)
+                return;
+            PageLayoutIndex = SelectedPrintTemplate.PageLayout == 2 ? 1 : SelectedPrintTemplate.PageLayout == 4 ? 2 : 0;
+            IncludeBacksideInfo = SelectedPrintTemplate.IncludeBackside;
+            BacksideText = SelectedPrintTemplate.BacksideText ?? "";
+            ScaleCalibrationFactor = SelectedPrintTemplate.ScaleCalibrationFactor > 0 ? SelectedPrintTemplate.ScaleCalibrationFactor : 1.0;
+            MeasuredCalibrationMm = (decimal)(ScaleCalibrationFactor * 100.0);
+        }
+
+        /// <summary>Saves current PDF layout, duplex and calibration settings.</summary>
+        [RelayCommand]
+        private void SavePrintTemplate()
+        {
+            string name = PrintTemplateName.Trim();
+            if (name.Length == 0)
+                return;
+            PrintWorkshopTemplate template = new PrintWorkshopTemplate {
+                Name = name,
+                PageLayout = PageLayoutIndex == 0 ? 1 : PageLayoutIndex == 1 ? 2 : 4,
+                IncludeBackside = IncludeBacksideInfo,
+                BacksideText = BacksideText ?? "",
+                ScaleCalibrationFactor = (float)(ScaleCalibrationFactor > 0 ? ScaleCalibrationFactor : 1.0),
+            };
+            PrintWorkshopTemplate? existing = PrintTemplates.FirstOrDefault(item => string.Equals(item.Name, name, StringComparison.CurrentCultureIgnoreCase));
+            if (existing != null) {
+                template.PageWidth = existing.PageWidth;
+                template.PageHeight = existing.PageHeight;
+                template.PageMargins = existing.PageMargins;
+                template.Landscape = existing.Landscape;
+                template.Rotation = existing.Rotation;
+                template.FixSizeToPaper = existing.FixSizeToPaper;
+                PrintTemplates.Remove(existing);
+            }
+            PrintTemplates.Add(template);
+            SelectedPrintTemplate = template;
+            if (UserSettings.Current != null) {
+                UserSettings.Current.PrintWorkshopTemplates = PrintTemplates.Select(item => item.Clone()).ToList();
+                UserSettings.Current.Save();
+            }
+        }
+
+        /// <summary>Deletes the selected PDF print template.</summary>
+        [RelayCommand(CanExecute = nameof(CanDeletePrintTemplate))]
+        private void DeletePrintTemplate()
+        {
+            if (SelectedPrintTemplate == null)
+                return;
+            PrintTemplates.Remove(SelectedPrintTemplate);
+            SelectedPrintTemplate = null;
+            if (UserSettings.Current != null) {
+                UserSettings.Current.PrintWorkshopTemplates = PrintTemplates.Select(item => item.Clone()).ToList();
+                UserSettings.Current.Save();
+            }
+        }
+
+        /// <summary>Applies the measured 100 mm calibration to subsequent PDF pages.</summary>
+        [RelayCommand]
+        private void ApplyCalibration()
+        {
+            ScaleCalibrationFactor = CalculatedCalibrationFactor;
+        }
+
+        /// <summary>Restores nominal (uncorrected) output scale.</summary>
+        [RelayCommand]
+        private void ResetCalibration()
+        {
+            MeasuredCalibrationMm = 100m;
+            ScaleCalibrationFactor = 1.0;
+        }
+
+        /// <summary>Suggested complete map-set count from the selected event classes.</summary>
+        public int SuggestedCopies
+        {
+            get
+            {
+                if (EventDB == null)
+                    return 1;
+                Id<Course>[] ids = SelectedCourseDesignators.Select(item => item.CourseId)
+                    .Where(id => id.IsNotNone).Distinct().ToArray();
+                if (ids.Length == 0)
+                    ids = EventDB.AllCourseIds.ToArray();
+                return Math.Max(1, ids.Select(id => EventClassSupport.GetCourseRequiredMapCount(EventDB, id)).DefaultIfEmpty(1).Max());
+            }
+        }
+
+        /// <summary>Applies the class-derived default, after which the user may override it.</summary>
+        public void ApplySuggestedCopies()
+        {
+            Copies = SuggestedCopies;
+        }
 
         /// <summary>Whether each map PDF page should be followed by an information backside.</summary>
         [ObservableProperty]
@@ -160,6 +320,121 @@ namespace PurplePen.ViewModels
         [NotifyPropertyChangedFor(nameof(IsOtherDirectoryVisible))]
         private bool useOtherDirectory;
 
+        partial void OnEventDBChanged(EventDB? value)
+        {
+            OnPropertyChanged(nameof(SuggestedCopies));
+            RefreshWorkshopPreview();
+        }
+
+        partial void OnSelectedCourseDesignatorsChanged(CourseDesignator[] value)
+        {
+            OnPropertyChanged(nameof(SuggestedCopies));
+            RefreshWorkshopPreview();
+        }
+
+        partial void OnPageLayoutIndexChanged(int value) => RefreshWorkshopPreview();
+        partial void OnCopiesChanged(decimal value) => RefreshWorkshopPreview();
+        partial void OnIncludeBacksideInfoChanged(bool value) => RefreshWorkshopPreview();
+        partial void OnBacksideTextChanged(string value) => RefreshWorkshopPreview();
+        partial void OnBacksideInfoRecordsChanged(List<BacksideInfoRecord> value) => RefreshWorkshopPreview();
+
+        /// <summary>Rebuilds physical front/back sheets using the selected layout and copies.</summary>
+        public void RefreshWorkshopPreview()
+        {
+            WorkshopPreview.Clear();
+            List<CourseDesignator> designators = SelectedCourseDesignators
+                .Where(item => item.CourseId.IsNotNone)
+                .ToList();
+            if (designators.Count == 0 && EventDB != null)
+                designators.AddRange(EventDB.AllCourseIds.Select(id => new CourseDesignator(id)));
+            int perSheet = PageLayoutIndex == 0 ? 1 : PageLayoutIndex == 1 ? 2 : 4;
+            int copiesCount = Math.Max(1, (int)Copies);
+            List<CourseDesignator> pages = designators;
+            int sheetNumber = 0;
+            List<int> sheetSlotCounts = CoursePageSheetLayout.GetSheetSlotCounts(
+                pages.Count, (CoursePdfSettings.PdfPageLayout)perSheet, copiesCount);
+            int pageOffset = 0;
+            foreach (int slotCount in sheetSlotCounts) {
+                    if (pageOffset >= pages.Count)
+                        pageOffset = 0;
+                    List<CourseDesignator> slots = pages.Skip(pageOffset).Take(slotCount).ToList();
+                    pageOffset += slotCount;
+                    ++sheetNumber;
+                    WorkshopPreview.Add(new PrintWorkshopPreviewItem {
+                        SheetNumber = sheetNumber, IsFront = true, SlotCount = slots.Count,
+                        SlotSummary = FormatSlots(slots, FrontsidePreviewText),
+                    });
+                    if (IncludeBacksideInfo) {
+                        WorkshopPreview.Add(new PrintWorkshopPreviewItem {
+                            SheetNumber = sheetNumber, IsBack = true, SlotCount = slots.Count,
+                            // CoursePdf emits one backside immediately after the matching
+                            // front sheet. Keep the physical slot order identical to the
+                            // front sheet; a duplex printer mirrors the paper itself.
+                            SlotSummary = FormatSlots(slots, BacksidePreviewText),
+                        });
+                    }
+            }
+        }
+
+        private string FormatSlots(List<CourseDesignator> slots, Func<CourseDesignator, string> formatter)
+        {
+            return string.Join("  •  ", slots.Select((slot, index) => "[" + (index + 1) + "] " + formatter(slot)));
+        }
+
+        private string FrontsidePreviewText(CourseDesignator designator)
+        {
+            if (EventDB == null)
+                return designator.CourseId.ToString();
+            CourseView courseView = CourseView.CreatePrintingCourseView(EventDB, designator);
+            string className = string.Join(", ", BacksideInfoFormatter.GetClassNames(EventDB, courseView));
+            string result = courseView.CourseFullName;
+            if (!string.IsNullOrWhiteSpace(className))
+                result += " / " + className;
+            return result;
+        }
+
+        private string BacksidePreviewText(CourseDesignator designator)
+        {
+            if (EventDB == null)
+                return string.IsNullOrWhiteSpace(BacksideText) ? designator.CourseId.ToString() : BacksideText.Trim();
+
+            CourseView courseView = CourseView.CreatePrintingCourseView(EventDB, designator);
+            BacksideInfoRecord? importedRecord = BacksideInfoFormatter.FindImportedRecord(EventDB, courseView, BacksideInfoRecords);
+
+            List<string> lines = new List<string>();
+            if (!string.IsNullOrWhiteSpace(BacksideText))
+                lines.Add(BacksideText.Trim());
+            lines.Add(courseView.CourseNameAndPart);
+            string className = string.Join(", ", BacksideInfoFormatter.GetClassNames(EventDB, courseView));
+            if (!string.IsNullOrWhiteSpace(className))
+                lines.Add(className);
+            if (courseView.RelayTeam.HasValue)
+                lines.Add(courseView.RelayTeam.Value.ToString());
+            if (courseView.RelayLeg.HasValue)
+                lines.Add(courseView.RelayLeg.Value.ToString());
+            if (importedRecord != null) {
+                if (!string.IsNullOrWhiteSpace(importedRecord.Name)) lines.Add(importedRecord.Name);
+                if (!string.IsNullOrWhiteSpace(importedRecord.ClassName)) lines.Add(importedRecord.ClassName);
+                if (!string.IsNullOrWhiteSpace(importedRecord.TeamName)) lines.Add(importedRecord.TeamName);
+            }
+            return string.Join(" / ", lines);
+        }
+
+        private string[] GetEventClassNamesArray(Id<Course> courseId)
+        {
+            if (EventDB == null || courseId.IsNotNone == false)
+                return Array.Empty<string>();
+            return EventClassSupport.GetClasses(EventDB, courseId)
+                .Select(pair => pair.Value.Name)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .ToArray();
+        }
+
+        private string GetEventClassNames(Id<Course> courseId)
+        {
+            return string.Join(", ", GetEventClassNamesArray(courseId));
+        }
+
         // ===== Pass-through (set by caller, not UI-bound, preserved through dialog) =====
 
         /// <summary>Whether to render control descriptions on the page (not exposed in the UI).</summary>
@@ -199,6 +474,8 @@ namespace PurplePen.ViewModels
         {
             if (value != 0)
                 ColorModelIndex = 1;
+
+            RefreshSelectedPrintProfilePreview();
         }
 
         /// <summary>Reloads imported profiles and optionally selects one by its stable ID.</summary>
@@ -221,6 +498,33 @@ namespace PurplePen.ViewModels
             }
 
             PrintProfileIndex = selectedIndex;
+            RefreshSelectedPrintProfilePreview();
+        }
+
+        /// <summary>Rebuilds the screen-only profile preview from the selected profile.</summary>
+        private void RefreshSelectedPrintProfilePreview()
+        {
+            SelectedPrintProfileRules.Clear();
+            PrintProfile? profile = PrintProfileCatalog.FindById(PrintProfileId);
+            if (profile == null) {
+                SelectedPrintProfileVersionDate = "";
+                SelectedPrintProfileIsForest = false;
+                OnPropertyChanged(nameof(HasSelectedPrintProfile));
+                return;
+            }
+
+            SelectedPrintProfileVersionDate = profile.VersionDate;
+            SelectedPrintProfileIsForest = profile.MapKind == PrintProfileMapKind.Forest;
+            foreach (PrintProfileColorRule rule in profile.ColorRules.OrderBy(item => item.RelativeDrawOrder)) {
+                SelectedPrintProfileRules.Add(new PrintProfileRulePreview {
+                    Name = rule.Name,
+                    Cmyk = String.Format("C{0:0} M{1:0} Y{2:0} K{3:0}", rule.EffectiveCmyk.Cyan, rule.EffectiveCmyk.Magenta, rule.EffectiveCmyk.Yellow, rule.EffectiveCmyk.Black),
+                    PreviewColor = PrintProfileMappingsDialogViewModel.ToPreviewColor(rule.EffectiveCmyk),
+                    UsesOverprint = rule.OverprintIntent == PrintProfileOverprintIntent.Overprint,
+                });
+            }
+
+            OnPropertyChanged(nameof(HasSelectedPrintProfile));
         }
 
         // ===== Settings: assembles / decomposes a CoursePdfSettings =====
@@ -248,6 +552,7 @@ namespace PurplePen.ViewModels
                     CropLargePrintArea = MultiPageIndex == 0,
                     PrintMapExchangesOnOneMap = MergeParts,
                     Copies = (int)Copies,
+                    ScaleCalibrationFactor = (float)(ScaleCalibrationFactor > 0 ? ScaleCalibrationFactor : 1.0),
                     PageLayout = (CoursePdfSettings.PdfPageLayout)(PageLayoutIndex == 0 ? 1 : PageLayoutIndex == 1 ? 2 : 4),
                     IncludeBacksideInfo = IncludeBacksideInfo,
                     BacksideText = BacksideText,
@@ -256,6 +561,7 @@ namespace PurplePen.ViewModels
                     // OCADCompatible=0, RGB=1, CMYK=2. So index + 1.
                     ColorModel = (ColorModel)(ColorModelIndex + 1),
                     PrintProfileId = PrintProfileId,
+                    TrainingExerciseRenderProfile = (TrainingExerciseRenderProfile)TrainingExerciseRenderProfileIndex,
                     ConfirmedPrintProfileRuleIds = new List<string>(ConfirmedPrintProfileRuleIds),
                     PrintProfileColorMappings = new List<PrintProfileColorMapping>(PrintProfileColorMappings),
                     FileCreation = (CoursePdfSettings.PdfFileCreation)FileFormatIndex,
@@ -298,6 +604,7 @@ namespace PurplePen.ViewModels
                 ColorModelIndex = colorIndex;
 
                 RefreshPrintProfiles(value.PrintProfileId);
+                TrainingExerciseRenderProfileIndex = (int)value.TrainingExerciseRenderProfile;
 
                 ConfirmedPrintProfileRuleIds = value.ConfirmedPrintProfileRuleIds == null
                     ? new List<string>()
@@ -310,6 +617,8 @@ namespace PurplePen.ViewModels
                 PageLayoutIndex = value.PageLayout == CoursePdfSettings.PdfPageLayout.TwoPerPage ? 1 :
                                   value.PageLayout == CoursePdfSettings.PdfPageLayout.FourPerPage ? 2 : 0;
                 Copies = Math.Max(1, value.Copies);
+                ScaleCalibrationFactor = value.ScaleCalibrationFactor > 0 ? value.ScaleCalibrationFactor : 1.0;
+                MeasuredCalibrationMm = (decimal)(ScaleCalibrationFactor * 100.0);
                 IncludeBacksideInfo = value.IncludeBacksideInfo;
                 BacksideText = value.BacksideText ?? "";
                 BacksideInfoRecords = value.BacksideInfoRecords == null
@@ -344,5 +653,34 @@ namespace PurplePen.ViewModels
 
         /// <summary>Whether this represents an installed profile.</summary>
         public bool IsProfile => !IsNone;
+    }
+
+    /// <summary>Screen-only preview of one print-profile colour rule.</summary>
+    public sealed class PrintProfileRulePreview
+    {
+        /// <summary>Profile colour name.</summary>
+        public string Name { get; set; } = "";
+
+        /// <summary>CMYK values formatted for review.</summary>
+        public string Cmyk { get; set; } = "";
+
+        /// <summary>sRGB approximation used only for the screen colour swatch.</summary>
+        public string PreviewColor { get; set; } = "#FFFFFF";
+
+        /// <summary>Whether the profile expects this colour to overprint colours below.</summary>
+        public bool UsesOverprint { get; set; }
+
+        /// <summary>Whether the profile expects this colour to knock out colours below.</summary>
+        public bool UsesKnockout => !UsesOverprint;
+    }
+
+    /// <summary>One physical-sheet side in the PDF paper workshop preview.</summary>
+    public sealed class PrintWorkshopPreviewItem
+    {
+        public int SheetNumber { get; set; }
+        public bool IsFront { get; set; }
+        public bool IsBack { get; set; }
+        public int SlotCount { get; set; }
+        public string SlotSummary { get; set; } = "";
     }
 }

@@ -1,0 +1,14 @@
+# Purple Pen: lead-agent and cost policy for new Codex sessions.
+# Restart or open a new task after changing this file so the configuration is read.
+
+model = "gpt-5.6-terra"
+model_reasoning_effort = "medium"
+
+[agents]
+enabled = true
+default_subagent_model = "gpt-5.6-luna"
+default_subagent_reasoning_effort = "medium"
+max_concurrent_threads_per_session = 3
+
+[features]
+multi_agent_v2 = true

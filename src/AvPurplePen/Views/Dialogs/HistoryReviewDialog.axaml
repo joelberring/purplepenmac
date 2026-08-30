@@ -1,0 +1,59 @@
+<!-- User-facing checkpoints first; technical event status is available under Advanced. -->
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PurplePen.ViewModels" xmlns:resx="using:AvPurplePen"
+        x:Class="AvPurplePen.Views.HistoryReviewDialog" x:DataType="vm:HistoryReviewDialogViewModel"
+        Title="{resx:Localize HistoryReviewDialog_Text}" Icon="/Assets/transparent.ico"
+        Width="680" Height="600" MinWidth="560" MinHeight="460" CanResize="True"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False">
+  <Design.DataContext><vm:HistoryReviewDialogViewModel/></Design.DataContext>
+  <DockPanel Margin="16">
+    <Button DockPanel.Dock="Bottom" Content="{resx:Localize HistoryReviewDialog_closeButton_Text}"
+            Width="100" HorizontalAlignment="Right" IsDefault="True" IsCancel="True" Click="Close_Click" Margin="0,12,0,0"/>
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel Spacing="10">
+        <TextBlock Text="{resx:Localize HistoryReviewDialog_Intro}" TextWrapping="Wrap"/>
+        <TextBlock Text="{resx:Localize HistoryReviewDialog_Snapshots}" FontWeight="SemiBold"/>
+        <Border BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1" CornerRadius="3">
+          <ListBox ItemsSource="{Binding Snapshots}" SelectedItem="{Binding SelectedSnapshot, Mode=TwoWay}" Height="150">
+            <ListBox.ItemTemplate><DataTemplate x:DataType="vm:HistorySnapshotItem">
+              <Grid ColumnDefinitions="2*,Auto,3*" ColumnSpacing="12" Margin="5,4">
+                <TextBlock Text="{Binding Name}" FontWeight="SemiBold"/>
+                <TextBlock Grid.Column="1" Text="{Binding CreatedLocalText}" Opacity="0.75"/>
+                <TextBlock Grid.Column="2" Text="{Binding Comment}" TextTrimming="CharacterEllipsis"/>
+              </Grid>
+            </DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+        </Border>
+        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto" ColumnSpacing="8" RowSpacing="6">
+          <TextBox PlaceholderText="{resx:Localize HistoryReviewDialog_SnapshotNamePlaceholder}" Text="{Binding SnapshotName, Mode=TwoWay}"/>
+          <TextBox Grid.Column="1" PlaceholderText="{resx:Localize HistoryReviewDialog_SnapshotCommentPlaceholder}" Text="{Binding SnapshotComment, Mode=TwoWay}"/>
+          <Button Grid.Row="1" Content="{resx:Localize HistoryReviewDialog_CreateSnapshot}" Command="{Binding CreateSnapshotCommand}"/>
+          <Button Grid.Row="1" Grid.Column="1" Content="{resx:Localize HistoryReviewDialog_AddComment}" Command="{Binding AddCommentCommand}"/>
+          <Button Grid.Row="2" Content="{resx:Localize HistoryReviewDialog_RenameSnapshot}" Command="{Binding RenameSnapshotCommand}"/>
+        </Grid>
+        <TextBlock Text="{resx:Localize HistoryReviewDialog_CompareWith}" FontWeight="SemiBold" Margin="0,5,0,0"/>
+        <Grid ColumnDefinitions="*,Auto" ColumnSpacing="8">
+          <ComboBox ItemsSource="{Binding Snapshots}" SelectedItem="{Binding CompareSnapshot, Mode=TwoWay}">
+            <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:HistorySnapshotItem"><TextBlock Text="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+          </ComboBox>
+          <Button Grid.Column="1" Content="{resx:Localize HistoryReviewDialog_CompareSnapshots}" Command="{Binding CompareSnapshotsCommand}"/>
+        </Grid>
+        <TextBox Text="{Binding ReportText}" AcceptsReturn="True" IsReadOnly="True" Height="110" TextWrapping="Wrap"
+                 PlaceholderText="{resx:Localize HistoryReviewDialog_ReportPlaceholder}"/>
+        <Expander Header="{resx:Localize HistoryReviewDialog_Advanced}" Margin="0,4,0,0">
+          <StackPanel Spacing="8" Margin="0,8,0,0">
+            <Grid ColumnDefinitions="180,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto" RowSpacing="6">
+              <TextBlock Text="{resx:Localize HistoryReviewDialog_revisionLabel_Text}"/><TextBlock Grid.Column="1" Text="{Binding EventRevision}"/>
+              <TextBlock Grid.Row="1" Text="{resx:Localize HistoryReviewDialog_saveStateLabel_Text}"/><TextBlock Grid.Row="1" Grid.Column="1" Text="{resx:Localize HistoryReviewDialog_Saved}" IsVisible="{Binding IsSaved}"/><TextBlock Grid.Row="1" Grid.Column="1" Text="{resx:Localize HistoryReviewDialog_Unsaved}" IsVisible="{Binding !IsSaved}"/>
+              <TextBlock Grid.Row="2" Text="{resx:Localize HistoryReviewDialog_undoLabel_Text}"/><TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding UndoName}"/>
+              <TextBlock Grid.Row="3" Text="{resx:Localize HistoryReviewDialog_redoLabel_Text}"/><TextBlock Grid.Row="3" Grid.Column="1" Text="{Binding RedoName}"/>
+              <TextBlock Grid.Row="4" Text="{resx:Localize HistoryReviewDialog_Total}"/><TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding TotalCount}"/>
+              <TextBlock Grid.Row="5" Text="{resx:Localize HistoryReviewDialog_TrainingExercises}"/><TextBlock Grid.Row="5" Grid.Column="1" Text="{Binding TrainingExerciseCount}"/>
+            </Grid>
+            <Button Content="{resx:Localize HistoryReviewDialog_JsonReport}" Command="{Binding GenerateJsonReportCommand}" HorizontalAlignment="Left"/>
+          </StackPanel>
+        </Expander>
+      </StackPanel>
+    </ScrollViewer>
+  </DockPanel>
+</Window>

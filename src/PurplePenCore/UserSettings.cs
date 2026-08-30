@@ -27,6 +27,7 @@ namespace PurplePen
         public string NewEventMapStandard = "2017";
         public string NewEventDescriptionStandard = "2018";
         public string LiveloxSettings;
+        public List<PrintWorkshopTemplate> PrintWorkshopTemplates = new List<PrintWorkshopTemplate>();
 
         public static UserSettings Current;
 

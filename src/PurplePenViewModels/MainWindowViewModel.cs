@@ -92,6 +92,18 @@ namespace PurplePen.ViewModels
         private MapDisplay? topologyMapDisplay;
 
         [ObservableProperty]
+        private bool trainingRunnerChecked;
+
+        [ObservableProperty]
+        private bool trainingCoachChecked;
+
+        [ObservableProperty]
+        private bool trainingAnswerChecked;
+
+        [ObservableProperty]
+        private bool trainingProfileNoneChecked;
+
+        [ObservableProperty]
         private IMapViewerHighlight[]? topologyHighlights;
 
         [ObservableProperty]
@@ -588,6 +600,14 @@ namespace PurplePen.ViewModels
 
         public async Task MapViewerLeftButtonClick(PointF location, float pixelSize)
         { await controller?.LeftButtonClick(Pane.Map, location, pixelSize)!; }
+
+        /// <summary>Routes a map double-click. Returns true when the active mode consumed it.</summary>
+        public async Task<bool> MapViewerDoubleClick(PointF location, float pixelSize)
+        { return controller != null && await controller.DoubleClick(Pane.Map, location, pixelSize); }
+
+        // Returns true when the current map mode consumed a Ctrl-click.
+        public async Task<bool> MapViewerCtrlLeftButtonClick(PointF location, float pixelSize)
+        { return controller != null && await controller.CtrlLeftButtonClick(Pane.Map, location, pixelSize); }
 
         public async Task MapViewerRightButtonClick(PointF location, float pixelSize)
         { await controller?.RightButtonClick(Pane.Map, location, pixelSize)!; }

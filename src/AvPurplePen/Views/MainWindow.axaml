@@ -343,10 +343,32 @@
                 </NativeMenu>
             </NativeMenuItem>
 
+            <!-- === Training Menu === -->
+            <NativeMenuItem Header="{resx:Localize TrainingExercisesDialog_Menu}">
+                <NativeMenu>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_trainingExercisesMenu_Text}" Command="{Binding ShowTrainingExercisesCommand}" IsEnabled="{Binding CanUseActiveCourseTrainingTools}"/>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_trainingProfileMenu_Text}">
+                        <NativeMenu>
+                            <NativeMenuItem Header="{resx:Localize MainFrame_trainingProfileNoneMenu_Text}" Command="{Binding ClearTrainingProfileCommand}" IsChecked="{Binding TrainingProfileNoneChecked}" ToggleType="Radio"/>
+                            <NativeMenuItem Header="{resx:Localize TrainingExercisesDialog_Runner}" Command="{Binding ShowRunnerTrainingProfileCommand}" IsChecked="{Binding TrainingRunnerChecked}" ToggleType="Radio"/>
+                            <NativeMenuItem Header="{resx:Localize TrainingExercisesDialog_Coach}" Command="{Binding ShowCoachTrainingProfileCommand}" IsChecked="{Binding TrainingCoachChecked}" ToggleType="Radio"/>
+                            <NativeMenuItem Header="{resx:Localize TrainingExercisesDialog_Answer}" Command="{Binding ShowAnswerTrainingProfileCommand}" IsChecked="{Binding TrainingAnswerChecked}" ToggleType="Radio"/>
+                        </NativeMenu>
+                    </NativeMenuItem>
+                    <NativeMenuItemSeparator/>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_contourOnlyTrainingAreaMenu_Text}" Command="{Binding AddContourOnlyTrainingAreaCommand}" IsEnabled="{Binding CanUseActiveCourseTrainingTools}" Icon="/Assets/Toolbar/whiteOutItem.png"/>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_trainingCorridorMenu_Text}" Command="{Binding AddTrainingCorridorCommand}" IsEnabled="{Binding CanUseActiveCourseTrainingTools}"/>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_trainingAttackPointMenu_Text}" Command="{Binding AddTrainingAttackPointCommand}" IsEnabled="{Binding CanUseActiveCourseTrainingTools}"/>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_trainingLineMenu_Text}" Command="{Binding AddTrainingLineCommand}" IsEnabled="{Binding CanUseActiveCourseTrainingTools}"/>
+                </NativeMenu>
+            </NativeMenuItem>
+
             <!-- === Event Menu === -->
             <NativeMenuItem Header="{resx:Localize MainFrame_eventMenu_Text}">
                 <NativeMenu>
+                    <NativeMenuItem Header="{resx:Localize MeosIofCentral_Menu}" Command="{Binding ShowMeosIofCentralCommand}"/>
                     <NativeMenuItem Header="{resx:Localize MainFrame_changeMapFileMenu_Text}" Command="{Binding ChangeMapFileCommand}"/>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_editPrintProfileMenu_Text}" Command="{Binding EditPrintProfileCommand}"/>
                     <NativeMenuItemSeparator/>
                     <NativeMenuItem Header="{resx:Localize MainFrame_changeCodesMenu_Text}" Command="{Binding ChangeCodesCommand}"/>
                     <NativeMenuItem Header="{resx:Localize MainFrame_autoNumberingMenu_Text}" Command="{Binding AutoNumberingCommand}"/>
@@ -392,6 +414,7 @@
                     <NativeMenuItem Header="{resx:Localize MainFrame_courseLoadMenu_Text}" Command="{Binding ShowCourseLoadCommand}"/>
                     <NativeMenuItemSeparator/>
                     <NativeMenuItem Header="{resx:Localize MainFrame_courseVariationReportMenu_Text}" Command="{Binding ShowCourseVariationReportCommand}"/>
+                    <NativeMenuItem Header="{resx:Localize HistoryReviewDialog_Text}" Command="{Binding ShowHistoryReviewCommand}"/>
                 </NativeMenu>
             </NativeMenuItem>
 
@@ -460,6 +483,9 @@
                     <NativeMenuItem Header="{resx:Localize MainFrame_courseControlOverviewMenu_Text}"
                                     Command="{Binding ShowCourseControlOverviewCommand}"/>
                     <NativeMenuItemSeparator/>
+                    <NativeMenuItem Header="{resx:Localize MainFrame_eventReadinessMenu_Text}"
+                                    Command="{Binding ShowEventReadinessCommand}"
+                                    CommandParameter="{resx:Localize MainFrame_eventReadinessMenu_Text}"/>
                     <NativeMenuItem Header="{resx:Localize MainFrame_courseSummaryMenu_Text}"
                                     Command="{Binding ShowCourseSummaryCommand}"
                                     CommandParameter="{resx:Localize MainFrame_courseSummaryMenu_Text}"/>
@@ -612,13 +638,6 @@
                                VerticalAlignment="Center"/>
                 </StackPanel>
             </Button>
-            <ToggleButton x:Name="keepAddingControlsToggleButton"
-                          Content="{resx:Localize MainFrame_keepAddingControlsToggleButton_Text}"
-                          ToolTip.Tip="{resx:Localize MainFrame_keepAddingControlsToggleButton_ToolTipText}"
-                          IsChecked="{Binding KeepAddingControls, Mode=TwoWay}"
-                          Padding="6,2"
-                          Margin="-2,0,2,0"/>
-
             <!-- Add Finish (image + text) -->
             <Button x:Name="addFinishToolStripButton" Padding="2,2"
                     Command="{Binding AddFinishCommand}">
@@ -632,23 +651,19 @@
 
             <!-- Descriptions (image + text) -->
             <Button x:Name="descriptionsToolStripMenuItem" Padding="2,2"
+                    ToolTip.Tip="{resx:Localize MainFrame_descriptionsToolStripMenuItem_Text}"
                     Command="{Binding AddDescriptionsCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Image Source="/Assets/Toolbar/descriptionsItem.png" Width="16" Height="16"/>
-                    <TextBlock Text="{resx:Localize MainFrame_descriptionsToolStripMenuItem_Text}"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
+                <Image Source="/Assets/Toolbar/descriptionsItem.png" Width="16" Height="16"/>
             </Button>
 
             <!-- Map Exchange dropdown. A single-item Menu (not Button + Flyout) so the native menu
                  interaction handler provides press-to-open, drag-over, release-to-select. -->
-            <Menu x:Name="mapExchangeToolStripMenu" IsEnabled="{Binding CanAddMapExchangeAny}">
+            <Menu x:Name="mapExchangeToolStripMenu" IsEnabled="{Binding CanAddMapExchangeAny}"
+                  ToolTip.Tip="{resx:Localize MainFrame_mapExchangeToolStripMenu_Text}">
                 <MenuItem>
                     <MenuItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <Image Source="/Assets/Toolbar/mapExchange.png" Width="16" Height="16"/>
-                            <TextBlock Text="{resx:Localize MainFrame_mapExchangeToolStripMenu_Text}"
-                                       VerticalAlignment="Center"/>
                             <PathIcon Data="M1939 486L2029 576L1024 1581L19 576L109 486L1024 1401L1939 486Z"
                                      Width="8" Height="8" VerticalAlignment="Center"/>
                         </StackPanel>
@@ -676,22 +691,17 @@
 
             <!-- Add Variation (image + text) -->
             <Button x:Name="addVariationToolStripButton" Padding="2,2"
+                    ToolTip.Tip="{resx:Localize MainFrame_addVariationToolStripButton_Text}"
                     Command="{Binding AddVariationCommand}">
-                <StackPanel Orientation="Horizontal" Spacing="4">
-                    <Image Source="/Assets/Toolbar/addVariation.png" Width="16" Height="16"/>
-                    <TextBlock Text="{resx:Localize MainFrame_addVariationToolStripButton_Text}"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
+                <Image Source="/Assets/Toolbar/addVariation.png" Width="16" Height="16"/>
             </Button>
 
             <!-- Special Items dropdown (image + text, click opens flyout menu) -->
-            <Menu x:Name="specialItemToolStripMenu">
+            <Menu x:Name="specialItemToolStripMenu" ToolTip.Tip="{resx:Localize MainFrame_specialItemToolStripMenu_Text}">
                 <MenuItem>
                     <MenuItem.Header>
                         <StackPanel Orientation="Horizontal" Spacing="4">
                             <Image Source="/Assets/Toolbar/specialItem.png" Width="16" Height="16"/>
-                            <TextBlock Text="{resx:Localize MainFrame_specialItemToolStripMenu_Text}"
-                                       VerticalAlignment="Center"/>
                             <PathIcon Data="M1939 486L2029 576L1024 1581L19 576L109 486L1024 1401L1939 486Z"
                                      Width="8" Height="8" VerticalAlignment="Center"/>
                         </StackPanel>

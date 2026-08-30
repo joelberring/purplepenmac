@@ -461,10 +461,11 @@ namespace PurplePen
         SelectionMgr selectionMgr;
         CourseObj courseObjectStart, courseObjectDrag;
         PointF startDrag, currentLocation;
+        bool resumeComposeCourse;
 
         CourseObj[] additionalHighlights;  // additional highlights to show also, for legs to/from control.
 
-        public DragObjectMode(Controller controller, EventDB eventDB, SelectionMgr selectionMgr, CourseObj courseObject, PointF startDrag)
+        public DragObjectMode(Controller controller, EventDB eventDB, SelectionMgr selectionMgr, CourseObj courseObject, PointF startDrag, bool resumeComposeCourse = false)
         {
             this.controller = controller;
             this.eventDB = eventDB;
@@ -472,6 +473,7 @@ namespace PurplePen
             this.courseObjectStart = courseObject;
             this.courseObjectDrag = (CourseObj) (courseObject.Clone());
             this.startDrag = this.currentLocation = startDrag;
+            this.resumeComposeCourse = resumeComposeCourse;
         }
 
         public override IMapViewerHighlight[] GetHighlights(Pane pane)
@@ -575,7 +577,10 @@ namespace PurplePen
             float deltaX = (location.X - startDrag.X);
             float deltaY = (location.Y - startDrag.Y);
 
-            if (courseObjectStart.specialId.IsNotNone) {
+            if (courseObjectStart.trainingExerciseId.IsNotNone) {
+                controller.MoveTrainingExercise(courseObjectStart.trainingExerciseId, deltaX, deltaY);
+            }
+            else if (courseObjectStart.specialId.IsNotNone) {
                 // Moving a special
                 Id<Special> specialId = courseObjectStart.specialId;
 
@@ -597,6 +602,8 @@ namespace PurplePen
                 await controller.MoveControlInCurrentCourse(controlId, newLocation);
             }
             controller.DefaultCommandMode();
+            if (resumeComposeCourse)
+                controller.BeginComposeCourseMode();
 
             return false;
         }
@@ -605,8 +612,10 @@ namespace PurplePen
         {
             Debug.Assert(pane == Pane.Map);
 
-            // Drag was cancelled. Go back to normal mode.
+            // Drag was cancelled. Restore the mode that initiated the drag.
             controller.DefaultCommandMode();
+            if (resumeComposeCourse)
+                controller.BeginComposeCourseMode();
         }
 
         public override MousePointerShape GetMouseCursor(Pane pane, PointF location, float pixelSize)
@@ -687,7 +696,13 @@ namespace PurplePen
             float deltaY = (location.Y - startDrag.Y);
             PointF newHandleLocation = new PointF(handleLocation.X + deltaX, handleLocation.Y + deltaY);
 
-            if (courseObjectStart.specialId.IsNotNone) {
+            if (courseObjectStart.trainingExerciseId.IsNotNone) {
+                PointF[] handles = courseObjectStart.GetHandles();
+                int pointIndex = handles == null ? -1 : Array.IndexOf(handles, handleLocation);
+                if (pointIndex >= 0)
+                    controller.MoveTrainingExercisePoint(courseObjectStart.trainingExerciseId, pointIndex, newHandleLocation);
+            }
+            else if (courseObjectStart.specialId.IsNotNone) {
                 // Moving a corner of a special
                 Id<Special> specialId = courseObjectStart.specialId;
 

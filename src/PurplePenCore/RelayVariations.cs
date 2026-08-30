@@ -222,6 +222,21 @@ namespace PurplePen
             return totalPossiblePaths;
         }
 
+        /// <summary>
+        /// Gets the fork key for this relay course in course traversal order.
+        /// Each entry maps the variation letters shown in relay assignments to
+        /// the control where the corresponding fork or loop begins.
+        /// </summary>
+        /// <returns>One entry for every fork and loop in the course.</returns>
+        public IEnumerable<ForkKeyEntry> GetForkKey()
+        {
+            ScanAllForks();
+
+            foreach (Fork fork in allForks) {
+                yield return new ForkKeyEntry(fork.controlCode, fork.loop, fork.codes);
+            }
+        }
+
         void ScanAllForks()
         {
             if (!forksScanned) {
@@ -740,6 +755,31 @@ namespace PurplePen
                 this.codeMore = codeMore.ToArray();
                 this.numLess = numLess;
                 this.codeLess = codeLess.ToArray();
+            }
+        }
+
+        /// <summary>
+        /// Describes one fork or loop in a relay variation key. The branch codes
+        /// are ordered exactly as they occur in the course, so the key is stable
+        /// across repeated report generation.
+        /// </summary>
+        public sealed class ForkKeyEntry
+        {
+            /// <summary>The code of the control where this fork or loop starts.</summary>
+            public string ControlCode { get; }
+
+            /// <summary>True when this entry represents a loop rather than a fork.</summary>
+            public bool IsLoop { get; }
+
+            /// <summary>The variation letters used by the branches of this entry.</summary>
+            public IReadOnlyList<char> BranchCodes { get; }
+
+            /// <summary>Initializes a new immutable fork-key entry.</summary>
+            public ForkKeyEntry(string controlCode, bool isLoop, IEnumerable<char> branchCodes)
+            {
+                ControlCode = controlCode;
+                IsLoop = isLoop;
+                BranchCodes = branchCodes.ToArray();
             }
         }
 

@@ -1,5 +1,8 @@
 namespace DotSpatial.Projections
 {
+    /// <summary>
+    /// Provides named access to the available coordinate-system categories.
+    /// </summary>
     public interface ICoordinateSystemCategoryHolder
     {
         /// <summary>

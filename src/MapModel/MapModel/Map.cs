@@ -107,6 +107,16 @@ namespace PurplePen.MapModel
 
     }
 
+    /// <summary>Temporarily replaces one map colour while rendering without modifying the source map.</summary>
+    public sealed class MapColorOverride
+    {
+        /// <summary>Gets or sets the replacement CMYK colour.</summary>
+        public CmykColor Color { get; set; }
+
+        /// <summary>Gets or sets whether the replacement colour uses overprint blending.</summary>
+        public bool Overprint { get; set; }
+    }
+
     class MapUsageException : Exception
     {
         public MapUsageException(string message) : base(message)
@@ -866,6 +876,7 @@ namespace PurplePen.MapModel
         List<Symbol> symbols = new List<Symbol>();
         Dictionary<SymDef, bool> hiddenSymbols = new Dictionary<SymDef, bool>();
         ColorMatrix colorMatrix;               // if non-null, transforms colors when rendering the map.
+        IDictionary<SymColor, MapColorOverride> activeColorOverrides;
         string fileInformation;
         float mapScale;
         float printScale;
@@ -2183,7 +2194,24 @@ namespace PurplePen.MapModel
 
         public void Draw(IGraphicsTarget g, RectangleF rect, RenderOptions renderOpts, Action throwOnCancel)
         {
-            Draw(g, rect, renderOpts, throwOnCancel, 0);
+            IDictionary<SymColor, MapColorOverride> previousOverrides = activeColorOverrides;
+            activeColorOverrides = renderOpts.colorOverrides;
+            try {
+                Draw(g, rect, renderOpts, throwOnCancel, 0);
+            }
+            finally {
+                activeColorOverrides = previousOverrides;
+            }
+        }
+
+        /// <summary>Returns a colour's temporary render override, if the current draw operation supplied one.</summary>
+        /// <param name="color">Colour belonging to this map.</param>
+        /// <returns>The render-only override, or null when the stored map colour should be used.</returns>
+        internal MapColorOverride GetActiveColorOverride(SymColor color)
+        {
+            if (activeColorOverrides != null && activeColorOverrides.TryGetValue(color, out MapColorOverride colorOverride))
+                return colorOverride;
+            return null;
         }
 
         internal void Draw(IGraphicsTarget g, RectangleF rect, RenderOptions renderOpts, Action throwOnCancel, int templateRecursionCount)
@@ -2269,7 +2297,7 @@ namespace PurplePen.MapModel
             //TraceLine("Drawing color {0}", curColor.Name ?? "special layer");
 
             foreach (SymDef symdef in symdefs) {
-                if (IsSymdefVisible(symdef) && symdef.HasColor(curColor)) {
+                if (IsSymdefVisible(symdef) && (renderOpts.symdefFilter == null || renderOpts.symdefFilter(symdef)) && symdef.HasColor(curColor)) {
                     List<Symbol> symbolsForThisDef = symdef.symbols;
 
                     if (symdef.SortSymbolsForDrawing) {
@@ -2285,7 +2313,7 @@ namespace PurplePen.MapModel
                             if (bounds.IntersectsWith(rect) &&
                                 curSym.MayIntersectRect(rect)) 
                             {
-                                if (renderOpts.blendOverprintedColors && curColor.OverPrint && !anySymbolsDrawn) {
+                                if (renderOpts.blendOverprintedColors && curColor.RenderOverPrint && !anySymbolsDrawn) {
                                     // We need to blend this color.
                                     g.PushBlending(BlendMode.Darken);
                                     mustPopBlending = true;
@@ -2784,6 +2812,13 @@ namespace PurplePen.MapModel
         // These options allow drawing just some colors (layers) of the maps.
         public int? colorBeginDrawExclusive; // If null, start drawing at the bottom, otherwise draw beginning after this color.
         public int? colorEndDrawInclusive;   // If null, draw to top, otherwise end after drawing this color.
+
+        // Optional non-mutating filter for symbol definitions. When set, only matching
+        // definitions are drawn; the map's own symbol visibility remains unchanged.
+        public Predicate<SymDef> symdefFilter;
+
+        // Optional export-only colour replacements keyed by colours in this map.
+        public IDictionary<SymColor, MapColorOverride> colorOverrides;
 
         // debug options.
         public bool showSymbolBounds;      // Show the bounds of symbols.

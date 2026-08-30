@@ -32,25 +32,117 @@
  * OF SUCH DAMAGE.
  */
 
-using System.ComponentModel;
 using NUnit.Framework;
+using PurplePen;
 using PurplePen.ViewModels;
 
 namespace PurplePenViewModels.Tests
 {
     /// <summary>
-    /// Tests for MainWindowViewModel, verifying that the Counter property
-    /// and the Increment/Decrement commands work correctly.
+    /// Tests for view-model behavior that does not require application services.
     /// </summary>
     [TestFixture]
     public class MainWindowViewModelTests
     {
-        private MainWindowViewModel viewModel = null!;
-
-        [SetUp]
-        public void Initialize()
+        /// <summary>
+        /// A course row can request navigation only after the user selects it.
+        /// </summary>
+        [Test]
+        public void CourseOverviewNavigationRequiresAndRecordsSelectedCourse()
         {
-            viewModel = new MainWindowViewModel();
+            CourseControlOverviewDialogViewModel overview = new CourseControlOverviewDialogViewModel();
+
+            Assert.That(overview.NavigateToSelectedCourseCommand.CanExecute(null), Is.False);
+            overview.SelectedCourse = new CourseOverviewItem { CourseId = new Id<Course>(2), Name = "Yellow" };
+
+            Assert.That(overview.NavigateToSelectedCourseCommand.CanExecute(null), Is.True);
+            overview.NavigateToSelectedCourseCommand.Execute(null);
+            Assert.That(overview.NavigateToSelectedCourseRequested, Is.True);
+        }
+
+        /// <summary>
+        /// Class assignments made in the course-load grid accompany the participant count.
+        /// </summary>
+        [Test]
+        public void CourseLoadRowRetainsClassAndParticipantCount()
+        {
+            Controller.CourseLoadInfo info = new Controller.CourseLoadInfo {
+                courseName = "Blue",
+                className = "H21",
+                load = 42,
+            };
+            LoadRow row = new LoadRow(info) { ClassName = "D21", LoadText = "36" };
+
+            Controller.CourseLoadInfo result = row.ToCourseLoadInfo();
+
+            Assert.That(result.className, Is.EqualTo("D21"));
+            Assert.That(result.load, Is.EqualTo(36));
+        }
+
+        /// <summary>Overview exposes stable control identity and records control navigation.</summary>
+        [Test]
+        public void ControlOverviewNavigationUsesStableIdentity()
+        {
+            CourseControlOverviewDialogViewModel overview = new CourseControlOverviewDialogViewModel();
+            ControlOverviewItem control = new ControlOverviewItem {
+                ControlId = new Id<ControlPoint>(7),
+                Name = "42",
+                CourseIds = new[] { new Id<Course>(3) },
+            };
+            overview.SelectedControl = control;
+
+            Assert.That(overview.NavigateToSelectedControlCommand.CanExecute(null), Is.True);
+            overview.NavigateToSelectedControlCommand.Execute(null);
+            Assert.That(overview.NavigateToSelectedControlRequested, Is.True);
+            Assert.That(overview.SelectedControl.ControlId, Is.EqualTo(new Id<ControlPoint>(7)));
+        }
+
+        /// <summary>Course comparison reports common controls and distinct controls/legs.</summary>
+        [Test]
+        public void CourseOverviewComparisonReportsDifferences()
+        {
+            CourseControlOverviewDialogViewModel overview = new CourseControlOverviewDialogViewModel();
+            CourseOverviewItem first = new CourseOverviewItem {
+                CourseId = new Id<Course>(1), Name = "A",
+                ControlIds = new[] { new Id<ControlPoint>(1), new Id<ControlPoint>(2) },
+                LegKeys = new[] { "1-2" },
+            };
+            CourseOverviewItem second = new CourseOverviewItem {
+                CourseId = new Id<Course>(2), Name = "B",
+                ControlIds = new[] { new Id<ControlPoint>(2), new Id<ControlPoint>(3) },
+                LegKeys = new[] { "2-3" },
+            };
+            overview.ComparisonCourse = first;
+            overview.ComparisonWithCourse = second;
+
+            overview.CompareCoursesCommand.Execute(null);
+
+            Assert.That(overview.CompareCoursesRequested, Is.True);
+            Assert.That(overview.ComparisonSummary, Does.Contain("1 common controls"));
+            Assert.That(overview.ComparisonSummary, Does.Contain("1 only here"));
+        }
+
+        [Test]
+        public void CourseOverviewLoadValidation_AllowsBlankOrNonNegativeWholeNumberOnly()
+        {
+            CourseControlOverviewDialogViewModel blank = new CourseControlOverviewDialogViewModel();
+            blank.Courses.Add(new CourseOverviewItem { LoadText = "  " });
+            Assert.That(blank.ValidateLoadTexts(), Is.True);
+            blank.SaveEditsCommand.Execute(null);
+            Assert.That(blank.SaveEditsRequested, Is.True);
+
+            CourseControlOverviewDialogViewModel zero = new CourseControlOverviewDialogViewModel();
+            zero.Courses.Add(new CourseOverviewItem { LoadText = "0" });
+            Assert.That(zero.ValidateLoadTexts(), Is.True);
+
+            CourseControlOverviewDialogViewModel invalid = new CourseControlOverviewDialogViewModel();
+            invalid.Courses.Add(new CourseOverviewItem { LoadText = "-1" });
+            invalid.SaveEditsCommand.Execute(null);
+            Assert.That(invalid.SaveEditsRequested, Is.False);
+            Assert.That(invalid.LoadValidationMessageKey, Is.EqualTo("CourseControlOverviewDialog_InvalidLoad"));
+
+            invalid.Courses[0].LoadText = "many";
+            Assert.That(invalid.ValidateLoadTexts(), Is.False);
         }
 
     }

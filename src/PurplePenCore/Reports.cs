@@ -1223,6 +1223,601 @@ namespace PurplePen
 
 
         // Create a report showing missing things
+        /// <summary>
+        /// Creates a concise event-readiness report that groups the detailed audit
+        /// checks into blockers and warnings for a final competition review.
+        /// </summary>
+        /// <param name="eventDB">The event to analyze.</param>
+        /// <returns>An HTML report body.</returns>
+        public string CreateEventReadinessReport(EventDB eventDB, CoursePdfSettings pdfSettings = null)
+        {
+            List<MissingThing> missingCourseThings = MissingCourseThings(eventDB);
+            List<RepeatControl> repeatedControls = RepeatedControls(eventDB);
+            List<NearbyControls> nearbyControls = FindNearbyControls(eventDB, 100.4999F);
+            List<BothDirectionsLeg> bothDirectionsLegs = BothDirectionsLegs(eventDB);
+            List<Id<ControlPoint>> unusedControls = SortedUnusedControls(eventDB);
+            List<MissingThing> missingBoxes = MissingDescriptionBoxes(eventDB, unusedControls);
+            List<MissingThing> missingPunches = MissingPunches(eventDB, unusedControls);
+            List<MissingThing> missingScores = MissingScores(eventDB);
+            int relayWarnings = CountRelayBranchWarnings(eventDB);
+            List<ShortLeg> shortLegs = FindShortLegs(eventDB, 100.0F);
+            List<SharpTurn> sharpTurns = FindSharpTurns(eventDB, 45.0F);
+            List<CrossedLeg> crossedLegs = FindCrossedLegs(eventDB);
+            List<NumberPlacementIssue> numberIssues = FindNumberPlacementIssues(eventDB);
+            List<PrintReadinessIssue> printIssues = FindPrintReadinessIssues(eventDB);
+            List<ClassReadinessIssue> classIssues = FindClassReadinessIssues(eventDB);
+            List<BacksideReadinessIssue> backsideIssues = FindBacksideReadinessIssues(eventDB, pdfSettings);
+
+            int blockers = missingCourseThings.Count + repeatedControls.Count + missingScores.Count;
+            int warnings = nearbyControls.Count + bothDirectionsLegs.Count + unusedControls.Count + missingBoxes.Count + missingPunches.Count + relayWarnings + shortLegs.Count + sharpTurns.Count + crossedLegs.Count + numberIssues.Count + printIssues.Count + classIssues.Count + backsideIssues.Count;
+
+            InitReport();
+            WriteH1(String.Format(ReadinessText("EventReadiness_Title"), QueryEvent.GetEventTitle(eventDB, " ")));
+            WritePara(blockers == 0
+                ? ReadinessText("EventReadiness_NoBlockers")
+                : String.Format(ReadinessText("EventReadiness_BlockerSummary"), blockers));
+            WritePara(warnings == 0
+                ? ReadinessText("EventReadiness_NoWarnings")
+                : String.Format(ReadinessText("EventReadiness_WarningSummary"), warnings));
+
+            WriteH2(ReadinessText("EventReadiness_Checks"));
+            BeginTable("", 4, "leftalign", "leftalign", "rightalign", "leftalign");
+            WriteTableHeaderRow(ReadinessText("EventReadiness_Status"), ReadinessText("EventReadiness_Area"),
+                                ReadinessText("EventReadiness_Count"), ReadinessText("EventReadiness_Action"));
+            BeginTableBody();
+            WriteReadinessRow(ReadinessText("EventReadiness_Blocker"), ReadinessText("EventReadiness_CourseStructure"),
+                              missingCourseThings.Count + repeatedControls.Count + missingScores.Count, ReadinessText("EventReadiness_CourseAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_ControlSafety"),
+                              nearbyControls.Count + bothDirectionsLegs.Count, ReadinessText("EventReadiness_ControlAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_ShortLegs"),
+                              shortLegs.Count, ReadinessText("EventReadiness_ShortLegsAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_SharpTurns"),
+                              sharpTurns.Count, ReadinessText("EventReadiness_SharpTurnsAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_LegCrossings"),
+                              crossedLegs.Count, ReadinessText("EventReadiness_LegCrossingsAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_ControlData"),
+                              unusedControls.Count + missingBoxes.Count + missingPunches.Count, ReadinessText("EventReadiness_DataAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_Relay"),
+                              relayWarnings, ReadinessText("EventReadiness_RelayAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_Numbering"),
+                              numberIssues.Count, ReadinessText("EventReadiness_NumberingAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_Print"),
+                              printIssues.Count, ReadinessText("EventReadiness_PrintAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_Classes"),
+                              classIssues.Count, ReadinessText("EventReadiness_ClassesAction"));
+            WriteReadinessRow(ReadinessText("EventReadiness_Warning"), ReadinessText("EventReadiness_Backside"),
+                              backsideIssues.Count, ReadinessText("EventReadiness_BacksideAction"));
+            EndTableBody();
+            EndTable();
+
+            WriteReadinessGeometryDetails(eventDB, shortLegs, sharpTurns, crossedLegs);
+            WriteReadinessNumberDetails(eventDB, numberIssues);
+            WriteReadinessPrintDetails(eventDB, printIssues);
+            WriteReadinessClassDetails(eventDB, classIssues);
+            WriteReadinessBacksideDetails(eventDB, backsideIssues);
+
+            WritePara(ReadinessText("EventReadiness_Details"));
+            return FinishReport();
+        }
+
+        private sealed class NumberPlacementIssue
+        {
+            public Id<Course> courseId;
+            public Id<CourseControl> firstCourseControlId;
+            public Id<CourseControl> secondCourseControlId;
+            public float distance;
+            public bool firstCustom;
+            public bool secondCustom;
+        }
+
+        private sealed class PrintReadinessIssue
+        {
+            public Id<Course> courseId;
+            public string reason;
+        }
+
+        private sealed class ClassReadinessIssue
+        {
+            public Id<Course> courseId;
+            public string className;
+            public bool duplicate;
+        }
+
+        private sealed class BacksideReadinessIssue
+        {
+            public string courseName;
+            public string reason;
+        }
+
+        private static List<NumberPlacementIssue> FindNumberPlacementIssues(EventDB eventDB)
+        {
+            const float numberCollisionDistance = 18.0F;
+            List<NumberPlacementIssue> result = new List<NumberPlacementIssue>();
+            foreach (Id<Course> courseId in QueryEvent.SortedCourseIds(eventDB, false)) {
+                List<NumberPlacementIssue> layoutIssues = FindLayoutNumberPlacementIssues(eventDB, courseId);
+                if (layoutIssues != null) {
+                    result.AddRange(layoutIssues);
+                    continue;
+                }
+                List<Id<CourseControl>> ids = QueryEvent.EnumCourseControlIds(eventDB, new CourseDesignator(courseId)).ToList();
+                List<Tuple<Id<CourseControl>, PointF, bool>> placements = new List<Tuple<Id<CourseControl>, PointF, bool>>();
+                foreach (Id<CourseControl> id in ids) {
+                    CourseControl cc = eventDB.GetCourseControl(id);
+                    ControlPoint cp = eventDB.GetControl(cc.control);
+                    PointF location = cp.location;
+                    if (cc.customNumberPlacement)
+                        location = new PointF(location.X + cc.numberDeltaX, location.Y + cc.numberDeltaY);
+                    placements.Add(Tuple.Create(id, location, cc.customNumberPlacement));
+                }
+                for (int first = 0; first < placements.Count; ++first) {
+                    for (int second = first + 1; second < placements.Count; ++second) {
+                        float distance = (float) Geometry.Distance(placements[first].Item2, placements[second].Item2);
+                        if (distance < numberCollisionDistance) {
+                            result.Add(new NumberPlacementIssue {
+                                courseId = courseId,
+                                firstCourseControlId = placements[first].Item1,
+                                secondCourseControlId = placements[second].Item1,
+                                distance = distance,
+                                firstCustom = placements[first].Item3,
+                                secondCustom = placements[second].Item3,
+                            });
+                        }
+                    }
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Uses print-scale CourseLayout bounds as the primary numbering collision evidence.</summary>
+        /// <returns>Issues, or null when the read-only layout cannot be created.</returns>
+        private static List<NumberPlacementIssue> FindLayoutNumberPlacementIssues(EventDB eventDB, Id<Course> courseId)
+        {
+            try {
+                CourseView view = CourseView.CreatePrintingCourseView(eventDB, new CourseDesignator(courseId));
+                CourseLayout layout = new CourseLayout();
+                SymbolDB symbols = new SymbolDB(Util.GetFileInAppDirectory("symbols.xml"));
+                CourseFormatterOptions options = new CourseFormatterOptions { showDescriptions = false, showControlNumbers = true };
+                CourseFormatter.FormatCourseToLayout(symbols, view, new CourseAppearance(), layout, CourseLayer.MainCourse, options);
+                List<CourseObj> numbers = layout.Where(obj => obj is ControlNumberCourseObj).ToList();
+                List<CourseObj> others = layout.Where(obj => !(obj is ControlNumberCourseObj) && obj.courseControlId.IsNotNone).ToList();
+                HashSet<string> seen = new HashSet<string>(StringComparer.Ordinal);
+                List<NumberPlacementIssue> result = new List<NumberPlacementIssue>();
+                foreach (ControlNumberCourseObj number in numbers) {
+                    RectangleF numberBounds = number.GetHighlightBounds();
+                    foreach (CourseObj other in others) {
+                        if (!numberBounds.IntersectsWith(other.GetHighlightBounds()))
+                            continue;
+                        string key = number.courseControlId.id + ":" + other.courseControlId.id + ":" + other.GetType().Name;
+                        if (!seen.Add(key))
+                            continue;
+                        result.Add(new NumberPlacementIssue { courseId = courseId, firstCourseControlId = number.courseControlId,
+                            secondCourseControlId = other.courseControlId, distance = 0, firstCustom = false, secondCustom = false });
+                    }
+                }
+                for (int first = 0; first < numbers.Count; ++first)
+                    for (int second = first + 1; second < numbers.Count; ++second)
+                        if (numbers[first].GetHighlightBounds().IntersectsWith(numbers[second].GetHighlightBounds()))
+                            result.Add(new NumberPlacementIssue { courseId = courseId, firstCourseControlId = numbers[first].courseControlId,
+                                secondCourseControlId = numbers[second].courseControlId, distance = 0, firstCustom = false, secondCustom = false });
+                return result;
+            }
+            catch (Exception) {
+                return null;
+            }
+        }
+
+        private static List<PrintReadinessIssue> FindPrintReadinessIssues(EventDB eventDB)
+        {
+            List<PrintReadinessIssue> result = new List<PrintReadinessIssue>();
+            foreach (Id<Course> courseId in QueryEvent.SortedCourseIds(eventDB, false)) {
+                Course course = eventDB.GetCourse(courseId);
+                if (float.IsNaN(course.printScale) || float.IsInfinity(course.printScale) || course.printScale < 100 || course.printScale > 100000)
+                    result.Add(new PrintReadinessIssue { courseId = courseId, reason = ReadinessText("EventReadiness_InvalidScale") });
+                AddPrintAreaIssues(result, courseId, course.printArea);
+                foreach (KeyValuePair<int, PrintArea> part in course.partPrintAreas)
+                    AddPrintAreaIssues(result, courseId, part.Value);
+            }
+            return result;
+        }
+
+        private static void AddPrintAreaIssues(List<PrintReadinessIssue> result, Id<Course> courseId, PrintArea area)
+        {
+            if (area == null) {
+                result.Add(new PrintReadinessIssue { courseId = courseId, reason = ReadinessText("EventReadiness_MissingPrintArea") });
+                return;
+            }
+            if (!area.autoPrintArea && (area.pageWidth <= 0 || area.pageHeight <= 0))
+                result.Add(new PrintReadinessIssue { courseId = courseId, reason = ReadinessText("EventReadiness_InvalidPaper") });
+            else if (!area.autoPrintArea && (area.pageMargins < 0 || area.pageMargins * 2 >= Math.Min(area.pageWidth, area.pageHeight)))
+                result.Add(new PrintReadinessIssue { courseId = courseId, reason = ReadinessText("EventReadiness_InvalidMargins") });
+            if (!area.autoPrintArea && (area.printAreaRectangle.IsEmpty || area.printAreaRectangle.Width <= 0 || area.printAreaRectangle.Height <= 0))
+                result.Add(new PrintReadinessIssue { courseId = courseId, reason = ReadinessText("EventReadiness_InvalidPrintArea") });
+        }
+
+        private static List<ClassReadinessIssue> FindClassReadinessIssues(EventDB eventDB)
+        {
+            List<ClassReadinessIssue> result = new List<ClassReadinessIssue>();
+            Dictionary<string, List<Id<Course>>> coursesByClass = new Dictionary<string, List<Id<Course>>>(StringComparer.OrdinalIgnoreCase);
+            Dictionary<Id<Course>, List<EventClass>> classesByCourse = eventDB.AllCourseIds.ToDictionary(id => id, id => new List<EventClass>());
+            foreach (EventClass eventClass in eventDB.AllEventClasses) {
+                if (classesByCourse.ContainsKey(eventClass.CourseId))
+                    classesByCourse[eventClass.CourseId].Add(eventClass);
+            }
+            foreach (Id<Course> courseId in QueryEvent.SortedCourseIds(eventDB, false)) {
+                List<EventClass> classes = classesByCourse[courseId];
+                if (classes.Count == 0) {
+                    result.Add(new ClassReadinessIssue { courseId = courseId, className = "", duplicate = false });
+                }
+                else {
+                    foreach (EventClass eventClass in classes) {
+                        string className = eventClass.Name == null ? "" : eventClass.Name.Trim();
+                        if (className.Length == 0) { result.Add(new ClassReadinessIssue { courseId = courseId, className = "", duplicate = false }); continue; }
+                        if (!coursesByClass.ContainsKey(className)) coursesByClass.Add(className, new List<Id<Course>>());
+                        coursesByClass[className].Add(courseId);
+                    }
+                }
+            }
+            foreach (KeyValuePair<string, List<Id<Course>>> pair in coursesByClass) {
+                if (pair.Value.Count > 1)
+                    foreach (Id<Course> courseId in pair.Value)
+                        result.Add(new ClassReadinessIssue { courseId = courseId, className = pair.Key, duplicate = true });
+            }
+            return result;
+        }
+
+        private static List<BacksideReadinessIssue> FindBacksideReadinessIssues(EventDB eventDB, CoursePdfSettings pdfSettings)
+        {
+            List<BacksideReadinessIssue> result = new List<BacksideReadinessIssue>();
+            if (pdfSettings == null)
+                return result;
+            if (!pdfSettings.IncludeBacksideInfo)
+                return result;
+            if (pdfSettings.BacksideInfoRecords == null || pdfSettings.BacksideInfoRecords.Count == 0) {
+                result.Add(new BacksideReadinessIssue { courseName = "", reason = ReadinessText("EventReadiness_BacksideNoRecords") });
+                return result;
+            }
+            foreach (Id<Course> courseId in QueryEvent.SortedCourseIds(eventDB, false)) {
+                Course course = eventDB.GetCourse(courseId);
+                bool hasEventClass = EventClassSupport.GetClasses(eventDB, courseId).Any();
+                if (!hasEventClass && course.relaySettings.relayTeams <= 0)
+                    result.Add(new BacksideReadinessIssue { courseName = course.name, reason = ReadinessText("EventReadiness_BacksideMissingClass") });
+            }
+            return result;
+        }
+
+        /// <summary>Writes the actionable geometry warnings for a final course review.</summary>
+        private void WriteReadinessGeometryDetails(EventDB eventDB, List<ShortLeg> shortLegs, List<SharpTurn> sharpTurns, List<CrossedLeg> crossedLegs)
+        {
+            if (shortLegs.Count == 0 && sharpTurns.Count == 0 && crossedLegs.Count == 0)
+                return;
+
+            WriteH2(ReadinessText("EventReadiness_GeometryDetails"));
+            BeginTable("", 4, "leftalign", "leftalign", "leftalign", "rightalign");
+            WriteTableHeaderRow(ReadinessText("EventReadiness_GeometryType"), ReportText.ColumnHeader_Course,
+                                ReportText.ColumnHeader_Leg, ReadinessText("EventReadiness_GeometryMeasure"));
+            BeginTableBody();
+            foreach (ShortLeg shortLeg in shortLegs) {
+                WriteTableRow(ReadinessText("EventReadiness_ShortLeg"), eventDB.GetCourse(shortLeg.courseId).name,
+                              FormatLeg(eventDB, shortLeg.controlId1, shortLeg.controlId2),
+                              String.Format("{0} m", Math.Round(shortLeg.length)));
+            }
+            foreach (SharpTurn sharpTurn in sharpTurns) {
+                WriteTableRow(ReadinessText("EventReadiness_SharpTurn"), eventDB.GetCourse(sharpTurn.courseId).name,
+                              FormatLeg(eventDB, sharpTurn.controlId1, sharpTurn.controlId2) + " – " +
+                              Util.ControlPointName(eventDB, sharpTurn.controlId3, NameStyle.Medium),
+                              String.Format("{0}°", Math.Round(sharpTurn.angle)));
+            }
+            foreach (CrossedLeg crossedLeg in crossedLegs) {
+                WriteTableRow(ReadinessText("EventReadiness_LegCrossing"), eventDB.GetCourse(crossedLeg.courseId).name,
+                              FormatLeg(eventDB, crossedLeg.controlId1, crossedLeg.controlId2) + " / " +
+                              FormatLeg(eventDB, crossedLeg.controlId3, crossedLeg.controlId4), "");
+            }
+            EndTableBody();
+            EndTable();
+        }
+
+        private void WriteReadinessNumberDetails(EventDB eventDB, List<NumberPlacementIssue> issues)
+        {
+            if (issues.Count == 0)
+                return;
+            WriteH2(ReadinessText("EventReadiness_NumberingDetails"));
+            BeginTable("", 4, "leftalign", "leftalign", "rightalign", "leftalign");
+            WriteTableHeaderRow(ReportText.ColumnHeader_Course, ReadinessText("EventReadiness_NumberPair"),
+                                ReadinessText("EventReadiness_GeometryMeasure"), ReadinessText("EventReadiness_NumberPlacement"));
+            BeginTableBody();
+            foreach (NumberPlacementIssue issue in issues) {
+                CourseControl first = eventDB.GetCourseControl(issue.firstCourseControlId);
+                CourseControl second = eventDB.GetCourseControl(issue.secondCourseControlId);
+                string placement = (issue.firstCustom || issue.secondCustom) ? ReadinessText("EventReadiness_CustomPlacement") : ReadinessText("EventReadiness_AutomaticPlacement");
+                WriteTableRow(eventDB.GetCourse(issue.courseId).name,
+                              eventDB.GetControl(first.control).code + " / " + eventDB.GetControl(second.control).code,
+                              String.Format("{0} map units", Math.Round(issue.distance, 1)), placement);
+            }
+            EndTableBody();
+            EndTable();
+        }
+
+        private void WriteReadinessPrintDetails(EventDB eventDB, List<PrintReadinessIssue> issues)
+        {
+            if (issues.Count == 0)
+                return;
+            WriteH2(ReadinessText("EventReadiness_PrintDetails"));
+            BeginTable("", 2, "leftalign", "leftalign");
+            WriteTableHeaderRow(ReportText.ColumnHeader_Course, ReadinessText("EventReadiness_Reason"));
+            BeginTableBody();
+            foreach (PrintReadinessIssue issue in issues)
+                WriteTableRow(eventDB.GetCourse(issue.courseId).name, issue.reason);
+            EndTableBody();
+            EndTable();
+        }
+
+        private void WriteReadinessClassDetails(EventDB eventDB, List<ClassReadinessIssue> issues)
+        {
+            if (issues.Count == 0)
+                return;
+            WriteH2(ReadinessText("EventReadiness_ClassDetails"));
+            BeginTable("", 3, "leftalign", "leftalign", "leftalign");
+            WriteTableHeaderRow(ReportText.ColumnHeader_Course, ReadinessText("EventReadiness_Class"), ReadinessText("EventReadiness_Reason"));
+            BeginTableBody();
+            foreach (ClassReadinessIssue issue in issues)
+                WriteTableRow(eventDB.GetCourse(issue.courseId).name, issue.className,
+                              ReadinessText(issue.duplicate ? "EventReadiness_DuplicateClass" : "EventReadiness_MissingClass"));
+            EndTableBody();
+            EndTable();
+        }
+
+        private void WriteReadinessBacksideDetails(EventDB eventDB, List<BacksideReadinessIssue> issues)
+        {
+            if (issues.Count == 0)
+                return;
+            WriteH2(ReadinessText("EventReadiness_BacksideDetails"));
+            BeginTable("", 2, "leftalign", "leftalign");
+            WriteTableHeaderRow(ReportText.ColumnHeader_Course, ReadinessText("EventReadiness_Reason"));
+            BeginTableBody();
+            foreach (BacksideReadinessIssue issue in issues)
+                WriteTableRow(issue.courseName, issue.reason);
+            EndTableBody();
+            EndTable();
+        }
+
+        /// <summary>Formats one course leg for a readiness-report table.</summary>
+        private static string FormatLeg(EventDB eventDB, Id<ControlPoint> controlId1, Id<ControlPoint> controlId2)
+        {
+            return Util.ControlPointName(eventDB, controlId1, NameStyle.Medium) + " – " +
+                   Util.ControlPointName(eventDB, controlId2, NameStyle.Medium);
+        }
+
+        private static int CountRelayBranchWarnings(EventDB eventDB)
+        {
+            int warnings = 0;
+            foreach (KeyValuePair<Id<Course>, Course> coursePair in eventDB.AllCoursePairs) {
+                if (coursePair.Value.relaySettings != null)
+                    warnings += new RelayVariations(eventDB, coursePair.Key, coursePair.Value.relaySettings).GetBranchWarnings().Count();
+            }
+            return warnings;
+        }
+
+        /// <summary>One course leg whose measured length merits a publication review.</summary>
+        private struct ShortLeg
+        {
+            public Id<Course> courseId;
+            public Id<ControlPoint> controlId1;
+            public Id<ControlPoint> controlId2;
+            public float length;
+        }
+
+        /// <summary>One potentially difficult acute turn at a normal control.</summary>
+        private struct SharpTurn
+        {
+            public Id<Course> courseId;
+            public Id<ControlPoint> controlId1;
+            public Id<ControlPoint> controlId2;
+            public Id<ControlPoint> controlId3;
+            public float angle;
+        }
+
+        /// <summary>Two non-adjacent legs that cross at an interior point.</summary>
+        private struct CrossedLeg
+        {
+            public Id<Course> courseId;
+            public Id<ControlPoint> controlId1;
+            public Id<ControlPoint> controlId2;
+            public Id<ControlPoint> controlId3;
+            public Id<ControlPoint> controlId4;
+        }
+
+        /// <summary>
+        /// Finds physical course legs shorter than the supplied limit. Crossing and map-issue
+        /// helper points are excluded because they are layout mechanics, not runner legs.
+        /// </summary>
+        private static List<ShortLeg> FindShortLegs(EventDB eventDB, float distanceLimit)
+        {
+            List<ShortLeg> shortLegs = new List<ShortLeg>();
+            HashSet<string> seenLegs = new HashSet<string>();
+
+            foreach (Id<Course> courseId in QueryEvent.SortedCourseIds(eventDB, false)) {
+                Course course = eventDB.GetCourse(courseId);
+                if (course.kind == CourseKind.Score)
+                    continue;
+
+                foreach (QueryEvent.LegInfo legInfo in QueryEvent.EnumLegs(eventDB, new CourseDesignator(courseId))) {
+                    Id<ControlPoint> controlId1 = eventDB.GetCourseControl(legInfo.courseControlId1).control;
+                    Id<ControlPoint> controlId2 = eventDB.GetCourseControl(legInfo.courseControlId2).control;
+                    ControlPointKind kind1 = eventDB.GetControl(controlId1).kind;
+                    ControlPointKind kind2 = eventDB.GetControl(controlId2).kind;
+                    if (kind1 == ControlPointKind.CrossingPoint || kind2 == ControlPointKind.CrossingPoint ||
+                        kind1 == ControlPointKind.MapIssue || kind2 == ControlPointKind.MapIssue)
+                        continue;
+
+                    string identity = String.Format("{0}:{1}:{2}", courseId.id, controlId1.id, controlId2.id);
+                    if (!seenLegs.Add(identity))
+                        continue;
+
+                    float length = QueryEvent.ComputeLegLength(eventDB, controlId1, controlId2,
+                        QueryEvent.FindLeg(eventDB, controlId1, controlId2));
+                    if (length < distanceLimit) {
+                        shortLegs.Add(new ShortLeg {
+                            courseId = courseId,
+                            controlId1 = controlId1,
+                            controlId2 = controlId2,
+                            length = length,
+                        });
+                    }
+                }
+            }
+
+            return shortLegs;
+        }
+
+        /// <summary>
+        /// Finds successive legs that make an acute turn at a normal control. These
+        /// are review warnings only: an intentional dogleg can be correct on site.
+        /// </summary>
+        private static List<SharpTurn> FindSharpTurns(EventDB eventDB, float angleLimit)
+        {
+            List<SharpTurn> sharpTurns = new List<SharpTurn>();
+            HashSet<string> seenTurns = new HashSet<string>();
+
+            foreach (Id<Course> courseId in QueryEvent.SortedCourseIds(eventDB, false)) {
+                if (eventDB.GetCourse(courseId).kind == CourseKind.Score)
+                    continue;
+
+                List<QueryEvent.LegInfo> legs = QueryEvent.EnumLegs(eventDB, new CourseDesignator(courseId)).ToList();
+                foreach (QueryEvent.LegInfo incomingLeg in legs) {
+                    foreach (QueryEvent.LegInfo outgoingLeg in legs) {
+                        if (incomingLeg.courseControlId2 != outgoingLeg.courseControlId1)
+                            continue;
+
+                        Id<ControlPoint> controlId1 = eventDB.GetCourseControl(incomingLeg.courseControlId1).control;
+                        Id<ControlPoint> controlId2 = eventDB.GetCourseControl(incomingLeg.courseControlId2).control;
+                        Id<ControlPoint> controlId3 = eventDB.GetCourseControl(outgoingLeg.courseControlId2).control;
+                        if (eventDB.GetControl(controlId2).kind != ControlPointKind.Normal)
+                            continue;
+
+                        float angle = Geometry.Angle(eventDB.GetControl(controlId1).location,
+                                                     eventDB.GetControl(controlId2).location,
+                                                     eventDB.GetControl(controlId3).location);
+                        if (angle >= angleLimit)
+                            continue;
+
+                        string identity = String.Format("{0}:{1}:{2}:{3}", courseId.id, controlId1.id, controlId2.id, controlId3.id);
+                        if (seenTurns.Add(identity)) {
+                            sharpTurns.Add(new SharpTurn {
+                                courseId = courseId,
+                                controlId1 = controlId1,
+                                controlId2 = controlId2,
+                                controlId3 = controlId3,
+                                angle = angle,
+                            });
+                        }
+                    }
+                }
+            }
+
+            return sharpTurns;
+        }
+
+        /// <summary>
+        /// Finds non-adjacent legs in the same normal course whose rendered center
+        /// lines cross. Intersections at an endpoint are ignored: they are normal
+        /// at controls, and can also occur where a line reaches a finish symbol.
+        /// </summary>
+        private static List<CrossedLeg> FindCrossedLegs(EventDB eventDB)
+        {
+            List<CrossedLeg> crossedLegs = new List<CrossedLeg>();
+
+            foreach (Id<Course> courseId in QueryEvent.SortedCourseIds(eventDB, false)) {
+                if (eventDB.GetCourse(courseId).kind == CourseKind.Score)
+                    continue;
+
+                List<CourseLeg> courseLegs = new List<CourseLeg>();
+                HashSet<string> seenLegs = new HashSet<string>();
+                foreach (QueryEvent.LegInfo legInfo in QueryEvent.EnumLegs(eventDB, new CourseDesignator(courseId))) {
+                    Id<ControlPoint> controlId1 = eventDB.GetCourseControl(legInfo.courseControlId1).control;
+                    Id<ControlPoint> controlId2 = eventDB.GetCourseControl(legInfo.courseControlId2).control;
+                    ControlPointKind kind1 = eventDB.GetControl(controlId1).kind;
+                    ControlPointKind kind2 = eventDB.GetControl(controlId2).kind;
+                    if (kind1 == ControlPointKind.CrossingPoint || kind2 == ControlPointKind.CrossingPoint ||
+                        kind1 == ControlPointKind.MapIssue || kind2 == ControlPointKind.MapIssue)
+                        continue;
+
+                    string identity = String.Format("{0}:{1}", controlId1.id, controlId2.id);
+                    if (seenLegs.Add(identity))
+                        courseLegs.Add(new CourseLeg(controlId1, controlId2));
+                }
+
+                for (int first = 0; first < courseLegs.Count; ++first) {
+                    for (int second = first + 1; second < courseLegs.Count; ++second) {
+                        CourseLeg firstLeg = courseLegs[first];
+                        CourseLeg secondLeg = courseLegs[second];
+                        if (LegsShareControl(firstLeg, secondLeg) || !LegsCross(eventDB, firstLeg, secondLeg))
+                            continue;
+
+                        crossedLegs.Add(new CrossedLeg {
+                            courseId = courseId,
+                            controlId1 = firstLeg.controlId1,
+                            controlId2 = firstLeg.controlId2,
+                            controlId3 = secondLeg.controlId1,
+                            controlId4 = secondLeg.controlId2,
+                        });
+                    }
+                }
+            }
+
+            return crossedLegs;
+        }
+
+        /// <summary>Returns true if two logical legs have a common control point.</summary>
+        private static bool LegsShareControl(CourseLeg firstLeg, CourseLeg secondLeg)
+        {
+            return firstLeg.controlId1 == secondLeg.controlId1 || firstLeg.controlId1 == secondLeg.controlId2 ||
+                   firstLeg.controlId2 == secondLeg.controlId1 || firstLeg.controlId2 == secondLeg.controlId2;
+        }
+
+        /// <summary>Returns true when any two path segments have a proper intersection.</summary>
+        private static bool LegsCross(EventDB eventDB, CourseLeg firstLeg, CourseLeg secondLeg)
+        {
+            PointF[] firstPath = QueryEvent.GetLegPath(eventDB, firstLeg.controlId1, firstLeg.controlId2).Points;
+            PointF[] secondPath = QueryEvent.GetLegPath(eventDB, secondLeg.controlId1, secondLeg.controlId2).Points;
+
+            for (int firstSegment = 1; firstSegment < firstPath.Length; ++firstSegment) {
+                for (int secondSegment = 1; secondSegment < secondPath.Length; ++secondSegment) {
+                    PointF intersection;
+                    if (Geometry.LineSegmentsIntersect(firstPath[firstSegment - 1], firstPath[firstSegment],
+                                                       secondPath[secondSegment - 1], secondPath[secondSegment], out intersection) &&
+                        IsInteriorIntersection(intersection, firstPath[firstSegment - 1], firstPath[firstSegment],
+                                               secondPath[secondSegment - 1], secondPath[secondSegment]))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>Returns true if an intersection is not one of either segment's endpoints.</summary>
+        private static bool IsInteriorIntersection(PointF intersection, PointF firstStart, PointF firstEnd, PointF secondStart, PointF secondEnd)
+        {
+            const float endpointTolerance = 0.01F;
+            return !float.IsNaN(intersection.X) &&
+                   Geometry.Distance(intersection, firstStart) > endpointTolerance &&
+                   Geometry.Distance(intersection, firstEnd) > endpointTolerance &&
+                   Geometry.Distance(intersection, secondStart) > endpointTolerance &&
+                   Geometry.Distance(intersection, secondEnd) > endpointTolerance;
+        }
+
+        private static string ReadinessText(string key)
+        {
+            return ReportText.ResourceManager.GetString(key) ?? key;
+        }
+
+        private void WriteReadinessRow(string problemStatus, string area, int count, string action)
+        {
+            string status = count == 0 ? ReadinessText("EventReadiness_Ready") : problemStatus;
+            WriteTableRow(status, area, Convert.ToString(count), count == 0 ? ReadinessText("EventReadiness_NoAction") : action);
+        }
+
         public string CreateEventAuditReport(EventDB eventDB)
         {
             bool problemFound = false;
@@ -1432,6 +2027,19 @@ namespace PurplePen
                 string codesMore = string.Join(", ", branchWarning.codeMore);
                 string codesLess = string.Join(", ", branchWarning.codeLess);
                 WritePara(String.Format(ReportText.RelayVariation_BranchWarning, branchWarning.ControlCode, branchWarning.numMore, codesMore, branchWarning.numLess, codesLess));
+            }
+
+            IEnumerable<RelayVariations.ForkKeyEntry> forkKey = relayVariations.GetForkKey();
+            if (forkKey.Any()) {
+                WriteH2(ReportText.RelayVariation_ForkKey);
+                BeginTable("", 2, "leftalign", "leftalign");
+                WriteTableHeaderRow(ReportText.ColumnHeader_Control, ReportText.ColumnHeader_Code);
+                BeginTableBody();
+                foreach (RelayVariations.ForkKeyEntry entry in forkKey) {
+                    WriteTableRow(entry.ControlCode, string.Join(", ", entry.BranchCodes));
+                }
+                EndTableBody();
+                EndTable();
             }
 
             string[] classes = new string[relayVariations.NumberOfLegs + 1];

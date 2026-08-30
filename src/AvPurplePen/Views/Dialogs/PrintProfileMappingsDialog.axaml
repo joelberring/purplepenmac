@@ -6,6 +6,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:PurplePen.ViewModels"
         xmlns:core="using:PurplePen"
+        xmlns:controls="using:AvPurplePen.Controls"
         xmlns:resx="using:AvPurplePen"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -15,8 +16,8 @@
         x:DataType="vm:PrintProfileMappingsDialogViewModel"
         Title="{resx:Localize PrintProfileMappingsDialog_Title}"
         Icon="/Assets/transparent.ico"
-        d:DesignWidth="760" d:DesignHeight="520"
-        Width="760" Height="520"
+        d:DesignWidth="980" d:DesignHeight="700"
+        Width="980" Height="700"
         CanResize="True"
         CanMinimize="False"
         CanMaximize="False"
@@ -47,52 +48,70 @@
         </StackPanel>
 
         <Grid RowDefinitions="Auto,*" RowSpacing="10">
-            <StackPanel Grid.Row="0" Spacing="10">
+            <StackPanel Grid.Row="0" Spacing="8">
                 <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_instructions_Text}"
                            TextWrapping="Wrap"/>
-                <Border Background="{DynamicResource SemiGrey1}" Padding="10" CornerRadius="4">
-                    <StackPanel Spacing="3">
-                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_stepsHeader_Text}" FontWeight="SemiBold"/>
-                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step1_Text}" TextWrapping="Wrap"/>
-                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step2_Text}" TextWrapping="Wrap"/>
-                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_step3_Text}" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
-                <TextBlock Text="{Binding ProfileName}"
-                           FontWeight="Bold"/>
+                <TextBlock Text="{Binding ProfileName}" FontWeight="Bold"/>
+                <Grid ColumnDefinitions="1.35*,16,*" Margin="8,4,8,0">
+                    <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_sourceLayerHeader_Text}" FontWeight="SemiBold"/>
+                    <TextBlock Grid.Column="2" Text="{resx:Localize PrintProfileMappingsDialog_targetHandlingHeader_Text}" FontWeight="SemiBold"/>
+                </Grid>
             </StackPanel>
             <ScrollViewer Grid.Row="1"
                           HorizontalScrollBarVisibility="Disabled"
                           VerticalScrollBarVisibility="Auto">
-                <ItemsControl ItemsSource="{Binding MappingItems}">
+                <ItemsControl ItemsSource="{Binding SourceLayers}">
                     <ItemsControl.ItemTemplate>
-                        <DataTemplate x:DataType="vm:PrintProfileMappingItemViewModel">
-                            <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" Padding="8" Margin="0,3">
-                                <Grid ColumnDefinitions="*,16,*" RowDefinitions="Auto,Auto,Auto">
-                                    <TextBlock Grid.Column="0" Text="{resx:Localize PrintProfileMappingsDialog_profileColorHeader_Text}" FontWeight="SemiBold"/>
-                                    <TextBlock Grid.Column="2" Text="{resx:Localize PrintProfileMappingsDialog_mapColorHeader_Text}" FontWeight="SemiBold"/>
-                                    <StackPanel Grid.Row="1" Grid.Column="0" Orientation="Horizontal" Spacing="8" Margin="0,5,0,0">
-                                        <Border Width="42" Height="30" Background="{Binding TargetPreviewColor}" BorderBrush="Black" BorderThickness="1" CornerRadius="2"/>
-                                        <StackPanel Spacing="1">
-                                            <TextBlock Text="{Binding RuleName}" FontWeight="SemiBold"/>
-                                            <TextBlock Text="{Binding TargetCmyk}"/>
-                                            <TextBlock IsVisible="{Binding TargetUsesOverprint}" Text="{resx:Localize PrintProfileMappingsDialog_overprint_Text}"/>
-                                            <TextBlock IsVisible="{Binding TargetUsesKnockout}" Text="{resx:Localize PrintProfileMappingsDialog_knockout_Text}"/>
+                        <DataTemplate x:DataType="vm:PrintProfileSourceLayerViewModel">
+                            <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" Padding="10" Margin="0,3" CornerRadius="3">
+                                <Grid ColumnDefinitions="1.35*,16,*">
+                                    <StackPanel Grid.Column="0" Spacing="7">
+                                        <StackPanel Orientation="Horizontal" Spacing="10">
+                                            <Border Width="46" Height="34" Background="{Binding SourcePreviewColor}" BorderBrush="Black" BorderThickness="1" CornerRadius="3"/>
+                                            <StackPanel Spacing="1">
+                                                <TextBlock Text="{Binding SourceColor.Name}" FontWeight="SemiBold"/>
+                                                <TextBlock Text="{Binding SourceIdentity}" FontSize="11" Opacity="0.72"/>
+                                                <TextBlock Text="{Binding SourceCmyk}" FontSize="11" Opacity="0.72"/>
+                                            </StackPanel>
                                         </StackPanel>
+                                        <ItemsControl ItemsSource="{Binding SourceColor.Symbols}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="core:SourceMapSymbol">
+                                                    <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" CornerRadius="3" Padding="5" Margin="0,0,5,5">
+                                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                                            <controls:MapSymbolIconControl Width="28" Height="28" Pixels="{Binding IconArgb}"
+                                                                                           PixelWidth="{Binding IconWidth}" PixelHeight="{Binding IconHeight}"/>
+                                                            <StackPanel VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding SymbolId}" FontWeight="SemiBold" FontSize="11"/>
+                                                                <TextBlock Text="{Binding Name}" FontSize="10" MaxWidth="150" TextTrimming="CharacterEllipsis"/>
+                                                            </StackPanel>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_noSymbols_Text}" IsVisible="{Binding !HasSymbols}" FontSize="11" Opacity="0.65"/>
                                     </StackPanel>
-                                    <ComboBox Grid.Row="1" Grid.Column="2"
-                                              ItemsSource="{Binding Candidates}"
-                                              SelectedItem="{Binding SelectedColor, Mode=TwoWay}"
-                                              Margin="0,5,0,0">
+                                    <StackPanel Grid.Column="2" Spacing="6" VerticalAlignment="Center">
+                                        <ComboBox ItemsSource="{Binding TargetOptions}"
+                                              SelectedItem="{Binding SelectedTarget, Mode=TwoWay}">
                                         <ComboBox.ItemTemplate>
-                                            <DataTemplate x:DataType="core:SourceMapColor">
-                                                <TextBlock Text="{Binding DisplayName}" TextWrapping="Wrap"/>
+                                            <DataTemplate x:DataType="vm:PrintProfileTargetOptionViewModel">
+                                                <Grid ColumnDefinitions="Auto,*" ColumnSpacing="8">
+                                                    <Border Width="34" Height="22" Background="{Binding PreviewColor}" BorderBrush="Black" BorderThickness="1" CornerRadius="2"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_keepOriginal_Text}" IsVisible="{Binding IsKeepOriginal}" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding RuleName}" IsVisible="{Binding !IsKeepOriginal}" FontWeight="SemiBold"/>
+                                                        <TextBlock Text="{Binding TargetCmyk}" FontSize="11" Opacity="0.72"/>
+                                                    </StackPanel>
+                                                </Grid>
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
-                                    </ComboBox>
-                                    <StackPanel Grid.Row="2" Grid.Column="2" Orientation="Horizontal" Spacing="8" Margin="0,6,0,0">
-                                        <Border Width="42" Height="24" Background="{Binding SelectedPreviewColor}" BorderBrush="Black" BorderThickness="1" CornerRadius="2"/>
-                                        <TextBlock Text="{Binding SelectedColorDetails}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                        </ComboBox>
+                                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_unpairedHelp_Text}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>

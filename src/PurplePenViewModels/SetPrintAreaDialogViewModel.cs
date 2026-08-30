@@ -26,7 +26,10 @@
 
 using System;
 using System.Drawing;
+using System.Collections.ObjectModel;
+using System.Linq;
 using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 
 namespace PurplePen.ViewModels
 {
@@ -42,6 +45,10 @@ namespace PurplePen.ViewModels
     /// </summary>
     public partial class SetPrintAreaDialogViewModel : ViewModelBase, IDisposable
     {
+        // Six millimetres is a conservative minimum safe margin for ordinary
+        // desktop printers. Values are stored in hundredths of an inch.
+        private const int MinimumSafeMargin = 24;
+
         private Controller? controller;
         private PrintAreaKind printAreaKind;
 
@@ -58,6 +65,23 @@ namespace PurplePen.ViewModels
         // True once the close originated from the window itself (Cancel / X), so
         // Dispose doesn't try to close an already-closing window re-entrantly.
         private bool windowClosing;
+
+        /// <summary>Reusable named paper/workshop templates stored in user settings.</summary>
+        public ObservableCollection<PrintWorkshopTemplate> Templates { get; } = new ObservableCollection<PrintWorkshopTemplate>();
+
+        [ObservableProperty, NotifyCanExecuteChangedFor(nameof(ApplyTemplateCommand)), NotifyCanExecuteChangedFor(nameof(DeleteTemplateCommand))]
+        private PrintWorkshopTemplate? selectedTemplate;
+
+        [ObservableProperty]
+        private string templateName = "";
+
+        public SetPrintAreaDialogViewModel()
+        {
+            if (UserSettings.Current?.PrintWorkshopTemplates != null) {
+                foreach (PrintWorkshopTemplate template in UserSettings.Current.PrintWorkshopTemplates)
+                    Templates.Add(template.Clone());
+            }
+        }
 
         /// <summary>
         /// The Controller that owns the active event and the rectangle-select
@@ -106,11 +130,22 @@ namespace PurplePen.ViewModels
 
         /// <summary>Page margin, in hundredths of an inch (bound to PaperSizeControl).</summary>
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(HasLowMarginWarning))]
         private int paperMargin;
 
         /// <summary>Whether the page is landscape (bound to PaperSizeControl).</summary>
         [ObservableProperty]
         private bool landscape;
+
+        /// <summary>Rotation of the map utsnitt in degrees, persisted with the print area.</summary>
+        [ObservableProperty]
+        private double rotationDegrees;
+
+        /// <summary>
+        /// True when the configured common page margin is below the conservative
+        /// six-millimetre safety margin used to avoid printer clipping.
+        /// </summary>
+        public bool HasLowMarginWarning => PaperMargin >= 0 && PaperMargin < MinimumSafeMargin;
 
         /// <summary>
         /// The print area, assembled from / decomposed into the UI fields. The
@@ -131,6 +166,7 @@ namespace PurplePen.ViewModels
                     PaperMargin = value.pageMargins;
                     Landscape = value.pageLandscape;
                 }
+                RotationDegrees = value.rotation;
                 updateInProgress = false;
 
                 SendPrintAreaUpdate();
@@ -150,6 +186,7 @@ namespace PurplePen.ViewModels
                 pageHeight = PaperHeight,
                 pageMargins = PaperMargin,
                 pageLandscape = Landscape,
+                rotation = (float)RotationDegrees,
                 printAreaRectangle = controller?.SetPrintAreaCurrentRectangle() ?? new RectangleF(),
             };
         }
@@ -173,6 +210,61 @@ namespace PurplePen.ViewModels
         partial void OnPaperHeightChanged(int value) => SendPrintAreaUpdate();
         partial void OnPaperMarginChanged(int value) => SendPrintAreaUpdate();
         partial void OnLandscapeChanged(bool value) => SendPrintAreaUpdate();
+        partial void OnRotationDegreesChanged(double value) => SendPrintAreaUpdate();
+
+        private bool CanApplyTemplate() => SelectedTemplate != null;
+        private bool CanDeleteTemplate() => SelectedTemplate != null;
+
+        /// <summary>Applies the selected reusable paper template to the live print area.</summary>
+        [RelayCommand(CanExecute = nameof(CanApplyTemplate))]
+        private void ApplyTemplate()
+        {
+            if (SelectedTemplate == null)
+                return;
+            PaperWidth = SelectedTemplate.PageWidth;
+            PaperHeight = SelectedTemplate.PageHeight;
+            PaperMargin = SelectedTemplate.PageMargins;
+            Landscape = SelectedTemplate.Landscape;
+            FixSizeToPaper = SelectedTemplate.FixSizeToPaper;
+            RotationDegrees = SelectedTemplate.Rotation;
+        }
+
+        /// <summary>Saves the current paper configuration as a named user template.</summary>
+        [RelayCommand]
+        private void SaveTemplate()
+        {
+            string name = TemplateName.Trim();
+            if (name.Length == 0)
+                return;
+            PrintWorkshopTemplate template = new PrintWorkshopTemplate {
+                Name = name, PageWidth = PaperWidth, PageHeight = PaperHeight,
+                PageMargins = PaperMargin, Landscape = Landscape,
+                Rotation = (float)RotationDegrees, FixSizeToPaper = FixSizeToPaper,
+            };
+            PrintWorkshopTemplate? existing = Templates.FirstOrDefault(item => string.Equals(item.Name, name, StringComparison.CurrentCultureIgnoreCase));
+            if (existing != null)
+                Templates.Remove(existing);
+            Templates.Add(template);
+            SelectedTemplate = template;
+            if (UserSettings.Current != null) {
+                UserSettings.Current.PrintWorkshopTemplates = Templates.Select(item => item.Clone()).ToList();
+                UserSettings.Current.Save();
+            }
+        }
+
+        /// <summary>Removes the selected user template.</summary>
+        [RelayCommand(CanExecute = nameof(CanDeleteTemplate))]
+        private void DeleteTemplate()
+        {
+            if (SelectedTemplate == null)
+                return;
+            Templates.Remove(SelectedTemplate);
+            SelectedTemplate = null;
+            if (UserSettings.Current != null) {
+                UserSettings.Current.PrintWorkshopTemplates = Templates.Select(item => item.Clone()).ToList();
+                UserSettings.Current.Save();
+            }
+        }
 
         /// <summary>
         /// Reacts to the user toggling the "automatic" checkbox. When switching

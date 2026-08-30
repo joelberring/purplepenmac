@@ -33,6 +33,7 @@
   </ItemGroup>
   
   <ItemGroup>
+    <EmbeddedResource Include="..\..\doc\devdocs\IOFdata30\iof.xsd" Link="iof.xsd" LogicalName="PurplePen.iof.xsd" />
     <Content Include="symbols.xml">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       <SubType>Designer</SubType>

@@ -75,6 +75,21 @@ namespace PurplePen.Tests
         }
 
         [TestMethod]
+        public async Task ForkKeyIsInCourseOrder()
+        {
+            await Setup(TestUtil.GetTestFile("relay\\relay.ppen"));
+
+            RelayVariations relays = new RelayVariations(eventDB, CourseId(4), new RelaySettings(1, 6));
+            RelayVariations.ForkKeyEntry[] key = relays.GetForkKey().ToArray();
+
+            Assert.AreEqual(2, key.Length);
+            Assert.AreEqual("31", key[0].ControlCode);
+            CollectionAssert.AreEqual(new char[] { 'A', 'B' }, key[0].BranchCodes.ToArray());
+            Assert.AreEqual("38", key[1].ControlCode);
+            CollectionAssert.AreEqual(new char[] { 'C', 'D', 'E' }, key[1].BranchCodes.ToArray());
+        }
+
+        [TestMethod]
         public async Task GenerateAssignment1()
         {
             await Setup(TestUtil.GetTestFile("relay\\relay.ppen"));

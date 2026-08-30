@@ -56,6 +56,7 @@ namespace PurplePen.ViewModels
 
         [ObservableProperty]
         [NotifyPropertyChangedFor(nameof(SizesEnabled))]
+        [NotifyPropertyChangedFor(nameof(ScaleItemSizesEnabled))]
         private bool useIofStandardSizes;
 
         [ObservableProperty]
@@ -80,7 +81,8 @@ namespace PurplePen.ViewModels
         [ObservableProperty]
         private decimal legGapSize = 3.5m;
 
-        // 0 = None, 1 = Relative to map scale, 2 = Relative to 1:15000.
+        // 0 = None, 1 = Relative to map scale, 2 = Relative to the selected
+        // IOF standard (1:15000 for ISOM, 1:4000 for ISSprOM).
         [ObservableProperty]
         private int scaleItemSizesIndex;
 
@@ -129,6 +131,9 @@ namespace PurplePen.ViewModels
 
         /// <summary>The size NumericUpDowns are editable only when not using IOF standard sizes.</summary>
         public bool SizesEnabled => !UseIofStandardSizes;
+
+        /// <summary>Manual scaling choices are unavailable while IOF standard sizes are active.</summary>
+        public bool ScaleItemSizesEnabled => !UseIofStandardSizes;
 
         /// <summary>The CMYK NumericUpDowns are editable only when not using the map's purple color.</summary>
         public bool CmykEnabled => !UseDefaultPurple;
@@ -277,6 +282,12 @@ namespace PurplePen.ViewModels
                     case ItemScaling.RelativeTo15000: ScaleItemSizesIndex = 2; break;
                 }
 
+                // Normalize older files that combined standard dimensions with
+                // source-map-relative scaling. That combination makes the printed
+                // size depend on the OCAD/OMAP file's original scale.
+                if (UseIofStandardSizes)
+                    ScaleItemSizesIndex = StandardScaleItemSizesIndex();
+
                 // Decompose the purple color. When using the map's default purple,
                 // the displayed CMYK reflects the default rather than the stored color.
                 UseDefaultPurple = value.useDefaultPurple;
@@ -312,6 +323,19 @@ namespace PurplePen.ViewModels
                 LineWidth = (decimal)NormalCourseAppearance.lineThickness;
                 NumberHeight = (decimal)NormalCourseAppearance.nominalControlNumberHeight;
                 CenterDotDiameter = (decimal)NormalCourseAppearance.centerDotDiameter;
+                ScaleItemSizesIndex = StandardScaleItemSizesIndex();
+            }
+        }
+
+        /// <summary>Updates standard dimensions if the selected map standard changes.</summary>
+        partial void OnMapStandardChanged(string value)
+        {
+            if (UseIofStandardSizes) {
+                ControlCircleDiameter = StandardControlCircleDiameter();
+                LineWidth = (decimal)NormalCourseAppearance.lineThickness;
+                NumberHeight = (decimal)NormalCourseAppearance.nominalControlNumberHeight;
+                CenterDotDiameter = (decimal)NormalCourseAppearance.centerDotDiameter;
+                ScaleItemSizesIndex = StandardScaleItemSizesIndex();
             }
         }
 
@@ -344,6 +368,12 @@ namespace PurplePen.ViewModels
                 return (decimal)NormalCourseAppearance.controlOutsideDiameterSpr2019;
             else
                 return (decimal)NormalCourseAppearance.controlOutsideDiameter2000;
+        }
+
+        /// <summary>Gets the scaling selection required by the current IOF standard.</summary>
+        private int StandardScaleItemSizesIndex()
+        {
+            return MapStandard == "2000" ? 0 : 2;
         }
 
         /// <summary>Sets the CMYK percentage boxes (0..100) from fractional (0..1) components.</summary>

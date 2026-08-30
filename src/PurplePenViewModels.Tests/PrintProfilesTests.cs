@@ -30,6 +30,7 @@
  */
 
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using PurplePen;
@@ -48,8 +49,8 @@ namespace PurplePenViewModels.Tests
             PrintProfileCmyk black = new PrintProfileCmyk { Cyan = 0, Magenta = 0, Yellow = 0, Black = 100 };
             PrintProfileCmyk white = new PrintProfileCmyk { Cyan = -10, Magenta = 0, Yellow = 0, Black = 0 };
 
-            Assert.That(PrintProfileMappingItemViewModel.ToPreviewColor(black), Is.EqualTo("#000000"));
-            Assert.That(PrintProfileMappingItemViewModel.ToPreviewColor(white), Is.EqualTo("#FFFFFF"));
+            Assert.That(PrintProfileMappingsDialogViewModel.ToPreviewColor(black), Is.EqualTo("#000000"));
+            Assert.That(PrintProfileMappingsDialogViewModel.ToPreviewColor(white), Is.EqualTo("#FFFFFF"));
         }
 
         /// <summary>Forest profile preserves BL's transparent violet requirements.</summary>
@@ -114,6 +115,8 @@ namespace PurplePenViewModels.Tests
             Assert.That(restored.Id, Is.EqualTo(original.Id));
             Assert.That(restored.SchemaVersion, Is.EqualTo(PrintProfile.CurrentSchemaVersion));
             Assert.That(restored.SourceDescription, Is.EqualTo(original.SourceDescription));
+            Assert.That(restored.Requirements.RequireCmykOutput, Is.EqualTo(original.Requirements.RequireCmykOutput));
+            Assert.That(restored.Requirements.RequireTrueOverprint, Is.EqualTo(original.Requirements.RequireTrueOverprint));
             Assert.That(restored.ColorRules.Count, Is.EqualTo(original.ColorRules.Count));
             Assert.That(restoredRule.Identifier.OcadIds, Is.EqualTo(new List<short> { 52 }));
             Assert.That(restoredRule.MustBeBelowRuleIds, Does.Contain("brown-contours"));
@@ -309,6 +312,169 @@ namespace PurplePenViewModels.Tests
             Assert.That(settings.ColorModel, Is.EqualTo(ColorModel.CMYK));
         }
 
+        /// <summary>Selecting a profile exposes its colour rules for the visual export review.</summary>
+        [Test]
+        public void PdfDialog_PrintProfileSelection_BuildsColourPreview()
+        {
+            CreatePdfCoursesDialogViewModel viewModel = new CreatePdfCoursesDialogViewModel();
+            viewModel.PrintProfileIndex = 1;
+
+            Assert.That(viewModel.HasSelectedPrintProfile, Is.True);
+            Assert.That(viewModel.SelectedPrintProfileIsForest, Is.True);
+            Assert.That(viewModel.SelectedPrintProfileRules.Count, Is.GreaterThan(0));
+            Assert.That(viewModel.SelectedPrintProfileRules.Any(rule => rule.UsesOverprint), Is.True);
+        }
+
+        /// <summary>A copied profile retains the source profile's course-marking colour rule.</summary>
+        [Test]
+        public void PrintProfileEditor_CopyPreservesCourseColourRule()
+        {
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            PrintProfile source = BuiltInPrintProfiles.CreateBlForest();
+
+            viewModel.LoadCopy(source);
+            PrintProfile copy = viewModel.CreateProfile();
+
+            Assert.That(copy.CourseColorRuleId, Is.EqualTo("violet-transparent"));
+            Assert.That(BuiltInPrintProfiles.GetCourseColorRule(copy).Name, Is.EqualTo("Violett transparent"));
+        }
+
+        /// <summary>A user-owned copy retains the source provenance and output requirements.</summary>
+        [Test]
+        public void PrintProfileEditor_CopyPreservesSourceMetadataAndRequirements()
+        {
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            PrintProfile source = BuiltInPrintProfiles.CreateBlForest();
+            source.Requirements.RequirePdfXOutputIntent = true;
+            source.Requirements.RequireEmbeddedIccProfile = true;
+
+            viewModel.LoadCopy(source);
+            PrintProfile copy = viewModel.CreateProfile();
+
+            Assert.That(copy.SourceUrl, Is.EqualTo(source.SourceUrl));
+            Assert.That(copy.SourceDescription, Is.EqualTo(source.SourceDescription));
+            Assert.That(copy.Requirements.RequirePdfXOutputIntent, Is.True);
+            Assert.That(copy.Requirements.RequireEmbeddedIccProfile, Is.True);
+            Assert.That(copy.Requirements, Is.Not.SameAs(source.Requirements));
+        }
+
+        /// <summary>Malformed profile JSON with missing nested requirements is rejected before it is persisted.</summary>
+        [Test]
+        public void PrintProfileCatalog_RejectsNullRequirements()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            profile.Requirements = null!;
+            string fileName = Path.Combine(Path.GetTempPath(), "purplepen-invalid-profile-" + System.Guid.NewGuid().ToString("N") + ".json");
+            try {
+                File.WriteAllText(fileName, PrintProfileSerializer.Serialize(profile));
+
+                Assert.That(() => PrintProfileCatalog.Import(fileName), Throws.TypeOf<System.ArgumentException>());
+            }
+            finally {
+                if (File.Exists(fileName))
+                    File.Delete(fileName);
+            }
+        }
+
+        /// <summary>The editor exposes all profiles and loads the selected source rather than always using the first one.</summary>
+        [Test]
+        public void PrintProfileEditor_CanChooseSourceProfile()
+        {
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            viewModel.LoadProfiles(PrintProfileCatalog.CreateAll(), "bl-sprint-2025-05-01");
+
+            Assert.That(viewModel.SelectedSourceProfileId, Is.EqualTo("bl-sprint-2025-05-01"));
+            Assert.That(viewModel.Name, Does.StartWith("BL sprint"));
+            Assert.That(viewModel.SourceProfiles.Any(profile => profile.Id == "bl-forest-2026-08-27"), Is.True);
+        }
+
+        /// <summary>A saved copy has a unique ID and is discoverable without shadowing a built-in profile.</summary>
+        [Test]
+        public void PrintProfileEditor_SavedCopyIsDiscoverable()
+        {
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            viewModel.LoadCopy(BuiltInPrintProfiles.CreateBlForest());
+            PrintProfile copy = viewModel.CreateProfile();
+            string fileName = Path.Combine(PrintProfileCatalog.UserProfileDirectory, copy.Id + ".json");
+            try {
+                PrintProfileCatalog.SaveUserProfile(copy);
+                Assert.That(copy.Id, Is.Not.EqualTo("bl-forest-2026-08-27"));
+                Assert.That(PrintProfileCatalog.FindById(copy.Id)?.Name, Is.EqualTo(copy.Name));
+                Assert.That(PrintProfileCatalog.FindById("bl-forest-2026-08-27")?.Name, Is.EqualTo("BL skog"));
+            }
+            finally {
+                if (File.Exists(fileName))
+                    File.Delete(fileName);
+            }
+        }
+
+        /// <summary>The editor lets a user choose another retained rule for course markings.</summary>
+        [Test]
+        public void PrintProfileEditor_ChangesCourseColourRuleWhenSelected()
+        {
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            viewModel.LoadCopy(BuiltInPrintProfiles.CreateBlForest());
+            viewModel.CourseColorRuleIndex = 0;
+
+            PrintProfile copy = viewModel.CreateProfile();
+
+            Assert.That(copy.CourseColorRuleId, Is.EqualTo("violet-opaque"));
+        }
+
+        /// <summary>The editor adds a custom rule with multiple map-colour names for non-destructive matching.</summary>
+        [Test]
+        public void PrintProfileEditor_AddRule_PersistsMultipleMapColourNames()
+        {
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            viewModel.LoadCopy(BuiltInPrintProfiles.CreateBlForest());
+
+            viewModel.AddRuleCommand.Execute(null);
+            PrintProfileRuleEditorItem addedRule = viewModel.SelectedRule!;
+            addedRule.Name = "Custom purple";
+            addedRule.MatchNames = "Custom purple; Course purple; custom purple";
+            addedRule.Cyan = 12;
+
+            PrintProfile copy = viewModel.CreateProfile();
+            PrintProfileColorRule copiedRule = copy.ColorRules.Single(rule => rule.Id == addedRule.Id);
+
+            Assert.That(copy.ColorRules.Count, Is.EqualTo(BuiltInPrintProfiles.CreateBlForest().ColorRules.Count + 1));
+            Assert.That(copiedRule.Name, Is.EqualTo("Custom purple"));
+            Assert.That(copiedRule.Identifier.Names, Is.EqualTo(new string[] { "Custom purple", "Course purple" }));
+            Assert.That(copiedRule.EffectiveCmyk.Cyan, Is.EqualTo(12));
+        }
+
+        /// <summary>Removing the active course rule selects a retained rule and leaves no broken layer references.</summary>
+        [Test]
+        public void PrintProfileEditor_RemoveRule_RetainsValidCourseRuleAndRelationships()
+        {
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            PrintProfile source = BuiltInPrintProfiles.CreateBlForest();
+            source.ColorRules.First().MustBeAboveRuleIds.Add("violet-transparent");
+            viewModel.LoadCopy(source);
+            viewModel.SelectedRule = viewModel.Rules.Single(rule => rule.Id == "violet-transparent");
+
+            viewModel.RemoveSelectedRuleCommand.Execute(null);
+            PrintProfile copy = viewModel.CreateProfile();
+
+            Assert.That(copy.ColorRules.Any(rule => rule.Id == "violet-transparent"), Is.False);
+            Assert.That(copy.CourseColorRuleId, Is.Not.EqualTo("violet-transparent"));
+            Assert.That(copy.ColorRules.SelectMany(rule => rule.MustBeAboveRuleIds.Concat(rule.MustBeBelowRuleIds)), Does.Not.Contain("violet-transparent"));
+        }
+
+        /// <summary>IOF XML start lists provide class and competitor data for production planning.</summary>
+        [Test]
+        public void IofStartList_ImportsClassAndCompetitor()
+        {
+            const string xml = "<?xml version=\"1.0\"?><StartList xmlns=\"http://www.orienteering.org/datastandard/3.0\" iofVersion=\"3.0\"><ClassStart><Class><Name>D21</Name></Class><PersonStart><Person><Name><Family>Andersson</Family><Given>Anna</Given></Name></Person><Start><BibNumber>42</BibNumber></Start></PersonStart></ClassStart></StartList>";
+
+            List<BacksideInfoRecord> records = BacksideInfoIofXml.Import(new StringReader(xml));
+
+            Assert.That(records.Count, Is.EqualTo(1));
+            Assert.That(records[0].ClassName, Is.EqualTo("D21"));
+            Assert.That(records[0].Name, Is.EqualTo("Anna Andersson"));
+            Assert.That(records[0].Course, Is.Empty);
+        }
+
         /// <summary>Stored profile IDs restore the corresponding PDF-dialog selection.</summary>
         [Test]
         public void PdfDialog_SettingsWithProfileId_RestoresProfileSelection()
@@ -343,22 +509,165 @@ namespace PurplePenViewModels.Tests
         public void MappingDialog_CreateMappings_StoresSelectedSourceColorIdentity()
         {
             SourceMapColor sourceColor = CreateSourceColor("Svart", 4, 202);
-            PrintProfileMappingsDialogViewModel viewModel = new PrintProfileMappingsDialogViewModel {
-                MappingItems = new List<PrintProfileMappingItemViewModel> {
-                    new PrintProfileMappingItemViewModel {
-                        RuleId = "black",
-                        RuleName = "Svart",
-                        Candidates = new List<SourceMapColor> { sourceColor },
-                        SelectedColor = sourceColor,
-                    },
-                },
+            PrintProfileColorRule rule = new PrintProfileColorRule { Id = "black", Name = "Svart" };
+            PrintProfile profile = new PrintProfile {
+                Name = "Test",
+                ColorRules = new List<PrintProfileColorRule> { rule },
             };
+            ColorPreflightRuleResult result = new ColorPreflightRuleResult {
+                Rule = rule,
+                CandidateColors = new List<SourceMapColor> { sourceColor },
+                MatchStatus = ColorPreflightMatchStatus.Matched,
+            };
+            PrintProfileMappingsDialogViewModel viewModel = new PrintProfileMappingsDialogViewModel();
+            viewModel.Configure(profile, new[] { sourceColor }, new[] { result });
 
             List<PrintProfileColorMapping> mappings = viewModel.CreateMappings();
 
             Assert.That(viewModel.CanApplyMappings, Is.True);
             Assert.That(mappings.Single().MapColorOcadId, Is.EqualTo(202));
             Assert.That(mappings.Single().MapColorDrawOrder, Is.EqualTo(4));
+        }
+
+        /// <summary>Unmatched source layers explicitly keep their original colour instead of appearing blank.</summary>
+        [Test]
+        public void MappingDialog_UnpairedLayerDefaultsToKeepOriginal()
+        {
+            SourceMapColor sourceColor = CreateSourceColor("Extra green", 6, 306);
+            PrintProfile profile = new PrintProfile {
+                Name = "Test",
+                ColorRules = new List<PrintProfileColorRule> { new PrintProfileColorRule { Id = "black", Name = "Black" } },
+            };
+            PrintProfileMappingsDialogViewModel viewModel = new PrintProfileMappingsDialogViewModel();
+
+            viewModel.Configure(profile, new[] { sourceColor }, Array.Empty<ColorPreflightRuleResult>());
+
+            Assert.That(viewModel.SourceLayers.Single().SelectedTarget!.IsKeepOriginal, Is.True);
+            Assert.That(viewModel.CanApplyMappings, Is.True);
+            Assert.That(viewModel.CreateMappings(), Is.Empty);
+        }
+
+        /// <summary>An ambiguous profile colour requires one source-first choice and cannot be assigned twice.</summary>
+        [Test]
+        public void MappingDialog_AmbiguousLayerRequiresExplicitUniqueTarget()
+        {
+            SourceMapColor first = CreateSourceColor("Brown A", 2, 101);
+            SourceMapColor second = CreateSourceColor("Brown B", 3, 102);
+            PrintProfileColorRule rule = new PrintProfileColorRule { Id = "brown", Name = "Brown contours" };
+            PrintProfile profile = new PrintProfile { Name = "Test", ColorRules = new List<PrintProfileColorRule> { rule } };
+            ColorPreflightRuleResult result = new ColorPreflightRuleResult {
+                Rule = rule,
+                CandidateColors = new List<SourceMapColor> { first, second },
+                MatchStatus = ColorPreflightMatchStatus.Ambiguous,
+            };
+            PrintProfileMappingsDialogViewModel viewModel = new PrintProfileMappingsDialogViewModel();
+            viewModel.Configure(profile, new[] { first, second }, new[] { result });
+
+            Assert.That(viewModel.CanApplyMappings, Is.False);
+            PrintProfileTargetOptionViewModel target = viewModel.SourceLayers[0].TargetOptions.Single(option => option.RuleId == "brown");
+            viewModel.SourceLayers[0].SelectedTarget = target;
+            viewModel.SourceLayers[1].SelectedTarget = viewModel.SourceLayers[1].TargetOptions.Single(option => option.IsKeepOriginal);
+
+            Assert.That(viewModel.CanApplyMappings, Is.True);
+            Assert.That(viewModel.CreateMappings().Single().MapColorName, Is.EqualTo("Brown A"));
+        }
+
+        /// <summary>Visual editor pairings replace fragile source names with the selected map colour identity.</summary>
+        [Test]
+        public void PrintProfileEditor_ApplyMapPairing_UsesSelectedNameAndOcadId()
+        {
+            SourceMapColor mapColor = CreateSourceColor("Kartans bruna", 5, 417);
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            viewModel.LoadCurrentMap(new[] { mapColor });
+            viewModel.LoadCopy(BuiltInPrintProfiles.CreateBlForest());
+
+            viewModel.ApplyMapPairings(new[] {
+                new PrintProfileColorMapping {
+                    RuleId = "brown-contours",
+                    MapColorName = mapColor.Name,
+                    MapColorOcadId = mapColor.OcadId,
+                    MapColorDrawOrder = mapColor.DrawOrder,
+                },
+            });
+
+            PrintProfileColorRule pairedRule = viewModel.CreateProfile().ColorRules.Single(rule => rule.Id == "brown-contours");
+            Assert.That(pairedRule.Identifier.Names, Is.EqualTo(new[] { "Kartans bruna" }));
+            Assert.That(pairedRule.Identifier.OcadIds, Is.EqualTo(new short[] { 417 }));
+        }
+
+        [Test]
+        public void Editor_CurrentMapSeedAndLayerMove_PreserveConcreteValues()
+        {
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            viewModel.LoadCurrentMap(new[] { CreateSourceColor("Brown", 2, 101), CreateSourceColor("Black", 3, 102) });
+
+            Assert.That(viewModel.SourceProfiles[0].IsCurrentMap, Is.True);
+            Assert.That(viewModel.Rules[0].Cyan, Is.EqualTo(1));
+            viewModel.SelectedRule = viewModel.Rules[1];
+            viewModel.MoveRuleUpCommand.Execute(null);
+            PrintProfile profile = viewModel.CreateProfile();
+
+            Assert.That(profile.ColorRules.Select(rule => rule.Name), Is.EqualTo(new[] { "Black", "Brown" }));
+            Assert.That(profile.ColorRules.Select(rule => rule.RelativeDrawOrder), Is.EqualTo(new[] { 1, 2 }));
+        }
+
+        [Test]
+        public void Editor_CurrentMapSeedRequiresNameBeforeSave()
+        {
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+            viewModel.LoadCurrentMap(new[] { CreateSourceColor("Brown", 2, 101) });
+
+            Assert.That(viewModel.ValidateForSave(), Is.False);
+            Assert.That(viewModel.ValidationMessageKey, Is.EqualTo("PrintProfileEditorDialog_ErrorNameRequired"));
+            viewModel.Name = "Current map copy";
+            Assert.That(viewModel.ValidateForSave(), Is.True);
+        }
+
+        /// <summary>Selecting Current map again discards metadata inherited from a previously selected profile.</summary>
+        [Test]
+        public void Editor_SelectingCurrentMapAgain_ResetsProfileOnlyState()
+        {
+            PrintProfile source = BuiltInPrintProfiles.CreateBlSprint();
+            source.PrinterName = "Production printer";
+            source.PaperSpecification = "A3";
+            source.IccProfile = "printing.icc";
+            source.SourceUrl = "https://example.invalid/profile";
+            source.SourceDescription = "Imported requirements";
+            source.Requirements.RequireCmykOutput = true;
+            source.Requirements.RequireEmbeddedIccProfile = true;
+            source.Requirements.RequireTrueOverprint = true;
+            source.History.Add(new PrintProfileHistoryEntry { VersionDate = "2026-01-01", Summary = "Imported" });
+            PrintProfileEditorDialogViewModel viewModel = new PrintProfileEditorDialogViewModel();
+
+            viewModel.LoadProfiles(new[] { source }, source.Id, true);
+            viewModel.LoadCurrentMap(new[] { CreateSourceColor("Brown", 2, 101) });
+            viewModel.SelectedSourceProfileId = source.Id;
+            viewModel.SelectedSourceProfileId = "__current-map__";
+            PrintProfile mapProfile = viewModel.CreateProfile();
+
+            Assert.That(mapProfile.PrinterName, Is.Empty);
+            Assert.That(mapProfile.PaperSpecification, Is.Empty);
+            Assert.That(mapProfile.IccProfile, Is.Empty);
+            Assert.That(mapProfile.SourceUrl, Is.Empty);
+            Assert.That(mapProfile.SourceDescription, Is.Empty);
+            Assert.That(mapProfile.Requirements.RequireCmykOutput, Is.True, "Current map retains the neutral default requirement.");
+            Assert.That(mapProfile.Requirements.RequireEmbeddedIccProfile, Is.False);
+            Assert.That(mapProfile.Requirements.RequireTrueOverprint, Is.False);
+            Assert.That(mapProfile.History, Is.Empty);
+            Assert.That(mapProfile.ColorRules.Single().Name, Is.EqualTo("Brown"));
+        }
+
+        [Test]
+        public void ProfileHistory_RoundTripsDiffFields()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlSprint();
+            profile.History.Add(new PrintProfileHistoryEntry { VersionDate = "2026-01-01", Summary = "Rules +1/-0/~1", AddedRules = new List<string> { "New" }, ChangedRules = new List<string> { "Blue" }, MetadataChanged = true, LayerOrderChanged = true });
+            PrintProfile restored = PrintProfileSerializer.Deserialize(PrintProfileSerializer.Serialize(profile));
+
+            Assert.That(restored.History[0].AddedRules, Is.EqualTo(new[] { "New" }));
+            Assert.That(restored.History[0].ChangedRules, Is.EqualTo(new[] { "Blue" }));
+            Assert.That(restored.History[0].MetadataChanged, Is.True);
+            Assert.That(restored.History[0].LayerOrderChanged, Is.True);
         }
 
         /// <summary>Creates a minimal, read-only source-map colour snapshot for preflight tests.</summary>

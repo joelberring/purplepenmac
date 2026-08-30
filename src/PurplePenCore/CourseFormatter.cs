@@ -38,6 +38,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace PurplePen
@@ -62,10 +63,35 @@ namespace PurplePen
         public const string MapFileName = "$(MapFileName)";
     }
 
+    /// <summary>Specifies the production view used when formatting training overlays.</summary>
+    public enum TrainingExerciseRenderProfile { None, Runner, Coach, Answer }
+
     public class CourseFormatterOptions
     {
         public bool showControlNumbers = true;
         public bool showDescriptions = true;
+        // Training overlays are opt-in so ordinary course rendering is unchanged.
+        public TrainingExerciseRenderProfile trainingExerciseRenderProfile = TrainingExerciseRenderProfile.None;
+        // Runner corridor masking is only valid inside an explicit print or render extent.
+        public RectangleF? trainingRenderBounds;
+    }
+
+    // Describes the automatically selected position for a control number or code.
+    // The clearance is the distance from the selected text centre to the nearest
+    // relevant course object. A value of zero means that no nearby objects were
+    // considered by the placement algorithm.
+    public sealed class ControlNumberPlacementSuggestion
+    {
+        public PointF Center { get; private set; }
+        public double AngleRadians { get; private set; }
+        public double Clearance { get; private set; }
+
+        public ControlNumberPlacementSuggestion(PointF center, double angleRadians, double clearance)
+        {
+            Center = center;
+            AngleRadians = angleRadians;
+            Clearance = clearance;
+        }
     }
 
     // The course formatter transforms a CourseView into a abstract description of a course, which
@@ -188,6 +214,117 @@ namespace PurplePen
                 AutoCutCircles(courseLayout, layer);
                 AutoCutLegs(eventDB, appearance, courseView.CourseDesignator, courseLayout, layer);
             }
+
+            AddTrainingExercises(eventDB, courseView, appearance, courseLayout, layer, options);
+        }
+
+        /// <summary>Adds the selected course's optional training overlays after the standard course objects.</summary>
+        private static void AddTrainingExercises(EventDB eventDB, CourseView courseView, CourseAppearance appearance, CourseLayout courseLayout, CourseLayer layer, CourseFormatterOptions options)
+        {
+            if (options.trainingExerciseRenderProfile == TrainingExerciseRenderProfile.None || courseView.CourseDesignator.IsAllControls)
+                return;
+
+            TrainingExerciseVisibility requiredVisibility = GetTrainingExerciseVisibility(options.trainingExerciseRenderProfile);
+            List<TrainingExercise> exercises = new List<TrainingExercise>();
+            foreach (KeyValuePair<Id<TrainingExercise>, TrainingExercise> exercisePair in eventDB.AllTrainingExercisePairs.OrderBy(pair => pair.Key.id)) {
+                TrainingExercise trainingExercise = exercisePair.Value;
+                if ((trainingExercise.visibility & requiredVisibility) != 0 && IsTrainingExerciseInCourseView(trainingExercise, courseView.CourseDesignator))
+                    exercises.Add(trainingExercise);
+            }
+
+            // The white-out must be added before the visible training guides, regardless of the stored exercise order.
+            if (options.trainingExerciseRenderProfile == TrainingExerciseRenderProfile.Runner) {
+                foreach (TrainingExercise trainingExercise in exercises) {
+                    if (trainingExercise.kind == TrainingExerciseKind.ContourOnly) {
+                        courseLayout.AddContourOnlyOverlay(new TrainingContourOnlyOverlay(trainingExercise.locations, trainingExercise.maskOpacity, trainingExercise.allowedSymbolIds));
+                        continue;
+                    }
+                    if (trainingExercise.kind != TrainingExerciseKind.Corridor)
+                        continue;
+                    if (!options.trainingRenderBounds.HasValue)
+                        throw new InvalidOperationException("Runner corridor rendering requires explicit training render bounds.");
+
+                    TrainingCorridorOutline outline = TrainingCorridorGeometry.CreateOutline(trainingExercise.locations, trainingExercise.width);
+                    TrainingCorridorOutline outerOutline = TrainingCorridorGeometry.CreateOutline(trainingExercise.locations,
+                                                                                                    trainingExercise.width + 2 * trainingExercise.whiteMargin);
+                    courseLayout.AddCorridorMaskOverlay(new TrainingCorridorMaskOverlay(options.trainingRenderBounds.Value,
+                                                                                        ToArray(outline.Polygon),
+                                                                                        ToArray(outerOutline.Polygon),
+                                                                                        trainingExercise.maskOpacity));
+                }
+            }
+
+            foreach (KeyValuePair<Id<TrainingExercise>, TrainingExercise> exercisePair in eventDB.AllTrainingExercisePairs.OrderBy(pair => pair.Key.id)) {
+                TrainingExercise trainingExercise = exercisePair.Value;
+                if ((trainingExercise.visibility & requiredVisibility) == 0 || !IsTrainingExerciseInCourseView(trainingExercise, courseView.CourseDesignator))
+                    continue;
+                // The runner sees the contour-only map cutout, but not its editing/answer outline.
+                if (trainingExercise.kind == TrainingExerciseKind.ContourOnly && options.trainingExerciseRenderProfile == TrainingExerciseRenderProfile.Runner)
+                    continue;
+                CourseObj trainingObject = CreateTrainingExerciseObject(trainingExercise, appearance);
+                if (trainingObject != null) {
+                    trainingObject.trainingExerciseId = exercisePair.Key;
+                    trainingObject.layer = layer;
+                    courseLayout.AddCourseObject(trainingObject);
+                }
+            }
+        }
+
+        /// <summary>Maps a formatter profile to the persisted visibility flag.</summary>
+        private static TrainingExerciseVisibility GetTrainingExerciseVisibility(TrainingExerciseRenderProfile profile)
+        {
+            switch (profile) {
+            case TrainingExerciseRenderProfile.Runner: return TrainingExerciseVisibility.Runner;
+            case TrainingExerciseRenderProfile.Coach: return TrainingExerciseVisibility.Coach;
+            case TrainingExerciseRenderProfile.Answer: return TrainingExerciseVisibility.Answer;
+            default: throw new ArgumentOutOfRangeException(nameof(profile));
+            }
+        }
+
+        /// <summary>Determines whether an all-parts overlay applies to the current course or course part.</summary>
+        private static bool IsTrainingExerciseInCourseView(TrainingExercise trainingExercise, CourseDesignator courseDesignator)
+        {
+            if (trainingExercise.courseDesignator.CourseId != courseDesignator.CourseId)
+                return false;
+            return trainingExercise.courseDesignator.AllParts || courseDesignator.AllParts || trainingExercise.courseDesignator.Part == courseDesignator.Part;
+        }
+
+        /// <summary>Creates the visible guide object for a training exercise. Runner masking is handled separately.</summary>
+        private static CourseObj CreateTrainingExerciseObject(TrainingExercise trainingExercise, CourseAppearance appearance)
+        {
+            switch (trainingExercise.kind) {
+            case TrainingExerciseKind.Corridor:
+                return new TrainingCorridorCourseObj(appearance, trainingExercise.locations, trainingExercise.width);
+
+            case TrainingExerciseKind.AttackPoint:
+                float diameter = trainingExercise.width;
+                PointF location = trainingExercise.locations[0];
+                return new RectSpecialCourseObj(Id<Special>.None, appearance, true, SpecialColor.UpperPurple, LineKind.Single, 0.35F, 0, 0, 0,
+                                                new RectangleF(location.X - diameter / 2F, location.Y - diameter / 2F, diameter, diameter));
+
+            case TrainingExerciseKind.Line:
+                return new LineSpecialCourseObj(Id<Special>.None, appearance, SpecialColor.UpperPurple, LineKind.Single, 0.35F, 0, 0, new SymPath(trainingExercise.locations));
+
+            case TrainingExerciseKind.ContourOnly:
+                // Coach and answer views get a selectable closed outline. Keep the first
+                // point at the end so LineCourseObj exposes a handle for every polygon vertex.
+                PointF[] polygon = new PointF[trainingExercise.locations.Length + 1];
+                Array.Copy(trainingExercise.locations, polygon, trainingExercise.locations.Length);
+                polygon[polygon.Length - 1] = polygon[0];
+                return new TrainingPolygonCourseObj(appearance, new SymPath(polygon));
+
+            default:
+                throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        /// <summary>Copies read-only corridor geometry for map-model rendering.</summary>
+        private static PointF[] ToArray(IReadOnlyList<PointF> points)
+        {
+            PointF[] result = new PointF[points.Count];
+            for (int index = 0; index < points.Count; ++index)
+                result[index] = points[index];
+            return result;
         }
 
         // Does this control view have a custom number placement?
@@ -327,39 +464,49 @@ namespace PurplePen
             }
         }
 
+        // Suggest a location for a control number or code that is furthest possible from surrounding course objects.
+        // This is diagnostic only; it does not change the course or any of its custom number placements.
+        public static ControlNumberPlacementSuggestion SuggestControlNumberPlacement(PointF controlLocation, float distanceFromCenter, string text, FontDesc font, float fontScaling, IEnumerable<CourseObj> objects)
+        {
+            List<CourseObj> objectList = new List<CourseObj>();
+            if (objects != null) {
+                foreach (CourseObj courseObject in objects)
+                    objectList.Add(courseObject);
+            }
+
+            List<CourseObj> nearbyObjects = GetNearbyObjects(objectList, controlLocation, distanceFromCenter * 4);
+            SizeF textSize = GetTextSize(text, font, fontScaling);
+            const double deltaAngle = Math.PI / 16;             // angle to increase by each time when testing an angle.
+
+            // Start at the default angle, so if all angles are equally good that is the one we pick.
+            PointF bestPoint = new PointF();
+            double bestAngle = 0;
+            double bestDistance = -1;
+
+            for (double angle = NormalCourseAppearance.defaultControlNumberAngle;
+                 angle < NormalCourseAppearance.defaultControlNumberAngle + 2 * Math.PI;
+                 angle += deltaAngle)
+            {
+                PointF point = GetRectangleCenter(controlLocation, distanceFromCenter, angle, textSize);
+                double distanceFromNearby = GetMinDistanceFromNearby(point, nearbyObjects);
+
+                if (distanceFromNearby > bestDistance) {
+                    bestPoint = point;
+                    bestAngle = angle;
+                    bestDistance = distanceFromNearby;
+                }
+            }
+
+            return new ControlNumberPlacementSuggestion(bestPoint, bestAngle, bestDistance);
+        }
+
         // Find a location for the control that is furthest possible from surrounding course objects.
 #if TEST
         internal
 #endif
         static PointF GetTextLocation(PointF controlLocation, float distanceFromCenter, string text, FontDesc font, float fontScaling, IEnumerable<CourseObj> list)
         {
-            const double deltaAngle = Math.PI / 16;             // angle to increase by each time when testing an angle.
-
-            // Get a list of all nearby objects that we want to stay away from.
-            List<CourseObj> nearbyObjects = GetNearbyObjects(list, controlLocation, distanceFromCenter * 4);
-
-            // Get the size of the text.
-            SizeF textSize = GetTextSize(text, font, fontScaling);
-
-            // Try 32 different locations for the number, finding which angle has the largest distance from nearby objects.
-            // Start at the default angle, so if all angles are equally good that is the one we pick.
-            PointF bestPoint = new PointF();
-            double bestDistance = -1;
-
-            for (double angle = NormalCourseAppearance.defaultControlNumberAngle; 
-                   angle < NormalCourseAppearance.defaultControlNumberAngle + 2 * Math.PI; 
-                   angle += deltaAngle) 
-            {
-                PointF pt = GetRectangleCenter(controlLocation, distanceFromCenter, angle, textSize);
-                double distanceFromNearby = GetMinDistanceFromNearby(pt, nearbyObjects);
-
-                if (distanceFromNearby > bestDistance) {
-                    bestPoint = pt;
-                    bestDistance = distanceFromNearby;
-                }
-            }
-
-            return bestPoint; 
+            return SuggestControlNumberPlacement(controlLocation, distanceFromCenter, text, font, fontScaling, list).Center;
         }
 
         // Get all object that are within a distance of a given point, but not actually a control circle AT that point.

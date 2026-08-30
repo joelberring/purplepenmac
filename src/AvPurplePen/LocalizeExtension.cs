@@ -151,7 +151,11 @@ namespace AvPurplePen
             foreach (LocalizedString s in _strings.Values) {
                 s.Refresh();
             }
+            LanguageChanged?.Invoke(this, EventArgs.Empty);
         }
+
+        /// <summary>Raised after the active UI culture has refreshed all localized bindings.</summary>
+        public event EventHandler? LanguageChanged;
 
         /// <summary>
         /// Private constructor to enforce singleton pattern.

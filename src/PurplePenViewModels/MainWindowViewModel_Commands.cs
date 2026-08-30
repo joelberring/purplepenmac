@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -45,6 +46,9 @@ namespace PurplePen.ViewModels
             CanShowLegConnections = controller.GetSelectedControl().IsNotNone;
             CanChangeLineAppearance = (controller.CanChangeLineAppearance() == CommandStatus.Enabled);
             CanAddTextLine = (controller.CanAddTextLine() == CommandStatus.Enabled);
+            CanComposeCourse = (controller.CanComposeCourse() == CommandStatus.Enabled);
+            KeepAddingControls = controller.IsContinuousAddControlMode;
+            ComposeCourseActive = controller.IsComposeCourseMode;
             CanAddMapFlip = (controller.CanAddMapFlipControl() == CommandStatus.Enabled);
             CanAddMapExchangeSeparate = (controller.CanAddMapExchangeSeparate() == CommandStatus.Enabled);
             CanAddMapExchangeControl = (controller.CanAddMapExchangeControl() == CommandStatus.Enabled);
@@ -54,6 +58,13 @@ namespace PurplePen.ViewModels
             CanShowOtherCourses = (controller.CanChangeExtraCourseDisplay() == CommandStatus.Enabled);
             CanClearOtherCourses = (controller.CanClearExtraCourseDisplay() == CommandStatus.Enabled);
             CanChangeDisplayedCourses = (controller.CanChangeDisplayedCourses(out _, out _) == CommandStatus.Enabled);
+            CanUseActiveCourseTrainingTools = controller.CurrentCourseDesignator.IsNotAllControls && !controller.CurrentCourseDesignator.IsVariation;
+            CanShowTrainingExercises = CanUseActiveCourseTrainingTools;
+            CanInspectCurrentCourse = CanUseActiveCourseTrainingTools && !controller.HasVariations;
+            TrainingRunnerChecked = controller.TrainingExerciseRenderProfile == TrainingExerciseRenderProfile.Runner;
+            TrainingCoachChecked = controller.TrainingExerciseRenderProfile == TrainingExerciseRenderProfile.Coach;
+            TrainingAnswerChecked = controller.TrainingExerciseRenderProfile == TrainingExerciseRenderProfile.Answer;
+            TrainingProfileNoneChecked = controller.TrainingExerciseRenderProfile == TrainingExerciseRenderProfile.None;
             IsVisibleClearOtherCourses = (controller.CanClearExtraCourseDisplay() != CommandStatus.Hidden);
             IsVisibleTranslatedWebSite = TranslatedWebSiteExists();
             IsVisibleSetPrintAreaThisPart = (controller.NumberOfParts > 1);
@@ -349,6 +360,128 @@ namespace PurplePen.ViewModels
         }
 
         #endregion // File commands
+
+        #region Training commands
+
+        /// <summary>Shows the runner-facing training overlays in the active map.</summary>
+        [RelayCommand(CanExecute = nameof(CanUseActiveCourseTrainingTools))]
+        private void ShowRunnerTrainingProfile()
+        {
+            if (controller != null && CanUseActiveCourseTrainingTools)
+                controller.SetTrainingExerciseRenderProfile(TrainingExerciseRenderProfile.Runner);
+        }
+
+        /// <summary>Shows the coach-facing training overlays in the active map.</summary>
+        [RelayCommand(CanExecute = nameof(CanUseActiveCourseTrainingTools))]
+        private void ShowCoachTrainingProfile()
+        {
+            if (controller != null && CanUseActiveCourseTrainingTools)
+                controller.SetTrainingExerciseRenderProfile(TrainingExerciseRenderProfile.Coach);
+        }
+
+        /// <summary>Shows the answer-facing training overlays in the active map.</summary>
+        [RelayCommand(CanExecute = nameof(CanUseActiveCourseTrainingTools))]
+        private void ShowAnswerTrainingProfile()
+        {
+            if (controller != null && CanUseActiveCourseTrainingTools)
+                controller.SetTrainingExerciseRenderProfile(TrainingExerciseRenderProfile.Answer);
+        }
+
+        /// <summary>Turns off all training overlays in the active map.</summary>
+        [RelayCommand(CanExecute = nameof(CanUseActiveCourseTrainingTools))]
+        private void ClearTrainingProfile()
+        {
+            if (controller != null && CanUseActiveCourseTrainingTools)
+                controller.SetTrainingExerciseRenderProfile(TrainingExerciseRenderProfile.None);
+        }
+
+        /// <summary>Opens route-choice measurements for the currently displayed course.</summary>
+        [RelayCommand(CanExecute = nameof(CanInspectCurrentCourse))]
+        private async Task ShowRouteChoiceAnalysis()
+        {
+            if (controller == null || !CanInspectCurrentCourse)
+                return;
+
+            RouteChoiceAnalysisDialogViewModel vm = new RouteChoiceAnalysisDialogViewModel();
+            vm.Load(controller.GetEventDB(), controller.CurrentCourseDesignator);
+            vm.BeginCandidateRequested = legStartCourseControlId => controller.BeginAddRouteChoiceCandidateMode(legStartCourseControlId);
+            vm.DeleteCandidateRequested = candidateId => {
+                controller.DeleteRouteChoiceCandidate(candidateId);
+                vm.Load(controller.GetEventDB(), controller.CurrentCourseDesignator);
+            };
+            vm.ChangeCandidateRequested = (candidateId, name, source, notes) => {
+                PurplePen.RouteChoiceCandidate candidate = controller.GetEventDB().GetRouteChoiceCandidate(candidateId);
+                controller.ChangeRouteChoiceCandidate(candidateId, name, source, candidate.locations, notes);
+                vm.Load(controller.GetEventDB(), controller.CurrentCourseDesignator);
+            };
+            await Services.DialogService.ShowDialogAsync(vm);
+        }
+
+        /// <summary>Opens the mobile control inspection overview for the active course.</summary>
+        [RelayCommand(CanExecute = nameof(CanInspectCurrentCourse))]
+        private async Task ShowMobileControlInspection()
+        {
+            if (controller == null || !CanInspectCurrentCourse)
+                return;
+
+            MobileControlInspectionDialogViewModel vm = new MobileControlInspectionDialogViewModel();
+            vm.Load(controller.GetEventDB(), controller.CurrentCourseDesignator);
+            await Services.DialogService.ShowDialogAsync(vm);
+        }
+
+        /// <summary>Opens the read-only event history review dialog.</summary>
+        [RelayCommand]
+        private async Task ShowHistoryReview()
+        {
+            if (controller == null)
+                return;
+
+            HistoryReviewDialogViewModel vm = new HistoryReviewDialogViewModel();
+            vm.Load(controller.GetHistoryReviewStatus(), controller.GetHistorySnapshotStore(), controller.GetEventDB());
+            await Services.DialogService.ShowDialogAsync(vm);
+            controller.PersistHistorySnapshots();
+        }
+
+        /// <summary>Opens the training-exercise editor for the currently displayed course.</summary>
+        [RelayCommand(CanExecute = nameof(CanUseActiveCourseTrainingTools))]
+        private async Task ShowTrainingExercises()
+        {
+            if (controller == null || !CanUseActiveCourseTrainingTools)
+                return;
+
+            CourseDesignator designator = controller.CurrentCourseDesignator;
+            TrainingExercisesDialogViewModel vm = new TrainingExercisesDialogViewModel();
+            List<TrainingExercise> exercises = controller.GetEventDB().AllTrainingExercisePairs
+                .Where(pair => pair.Value.courseDesignator != null && pair.Value.courseDesignator.Equals(designator))
+                .Select(pair => pair.Value)
+                .ToList();
+            vm.LoadExercises(exercises, designator, controller.GetTrainingMapSymbols());
+
+            if (await Services.DialogService.ShowDialogAsync(vm))
+                controller.SaveTrainingExercises(designator, vm.CreateExercises());
+        }
+
+        [ObservableProperty,
+         NotifyCanExecuteChangedFor(nameof(ShowTrainingExercisesCommand),
+                                    nameof(ShowRunnerTrainingProfileCommand),
+                                    nameof(ShowCoachTrainingProfileCommand),
+                                    nameof(ShowAnswerTrainingProfileCommand),
+                                    nameof(ClearTrainingProfileCommand),
+                                    nameof(AddContourOnlyTrainingAreaCommand),
+                                    nameof(AddTrainingCorridorCommand),
+                                    nameof(AddTrainingAttackPointCommand),
+                                    nameof(AddTrainingLineCommand))]
+        private bool canUseActiveCourseTrainingTools;
+
+        [ObservableProperty,
+         NotifyCanExecuteChangedFor(nameof(ShowRouteChoiceAnalysisCommand),
+                                    nameof(ShowMobileControlInspectionCommand))]
+        private bool canInspectCurrentCourse;
+
+        [ObservableProperty, NotifyCanExecuteChangedFor(nameof(ShowTrainingExercisesCommand))]
+        private bool canShowTrainingExercises;
+
+        #endregion // Training commands
 
         #region Edit commands
 
@@ -656,14 +789,47 @@ namespace PurplePen.ViewModels
         {
             if (controller == null) { return; }
 
-            controller.BeginAddControlMode(ControlPointKind.Normal, MapExchangeType.None, KeepAddingControls);
+            controller.BeginAddControlMode(ControlPointKind.Normal, MapExchangeType.None);
         }
 
         /// <summary>
-        /// Whether normal-control placement remains active after each placed control.
+        /// Whether continuous normal-control placement is the active map tool.
         /// </summary>
         [ObservableProperty]
         private bool keepAddingControls;
+
+        /// <summary>Starts or stops continuous normal-control placement immediately.</summary>
+        [RelayCommand]
+        private void ToggleKeepAddingControls()
+        {
+            if (controller == null) { return; }
+
+            if (controller.IsContinuousAddControlMode)
+                controller.DefaultCommandMode();
+            else
+                controller.BeginAddControlMode(ControlPointKind.Normal, MapExchangeType.None, true);
+        }
+
+        /// <summary>
+        /// Starts a safe continuous workflow for composing a normal course.
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(CanComposeCourse))]
+        private void ComposeCourse()
+        {
+            if (controller == null) { return; }
+
+            if (controller.IsComposeCourseMode)
+                controller.DefaultCommandMode();
+            else
+                controller.BeginComposeCourseMode();
+        }
+
+        [ObservableProperty, NotifyCanExecuteChangedFor(nameof(ComposeCourseCommand))]
+        private bool canComposeCourse;
+
+        /// <summary>Whether course composition is the active map tool.</summary>
+        [ObservableProperty]
+        private bool composeCourseActive;
 
         /// <summary>
         /// Executes the Add/Start command. Begins adding a start control.
@@ -936,6 +1102,38 @@ namespace PurplePen.ViewModels
             if (controller == null) { return; }
 
             controller.BeginAddLineOrAreaSpecialMode(SpecialKind.WhiteOut, true);
+        }
+
+        /// <summary>
+        /// Starts drawing an area in which only map contours are shown for training.
+        /// </summary>
+        [RelayCommand(CanExecute = nameof(CanUseActiveCourseTrainingTools))]
+        private void AddContourOnlyTrainingArea()
+        {
+            if (controller == null || !CanUseActiveCourseTrainingTools) { return; }
+
+            controller.BeginAddContourOnlyTrainingAreaMode();
+        }
+
+        /// <summary>Starts drawing a corridor training exercise.</summary>
+        [RelayCommand(CanExecute = nameof(CanUseActiveCourseTrainingTools))]
+        private void AddTrainingCorridor()
+        {
+            if (controller != null && CanUseActiveCourseTrainingTools) controller.BeginAddTrainingCorridorMode();
+        }
+
+        /// <summary>Starts drawing a line training exercise.</summary>
+        [RelayCommand(CanExecute = nameof(CanUseActiveCourseTrainingTools))]
+        private void AddTrainingLine()
+        {
+            if (controller != null && CanUseActiveCourseTrainingTools) controller.BeginAddTrainingLineMode();
+        }
+
+        /// <summary>Starts placing an attack-point training exercise.</summary>
+        [RelayCommand(CanExecute = nameof(CanUseActiveCourseTrainingTools))]
+        private void AddTrainingAttackPoint()
+        {
+            if (controller != null && CanUseActiveCourseTrainingTools) controller.BeginAddTrainingAttackPointMode();
         }
 
         /// <summary>
@@ -1335,11 +1533,13 @@ namespace PurplePen.ViewModels
             EventDB eventDb = controller.GetEventDB();
             CourseControlOverviewDialogViewModel vm = new CourseControlOverviewDialogViewModel();
             Dictionary<Id<ControlPoint>, HashSet<string>> controlCourses = new Dictionary<Id<ControlPoint>, HashSet<string>>();
+            Dictionary<Id<ControlPoint>, HashSet<Id<Course>>> controlCourseIds = new Dictionary<Id<ControlPoint>, HashSet<Id<Course>>>();
             Dictionary<Id<ControlPoint>, int> incoming = new Dictionary<Id<ControlPoint>, int>();
             Dictionary<Id<ControlPoint>, int> outgoing = new Dictionary<Id<ControlPoint>, int>();
 
             foreach (KeyValuePair<Id<ControlPoint>, ControlPoint> controlPair in eventDb.AllControlPointPairs) {
                 controlCourses.Add(controlPair.Key, new HashSet<string>());
+                controlCourseIds.Add(controlPair.Key, new HashSet<Id<Course>>());
                 incoming.Add(controlPair.Key, 0);
                 outgoing.Add(controlPair.Key, 0);
             }
@@ -1347,6 +1547,8 @@ namespace PurplePen.ViewModels
             foreach (KeyValuePair<Id<Course>, Course> coursePair in eventDb.AllCoursePairs.OrderBy(pair => pair.Value.name, StringComparer.CurrentCulture)) {
                 CourseDesignator designator = new CourseDesignator(coursePair.Key);
                 CourseView courseView = CourseView.CreateViewingCourseView(eventDb, designator);
+                int participantCount = EventClassSupport.GetCourseParticipantCount(eventDb, coursePair.Key);
+                string classNames = EventClassSupport.GetCourseClassNames(eventDb, coursePair.Key);
                 string length = courseView.Kind == CourseView.CourseViewKind.Score
                     ? ""
                     : Util.GetLengthInKm(courseView.MinTotalLength, courseView.MaxTotalLength, 1);
@@ -1354,18 +1556,36 @@ namespace PurplePen.ViewModels
                     ? ""
                     : Convert.ToString(Math.Round(courseView.TotalClimb / 5, MidpointRounding.AwayFromZero) * 5.0) + " m";
                 vm.Courses.Add(new CourseOverviewItem {
+                    CourseId = coursePair.Key,
                     Name = courseView.CourseName,
                     ControlCount = courseView.TotalNormalControls,
                     Length = length,
                     Climb = climb,
+                    Load = participantCount,
+                    LoadText = participantCount < 0 ? "" : participantCount.ToString(),
+                    ClassName = classNames,
+                    OriginalLoad = participantCount,
+                    OriginalClassName = classNames,
+                    Warning = participantCount < 0 ? "Load not set" : (courseView.TotalNormalControls == 0 ? "No controls" : ""),
                 });
 
+                List<Id<ControlPoint>> courseControlIds = new List<Id<ControlPoint>>();
                 foreach (Id<CourseControl> courseControlId in QueryEvent.EnumCourseControlIds(eventDb, designator)) {
                     Id<ControlPoint> controlId = eventDb.GetCourseControl(courseControlId).control;
+                    courseControlIds.Add(controlId);
                     if (controlCourses.TryGetValue(controlId, out HashSet<string>? courses)) {
                         courses.Add(courseView.CourseName);
                     }
+                    if (controlCourseIds.TryGetValue(controlId, out HashSet<Id<Course>>? courseIds)) {
+                        courseIds.Add(coursePair.Key);
+                    }
                 }
+
+                CourseOverviewItem courseItem = vm.Courses[vm.Courses.Count - 1];
+                courseItem.ControlIds = courseControlIds.ToArray();
+                courseItem.LegKeys = QueryEvent.EnumLegs(eventDb, designator)
+                    .Select(leg => eventDb.GetCourseControl(leg.courseControlId1).control.id + "-" + eventDb.GetCourseControl(leg.courseControlId2).control.id)
+                    .ToArray();
 
                 foreach (QueryEvent.LegInfo leg in QueryEvent.EnumLegs(eventDb, designator)) {
                     Id<ControlPoint> fromControl = eventDb.GetCourseControl(leg.courseControlId1).control;
@@ -1378,14 +1598,46 @@ namespace PurplePen.ViewModels
             foreach (KeyValuePair<Id<ControlPoint>, ControlPoint> controlPair in eventDb.AllControlPointPairs.OrderBy(pair => Util.ControlPointName(eventDb, pair.Key, NameStyle.Medium), StringComparer.CurrentCulture)) {
                 List<string> courses = controlCourses[controlPair.Key].OrderBy(name => name, StringComparer.CurrentCulture).ToList();
                 vm.Controls.Add(new ControlOverviewItem {
+                    ControlId = controlPair.Key,
                     Name = Util.ControlPointName(eventDb, controlPair.Key, NameStyle.Medium),
+                    Code = controlPair.Value.code ?? "",
+                    OriginalCode = controlPair.Value.code ?? "",
                     Courses = string.Join(", ", courses),
+                    CourseNames = courses.ToArray(),
                     Incoming = incoming[controlPair.Key],
                     Outgoing = outgoing[controlPair.Key],
+                    CourseIds = controlCourseIds[controlPair.Key].ToArray(),
+                    Warning = controlCourseIds[controlPair.Key].Count == 0 ? "Not used by any course" : (incoming[controlPair.Key] == 0 || outgoing[controlPair.Key] == 0 ? "Only used at course end/start" : ""),
                 });
             }
 
+            vm.RefreshVisibleItems();
+
             await Services.DialogService.ShowDialogAsync(vm);
+
+            if (vm.NavigateToSelectedCourseRequested && vm.SelectedCourse != null) {
+                controller.SelectCourse(vm.SelectedCourse.CourseId);
+            }
+            if (vm.NavigateToSelectedControlRequested && vm.SelectedControl != null) {
+                if (vm.SelectedControl.CourseIds.Length > 0) {
+                    controller.SelectCourse(vm.SelectedControl.CourseIds[0]);
+                    controller.ExtraCourseDisplay = vm.SelectedControl.CourseIds.Skip(1).ToList();
+                }
+                controller.SelectControl(vm.SelectedControl.ControlId);
+            }
+            if (vm.CompareCoursesRequested && vm.ComparisonCourse != null) {
+                controller.SelectCourse(vm.ComparisonCourse.CourseId);
+                if (vm.ComparisonWithCourse != null)
+                    controller.ExtraCourseDisplay = new List<Id<Course>> { vm.ComparisonWithCourse.CourseId };
+            }
+            if (vm.SaveEditsRequested) {
+                KeyValuePair<object, string>[] editedCodes = vm.Controls
+                    .Where(control => !string.Equals(control.Code ?? "", control.OriginalCode ?? "", StringComparison.Ordinal))
+                    .Select(control => new KeyValuePair<object, string>(control.ControlId, control.Code ?? ""))
+                    .ToArray();
+                if (editedCodes.Length > 0)
+                    controller.SetAllControlCodes(editedCodes);
+            }
         }
 
         /// <summary>
@@ -1647,14 +1899,12 @@ namespace PurplePen.ViewModels
         {
             if (controller == null) { return; }
 
-            // Initialize the dialog with the current load values.
-            CourseLoadDialogViewModel vm = new CourseLoadDialogViewModel {
-                CourseLoads = controller.GetAllCourseLoads(),
-            };
-
-            // Show the dialog; on OK, apply the edited loads.
-            if (await Services.DialogService.ShowDialogAsync(vm)) {
-                controller.SetAllCourseLoads(vm.CourseLoads);
+            EventClassDialogViewModel classVm = new EventClassDialogViewModel { EventDB = controller.GetEventDB() };
+            classVm.Load(controller.GetAllEventClasses(), controller.GetEventDB().AllCoursePairs
+                .OrderBy(pair => pair.Value.sortOrder)
+                .Select(pair => new CourseChoice { Id = pair.Key, Name = pair.Value.name }).ToArray());
+            if (await Services.DialogService.ShowDialogAsync(classVm)) {
+                controller.SetAllEventClasses(classVm.Values);
             }
         }
 
@@ -2107,6 +2357,74 @@ namespace PurplePen.ViewModels
 
         #region Print and export commands
 
+        /// <summary>Opens the MeOS/IOF integration centre.</summary>
+        [RelayCommand]
+        private async Task ShowMeosIofCentral()
+        {
+            if (controller == null || MapDisplay == null) return;
+            MeosIofCentralDialogViewModel vm = new MeosIofCentralDialogViewModel { EventDB = controller.GetEventDB() };
+            vm.ApplyClassCounts = counts => {
+                Controller.EventClassInfo[] values = controller.GetAllEventClasses();
+                for (int index = 0; index < values.Length; ++index) if (counts.TryGetValue(values[index].name, out int count)) values[index].participantCount = count;
+                controller.SetAllEventClasses(values);
+            };
+            vm.ExportCourseData = file => {
+                controller.ExportXml(file, MapDisplay.MapBounds, 3);
+                IofCourseDataValidationResult validation = IofCourseDataExchange.Validate(File.ReadAllText(file));
+                MeosOperationResult operation = new MeosOperationResult { State = validation.IsValid ? MeosOperationState.ExportValid : MeosOperationState.ExportInvalid, Path = file };
+                operation.Diagnostics.AddRange(validation.Errors.Select(error => error.ToString())); return operation;
+            };
+            vm.CreateLiveloxPackage = file => {
+                controller.ExportXml(file, MapDisplay.MapBounds, 3);
+                return new MeosOperationResult { State = MeosOperationState.LiveloxCreated, Path = file };
+            };
+            await Services.DialogService.ShowDialogAsync(vm);
+        }
+
+        /// <summary>
+        /// Opens the print-profile editor from the main window, using the first
+        /// available profile as the source for a new user-owned copy.
+        /// </summary>
+        [RelayCommand]
+        private async Task EditPrintProfile()
+        {
+            if (controller == null)
+                return;
+            List<PrintProfile> profiles = PrintProfileCatalog.CreateAll();
+            if (profiles.Count == 0)
+                return;
+
+            PrintProfileEditorDialogViewModel vm = new PrintProfileEditorDialogViewModel();
+            List<SourceMapColor> mapColors = MapDisplay == null ? new List<SourceMapColor>() : ColorPreflightReport.CreateSourceColors(MapDisplay);
+            vm.LoadProfiles(profiles, null, mapColors.Count > 0);
+            if (mapColors.Count > 0)
+                vm.LoadCurrentMap(mapColors);
+            vm.PreflightRunner = profile => {
+                ColorPreflightReport report = ColorPreflightReport.Analyze(profile,
+                    ColorPreflightReport.CreateSourceColors(MapDisplay!),
+                    PdfExportCapabilities.CreateCurrentImplementation());
+                vm.PreflightFindings.Clear();
+                foreach (ColorPreflightRuleResult result in report.RuleResults)
+                    vm.PreflightFindings.Add(new PrintProfilePreflightItem {
+                        RuleName = result.Rule.Name,
+                        Status = result.MatchStatus.ToString(),
+                        Detail = String.Join("; ", report.Findings.Where(finding => finding.RuleId == result.Rule.Id).Select(finding => finding.Message)),
+                    });
+                return report.CanExport;
+            };
+            if (await Services.DialogService.ShowDialogAsync(vm) && vm.ValidateForSave()) {
+                try {
+                    PrintProfileCatalog.SaveUserProfile(vm.CreateProfile());
+                }
+                catch (ArgumentException) {
+                    // The profile was not saved when the catalog rejected its values.
+                }
+                catch (IOException) {
+                    // The profile was not saved when storage was unavailable.
+                }
+            }
+        }
+
         /// <summary>
         /// Executes the File/Print Descriptions command.
         /// </summary>
@@ -2332,6 +2650,7 @@ namespace PurplePen.ViewModels
 #endif // XPS_PRINTING
 
             printCoursesDialog.PrintSettings.Count = 1;
+            printCoursesDialog.PrintSettings.TrainingExerciseRenderProfile = controller.TrainingExerciseRenderProfile;
 
             // show the dialog, on success, print.
             if (printCoursesDialog.ShowDialog(this) == DialogResult.OK) {
@@ -2371,6 +2690,7 @@ namespace PurplePen.ViewModels
 
             // Seed from previous settings or build defaults.
             CoursePdfSettings settings;
+            bool useClassMapCountDefault = coursePdfSettings == null;
             if (coursePdfSettings != null) {
                 settings = coursePdfSettings.Clone();
             }
@@ -2388,12 +2708,19 @@ namespace PurplePen.ViewModels
                 settings.CropLargePrintArea = true;
             }
 
+            // Carry the active on-screen training presentation into the export dialog.
+            // The user can change it independently before creating the PDF.
+            settings.TrainingExerciseRenderProfile = controller.TrainingExerciseRenderProfile;
+
             CreatePdfCoursesDialogViewModel vm = new CreatePdfCoursesDialogViewModel {
                 EventDB = controller.GetEventDB(),
                 ShowMergeParts = controller.AnyMultipart(),
                 EnableChangeCropping = !isPdfMap,
+                CurrentMapColors = MapDisplay == null ? new List<SourceMapColor>() : ColorPreflightReport.CreateSourceColors(MapDisplay),
                 Settings = settings,
             };
+            if (useClassMapCountDefault)
+                vm.ApplySuggestedCopies();
 
             // Show the dialog; on OK, create the PDFs. Loop lets the user bail
             // out of the "overwrite?" prompt and tweak the dialog again.
@@ -2404,6 +2731,9 @@ namespace PurplePen.ViewModels
                     Summary = controller.GetPdfProductionSummary(chosen),
                 };
                 if (!await Services.DialogService.ShowDialogAsync(productionReviewVm))
+                    continue;
+
+                if (!await ValidateTrainingProfileForExport(chosen))
                     continue;
 
                 if (!await ValidatePrintProfileForPdfExport(chosen))
@@ -2424,6 +2754,28 @@ namespace PurplePen.ViewModels
 
                 break;
             }
+        }
+
+        /// <summary>Warns before exporting contour-only overlays to a non-vector map.</summary>
+        private async Task<bool> ValidateTrainingProfileForExport(CoursePdfSettings settings)
+        {
+            if (controller == null)
+                return false;
+
+            if (settings.TrainingExerciseRenderProfile == TrainingExerciseRenderProfile.None || controller.MapType == MapType.OCAD)
+                return true;
+
+            TrainingExerciseVisibility requiredVisibility = settings.TrainingExerciseRenderProfile == TrainingExerciseRenderProfile.Runner
+                ? TrainingExerciseVisibility.Runner
+                : settings.TrainingExerciseRenderProfile == TrainingExerciseRenderProfile.Coach
+                    ? TrainingExerciseVisibility.Coach : TrainingExerciseVisibility.Answer;
+            bool hasContourArea = controller.GetEventDB().AllTrainingExercisePairs.Any(pair =>
+                pair.Value.kind == TrainingExerciseKind.ContourOnly && (pair.Value.visibility & requiredVisibility) != 0);
+            if (!hasContourArea)
+                return true;
+
+            await ErrorMessage("Contour-only training areas can only be exported with OCAD/OpenMapper vector maps.");
+            return false;
         }
 
         /// <summary>
@@ -2450,8 +2802,9 @@ namespace PurplePen.ViewModels
                 return false;
             }
 
+            List<SourceMapColor> sourceColors = ColorPreflightReport.CreateSourceColors(MapDisplay);
             ColorPreflightReport report = ColorPreflightReport.Analyze(profile,
-                ColorPreflightReport.CreateSourceColors(MapDisplay),
+                sourceColors,
                 PdfExportCapabilities.CreateCurrentImplementation(), settings.ConfirmedPrintProfileRuleIds,
                 settings.PrintProfileColorMappings);
             if (!report.CanExport) {
@@ -2459,27 +2812,12 @@ namespace PurplePen.ViewModels
                     .Where(result => result.MatchStatus == ColorPreflightMatchStatus.Ambiguous)
                     .ToList();
                 if (ambiguousRules.Count > 0) {
-                    PrintProfileMappingsDialogViewModel mappingVm = new PrintProfileMappingsDialogViewModel {
-                        ProfileName = profile.Name,
-                    };
-                    foreach (ColorPreflightRuleResult ambiguousRule in ambiguousRules) {
-                        mappingVm.MappingItems.Add(new PrintProfileMappingItemViewModel {
-                            RuleId = ambiguousRule.Rule.Id,
-                            RuleName = ambiguousRule.Rule.Name,
-                            Candidates = ambiguousRule.CandidateColors,
-                            TargetCmyk = String.Format(System.Globalization.CultureInfo.InvariantCulture, "C{0:0.#} M{1:0.#} Y{2:0.#} K{3:0.#}",
-                                ambiguousRule.Rule.EffectiveCmyk.Cyan, ambiguousRule.Rule.EffectiveCmyk.Magenta,
-                                ambiguousRule.Rule.EffectiveCmyk.Yellow, ambiguousRule.Rule.EffectiveCmyk.Black),
-                            TargetUsesOverprint = ambiguousRule.Rule.OverprintIntent == PrintProfileOverprintIntent.Overprint,
-                            TargetPreviewColor = PrintProfileMappingItemViewModel.ToPreviewColor(ambiguousRule.Rule.EffectiveCmyk),
-                        });
-                    }
-                    mappingVm.ListenToMappingItems();
+                    PrintProfileMappingsDialogViewModel mappingVm = new PrintProfileMappingsDialogViewModel();
+                    mappingVm.Configure(profile, sourceColors, report.RuleResults);
 
                     if (await Services.DialogService.ShowDialogAsync(mappingVm)) {
-                        foreach (ColorPreflightRuleResult ambiguousRule in ambiguousRules) {
-                            settings.PrintProfileColorMappings.RemoveAll(mapping => mapping.RuleId == ambiguousRule.Rule.Id);
-                        }
+                        HashSet<string> profileRuleIds = new HashSet<string>(profile.ColorRules.Select(rule => rule.Id), StringComparer.Ordinal);
+                        settings.PrintProfileColorMappings.RemoveAll(mapping => profileRuleIds.Contains(mapping.RuleId));
                         settings.PrintProfileColorMappings.AddRange(mappingVm.CreateMappings());
                         return await ValidatePrintProfileForPdfExport(settings);
                     }
@@ -2875,7 +3213,7 @@ namespace PurplePen.ViewModels
         /// Executes the File/Publish to Livelox command.
         /// </summary>
         [RelayCommand]
-        private void PublishToLivelox()
+        private async Task PublishToLivelox()
         {
 #if !PORTING
             LiveloxPublishSettings settings;
@@ -2906,6 +3244,8 @@ namespace PurplePen.ViewModels
                     publishToLiveloxDialog.Dispose();
                 });
             });
+#else
+            await ShowMeosIofCentral();
 #endif
         }
 
@@ -3006,6 +3346,17 @@ namespace PurplePen.ViewModels
                 return;
 
             string reportBody = new Reports().CreateEventAuditReport(controller.GetEventDB());
+            await ShowReport(menuCaption, reportBody, "ReportsEventAudit.htm");
+        }
+
+        /// <summary>Shows a concise readiness status before the detailed event audit.</summary>
+        [RelayCommand]
+        private async Task ShowEventReadiness(string? menuCaption)
+        {
+            if (controller == null)
+                return;
+
+            string reportBody = new Reports().CreateEventReadinessReport(controller.GetEventDB(), coursePdfSettings?.Clone());
             await ShowReport(menuCaption, reportBody, "ReportsEventAudit.htm");
         }
 

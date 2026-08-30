@@ -63,12 +63,13 @@ namespace PurplePen
         bool allowDrag = true;    // Allow dragging the entire size.
         bool allowResize = true;  // Allow resized with a handle.
 
-        public RectangleSelectMode(Controller controller, RectangleF rect, IDisposable disposeOnEndMode)
+        public RectangleSelectMode(Controller controller, RectangleF rect, IDisposable disposeOnEndMode, float rotation = 0F)
         {
             this.controller = controller;
             originalRectangle = rect;
             this.disposeOnEndMode = disposeOnEndMode;
             selectingCourseObj = new SelectingRectangleCourseObj(rect);
+            selectingCourseObj.rotation = rotation;
         }
 
         // The rectangle that is current visible.
@@ -78,6 +79,16 @@ namespace PurplePen
             set {
                 selectingCourseObj = (SelectingRectangleCourseObj) selectingCourseObj.Clone();
                 selectingCourseObj.rect = value;
+            }
+        }
+
+        /// <summary>Rotation of the selection rectangle in degrees.</summary>
+        public float Rotation
+        {
+            get { return selectingCourseObj.rotation; }
+            set {
+                selectingCourseObj = (SelectingRectangleCourseObj) selectingCourseObj.Clone();
+                selectingCourseObj.rotation = value;
             }
         }
 
@@ -276,6 +287,7 @@ namespace PurplePen
     class SelectingRectangleCourseObj: RectCourseObj
     {
         public bool showHandles = true;               // Should drag handles be shown?
+        public float rotation;
 
         public SelectingRectangleCourseObj(RectangleF rect) :
             base(Id<ControlPoint>.None, Id<CourseControl>.None, Id<Special>.None, 1.0F, new CourseAppearance(), rect)
@@ -283,10 +295,50 @@ namespace PurplePen
 
         public override PointF[] GetHandles()
         {
-            if (showHandles)
-                return base.GetHandles();
-            else
+            if (!showHandles)
                 return new PointF[0];
+
+            PointF center = Geometry.RectCenter(rect);
+            PointF[] handles = base.GetHandles();
+            for (int i = 0; i < handles.Length; ++i)
+                handles[i] = Rotate(handles[i], center, rotation);
+            return handles;
+        }
+
+        public override double DistanceFromPoint(PointF pt)
+        {
+            return base.DistanceFromPoint(Rotate(pt, Geometry.RectCenter(rect), -rotation));
+        }
+
+        public override void Highlight(PurplePen.Graphics2D.IGraphicsTarget g, Matrix xformWorldToPixel, object brush, bool erasing)
+        {
+            Matrix transformed = xformWorldToPixel.Clone();
+            transformed.RotateAt(rotation, Geometry.RectCenter(rect), MatrixOrder.Prepend);
+            base.Highlight(g, transformed, brush, erasing);
+        }
+
+        public override RectangleF GetHighlightBounds()
+        {
+            PointF center = Geometry.RectCenter(rect);
+            PointF[] corners = {
+                Rotate(new PointF(rect.Left, rect.Top), center, rotation),
+                Rotate(new PointF(rect.Right, rect.Top), center, rotation),
+                Rotate(new PointF(rect.Right, rect.Bottom), center, rotation),
+                Rotate(new PointF(rect.Left, rect.Bottom), center, rotation),
+            };
+            RectangleF bounds = Geometry.RectFromPoints(corners[0].X, corners[0].Y, corners[0].X, corners[0].Y);
+            bounds = RectangleF.Union(bounds, Geometry.RectFromPoints(corners[1].X, corners[1].Y, corners[1].X, corners[1].Y));
+            bounds = RectangleF.Union(bounds, Geometry.RectFromPoints(corners[2].X, corners[2].Y, corners[2].X, corners[2].Y));
+            return RectangleF.Union(bounds, Geometry.RectFromPoints(corners[3].X, corners[3].Y, corners[3].X, corners[3].Y));
+        }
+
+        static PointF Rotate(PointF point, PointF center, float degrees)
+        {
+            double radians = degrees * Math.PI / 180.0;
+            float x = point.X - center.X;
+            float y = point.Y - center.Y;
+            return new PointF((float)(center.X + x * Math.Cos(radians) - y * Math.Sin(radians)),
+                              (float)(center.Y + x * Math.Sin(radians) + y * Math.Cos(radians)));
         }
 
         public override bool Equals(object obj)
@@ -298,6 +350,8 @@ namespace PurplePen
             SelectingRectangleCourseObj other = (SelectingRectangleCourseObj)obj;
 
             if (showHandles != other.showHandles)
+                return false;
+            if (Math.Abs(rotation - other.rotation) > 0.0001F)
                 return false;
 
             return base.Equals(obj);

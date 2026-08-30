@@ -608,6 +608,15 @@ namespace PurplePen {
                 return ResourceManager.GetString("RelayVariation_BranchWarning", resourceCulture);
             }
         }
+
+        /// <summary>
+        ///   Looks up a localized string similar to Fork Key.
+        /// </summary>
+        internal static string RelayVariation_ForkKey {
+            get {
+                return ResourceManager.GetString("RelayVariation_ForkKey", resourceCulture);
+            }
+        }
         
         /// <summary>
         ///   Looks up a localized string similar to Leg {0}.

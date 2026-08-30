@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 
 namespace PurplePen
 {
@@ -43,6 +44,58 @@ namespace PurplePen
             return String.IsNullOrWhiteSpace(Course) ||
                    String.Equals(Course.Trim(), courseView.CourseName, StringComparison.OrdinalIgnoreCase) ||
                    String.Equals(Course.Trim(), courseView.CourseNameAndPart, StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Finds the one safe imported record for a relay course. A specific
+        /// course and class take precedence over blank values, but duplicate
+        /// candidates deliberately produce no result rather than attaching the
+        /// first row in an arbitrary import order.
+        /// </summary>
+        /// <param name="records">Imported start-list records to inspect.</param>
+        /// <param name="team">Purple Pen relay team number.</param>
+        /// <param name="leg">Purple Pen relay leg number.</param>
+        /// <param name="courseName">Purple Pen course name.</param>
+        /// <param name="courseNameAndPart">Purple Pen course name including an optional part suffix.</param>
+        /// <param name="className">Explicit Purple Pen course class, when assigned.</param>
+        /// <returns>The unique compatible record, or null when no unambiguous match exists.</returns>
+        public static BacksideInfoRecord FindUniqueMatch(IEnumerable<BacksideInfoRecord> records, int team, int leg, string courseName, string courseNameAndPart, string className)
+        {
+            if (records == null)
+                return null;
+
+            List<BacksideInfoRecord> relayCandidates = records.Where(record => record != null && record.Team == team && record.Leg == leg).ToList();
+            List<BacksideInfoRecord> courseCandidates = relayCandidates.Where(record => CourseMatches(record.Course, courseName, courseNameAndPart)).ToList();
+            if (courseCandidates.Count == 0)
+                courseCandidates = relayCandidates.Where(record => String.IsNullOrWhiteSpace(record.Course)).ToList();
+
+            if (courseCandidates.Count == 0)
+                return null;
+
+            if (!String.IsNullOrWhiteSpace(className)) {
+                List<BacksideInfoRecord> exactClassCandidates = courseCandidates.Where(record => ClassMatches(record.ClassName, className)).ToList();
+                if (exactClassCandidates.Count > 0)
+                    return exactClassCandidates.Count == 1 ? exactClassCandidates[0] : null;
+
+                courseCandidates = courseCandidates.Where(record => String.IsNullOrWhiteSpace(record.ClassName)).ToList();
+            }
+
+            return courseCandidates.Count == 1 ? courseCandidates[0] : null;
+        }
+
+        /// <summary>Checks whether an imported course value is a specific match for a printed course.</summary>
+        static bool CourseMatches(string importedCourse, string courseName, string courseNameAndPart)
+        {
+            return !String.IsNullOrWhiteSpace(importedCourse) &&
+                   (String.Equals(importedCourse.Trim(), courseName, StringComparison.OrdinalIgnoreCase) ||
+                    String.Equals(importedCourse.Trim(), courseNameAndPart, StringComparison.OrdinalIgnoreCase));
+        }
+
+        /// <summary>Checks whether an imported class value agrees with the explicit course class.</summary>
+        static bool ClassMatches(string importedClassName, string className)
+        {
+            return !String.IsNullOrWhiteSpace(importedClassName) &&
+                   String.Equals(importedClassName.Trim(), className.Trim(), StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>Creates an independent copy suitable for export settings.</summary>

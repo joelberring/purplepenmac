@@ -10,8 +10,8 @@ normal installation and a `.zip` for automated deployment.
 Output lands in `output/`:
 
 ```
-output/PurplePen-4.0.0-osx-arm64.dmg
-output/PurplePen-4.0.0-osx-arm64.zip
+output/PurplePen-4.0.0.260-osx-arm64.dmg
+output/PurplePen-4.0.0.260-osx-arm64.zip
 ```
 
 ## Files
@@ -23,6 +23,10 @@ output/PurplePen-4.0.0-osx-arm64.zip
 | `publish-exclude.txt` | rsync exclusion list controlling exactly which published files go into the app bundle. Currently empty; customize as you experiment. |
 | `Info.plist.template` | Bundle metadata, with `@PLACEHOLDER@` tokens filled in by the script. |
 | `PurplePen.entitlements` | Hardened Runtime entitlements required to run .NET under notarization. |
+
+The repository's top-level `LICENSE` is copied into both the app bundle and
+the distribution zip. This keeps the BSD licence terms with every binary
+distribution, including the `.dmg` whose payload is the app bundle.
 
 `build/` (staging area, assembled `.app`) and `output/` are generated and
 git-ignored.
@@ -78,7 +82,9 @@ stored once; the script never handles it again.
 
 1. **Publish** — `dotnet publish` of `AvPurplePen.csproj` in Release for
    `net10.0` / `osx-arm64`, self-contained, into the project's usual publish
-   directory (`AvPurplePen/bin/Release/net10.0/osx-arm64/publish`).
+   directory (`AvPurplePen/bin/Release/net10.0/osx-arm64/publish`). Compiler
+   source paths are mapped to `/_/src` so released assemblies do not disclose
+   the build machine's user name or checkout location.
 2. **Stage** — `rsync --archive --delete --delete-excluded
    --exclude-from=publish-exclude.txt` from the publish directory into
    `build/staging`. This is where you control the bundle's contents.
@@ -89,7 +95,7 @@ stored once; the script never handles it again.
 4. **Icon** — assembles `PurplePen.icns` from the pre-rendered PNGs in
    `AvPurplePen/Assets/AppIcon`, using the family named by `ICON_FAMILY`.
 5. **Assemble** — builds `build/PurplePen.app` with `Contents/MacOS` (the
-   staged payload), `Contents/Resources` (the icon) and a generated
+   staged payload), `Contents/Resources` (the icon and licence) and a generated
    `Contents/Info.plist`, then strips extended attributes.
 6. **Sign** — signs every Mach-O file inside the bundle from the inside out,
    then seals the bundle. Nested executables get the Hardened Runtime and
@@ -250,12 +256,10 @@ Two consequences:
   `Microsoft.NETCore.App` patch versions, since the overlay would otherwise
   swap the runtime out from under the main app.
 
-This only becomes useful once the lookup in
-[PdfMapFile.cs:176](../../PurplePenCore/PdfMapFile.cs) stops hard-coding the
-`.exe` extension — it currently returns `PdfConverter.exe` on every platform,
-so the helper is never found on macOS. `AppContext.BaseDirectory` is also a
-more robust way to locate it than `Assembly.Location`, which returns an empty
-string under single-file publishing.
+The lookup in [PdfMapFile.cs](../../PurplePenCore/PdfMapFile.cs) selects
+`PdfConverter.exe` on Windows and `PdfConverter` on macOS/Linux. The packaged
+helper has been smoke-tested on Apple Silicon by converting a PDF to a PNG and
+verifying its dimensions and DPI metadata.
 
 **Every file in `Contents/MacOS` must be signed, not just the Mach-O ones.**
 That directory is the bundle's executables directory, so `codesign` treats
@@ -294,4 +298,6 @@ not run on Intel Macs at all. To add Intel support later, either build a second
 **Versions come from `PurplePenCore/VersionNumber.cs`.** The four-part version
 (`4.0.0.110`) becomes `CFBundleVersion`; its first three components
 (`4.0.0`) become the user-visible `CFBundleShortVersionString`. Apple requires
-`CFBundleVersion` to increase with every release you submit.
+`CFBundleVersion` to increase with every release you submit. Distribution file
+names retain all four components so that alpha, beta and release-candidate
+assets cannot overwrite one another.

@@ -17,11 +17,14 @@
 
 using System;
 using System.ComponentModel;
+using System.IO;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform;
+using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using AvUtil;
+using PurplePen;
 using PurplePen.ViewModels;
 
 namespace AvPurplePen.Views
@@ -132,6 +135,76 @@ namespace AvPurplePen.Views
             else {
                 reportWebView.ShowPrintUI();
             }
+        }
+
+        /// <summary>
+        /// Exports the currently rendered report to a PDF selected by the user.
+        /// The PDF is produced by the same native web view as Print, ensuring that
+        /// all report HTML and CSS (including the Competition Readiness report) is
+        /// rendered consistently. Cancellation is a normal no-op.
+        /// </summary>
+        private async void ExportPdfButton_Click(object? sender, RoutedEventArgs e)
+        {
+            string suggestedName = MakePdfFileName(viewModel?.ReportTitle);
+            FilePickerSaveOptions options = new FilePickerSaveOptions {
+                Title = UIText.ResourceManager.GetString("ReportForm_exportPdfDialog_Text") ?? "Export report as PDF",
+                SuggestedFileName = suggestedName,
+                DefaultExtension = "pdf",
+                ShowOverwritePrompt = true,
+                FileTypeChoices = new[] {
+                    new FilePickerFileType(UIText.ResourceManager.GetString("ReportForm_pdfFileType_Text") ?? "PDF document") {
+                        Patterns = new[] { "*.pdf" }
+                    }
+                }
+            };
+
+            IStorageFile? file;
+            try {
+                file = await StorageProvider.SaveFilePickerAsync(options);
+            }
+            catch (Exception exception) {
+                await ShowExportErrorAsync(exception);
+                return;
+            }
+
+            if (file == null)
+                return;
+
+            try {
+                await using Stream pdfStream = await reportWebView.PrintToPdfStreamAsync();
+                await using Stream outputStream = await file.OpenWriteAsync();
+                await pdfStream.CopyToAsync(outputStream);
+                await outputStream.FlushAsync();
+            }
+            catch (Exception exception) {
+                await ShowExportErrorAsync(exception);
+            }
+        }
+
+        /// <summary>Creates a safe, user-friendly PDF filename from a report title.</summary>
+        internal static string MakePdfFileName(string? reportTitle)
+        {
+            string title = string.IsNullOrWhiteSpace(reportTitle) ? "Report" : reportTitle.Trim();
+            foreach (char invalidCharacter in Path.GetInvalidFileNameChars())
+                title = title.Replace(invalidCharacter, '_');
+            return title + ".pdf";
+        }
+
+        /// <summary>Shows a localized error without allowing export failures to crash the dialog.</summary>
+        private static async System.Threading.Tasks.Task ShowExportErrorAsync(Exception exception)
+        {
+            string message = UIText.ResourceManager.GetString("ReportForm_exportPdfError_Text")
+                ?? "The report could not be exported as PDF.";
+            if (!string.IsNullOrWhiteSpace(exception.Message))
+                message += Environment.NewLine + exception.Message;
+
+            MessageBoxDialogViewModel error = new MessageBoxDialogViewModel {
+                Message = message,
+                Buttons = MessageBoxButtons.Ok,
+                DefaultButton = MessageBoxButton.Ok,
+                Icon = MessageBoxIcon.Error,
+            };
+            await Services.DialogService.ShowDialogAsync(error);
         }
 
         /// <summary>

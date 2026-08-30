@@ -37,6 +37,7 @@ EXCLUDE_FILE="$SCRIPT_DIR/publish-exclude.txt"
 PLIST_TEMPLATE="$SCRIPT_DIR/Info.plist.template"
 ENTITLEMENTS="$SCRIPT_DIR/PurplePen.entitlements"
 ICON_DIR="$SRC_DIR/AvPurplePen/Assets/AppIcon"
+LICENSE_FILE="$SRC_DIR/../LICENSE"
 DMG_BACKGROUND_SVG="$SCRIPT_DIR/dmg-background.svg"
 LAYOUT_READER="$SCRIPT_DIR/read-dmg-layout.py"
 
@@ -232,6 +233,7 @@ fi
 [[ -f "$PLIST_TEMPLATE" ]] || die "Cannot find Info.plist template at $PLIST_TEMPLATE"
 [[ -f "$ENTITLEMENTS" ]] || die "Cannot find entitlements at $ENTITLEMENTS"
 [[ -d "$ICON_DIR" ]] || die "Cannot find the icon directory at $ICON_DIR"
+[[ -f "$LICENSE_FILE" ]] || die "Cannot find the Purple Pen licence at $LICENSE_FILE"
 
 if [[ ! -f "$EXCLUDE_FILE" ]]; then
     warn "No publish-exclude.txt found; nothing will be excluded from the bundle."
@@ -305,8 +307,9 @@ read_version() {
 read_version
 info "Purple Pen version $FULL_VERSION (short version $SHORT_VERSION)"
 
-# Base name used for the .dmg and .zip files.
-DIST_BASENAME="$APP_NAME-$SHORT_VERSION-$RUNTIME_IDENTIFIER"
+# Base name used for the .dmg and .zip files. Keep the fourth component so
+# prerelease builds do not overwrite one another on a GitHub release page.
+DIST_BASENAME="$APP_NAME-$FULL_VERSION-$RUNTIME_IDENTIFIER"
 
 # ---------------------------------------------------------------------------
 # Resolve the signing identity
@@ -416,6 +419,7 @@ publish_app() {
         -p:PublishReadyToRun="$PUBLISH_READYTORUN" \
         -p:UseAppHost=true \
         -p:DebugType=none \
+        -p:PathMap="$SRC_DIR=/_/src" \
         --nologo
 
     [[ -d "$PUBLISH_DIR" ]] || die "Publish succeeded but $PUBLISH_DIR does not exist. Check the paths in config.sh."
@@ -521,6 +525,7 @@ stage_pdf_converter() {
         -p:PublishReadyToRun="$PUBLISH_READYTORUN" \
         -p:UseAppHost=true \
         -p:DebugType=none \
+        -p:PathMap="$SRC_DIR=/_/src" \
         -p:BaseOutputPath="$BUILD_DIR/pdfconverter-bin/" \
         --output "$helper_dir" \
         --nologo \
@@ -638,6 +643,7 @@ assemble_bundle() {
     cp -a "$STAGING_DIR/." "$APP_BUNDLE/Contents/MacOS/"
 
     cp "$ICNS_FILE" "$APP_BUNDLE/Contents/Resources/$APP_NAME.icns"
+    cp "$LICENSE_FILE" "$APP_BUNDLE/Contents/Resources/LICENSE.txt"
 
     write_info_plist
 
@@ -871,6 +877,7 @@ build_zip() {
 
     ditto "$APP_BUNDLE" "$zip_stage/$APP_NAME.app"
     cp "$SCRIPT_DIR/README - FIRST OPEN.txt" "$zip_stage/README - FIRST OPEN.txt"
+    cp "$LICENSE_FILE" "$zip_stage/LICENSE.txt"
     ditto -c -k --sequesterRsrc --keepParent "$zip_stage" "$zip_path"
 
     info "Wrote $zip_path ($(du -h "$zip_path" | cut -f1 | tr -d ' '))"

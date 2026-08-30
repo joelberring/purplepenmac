@@ -90,6 +90,25 @@ namespace PurplePen.Tests
             Assert.AreEqual("Rambo", eventDB.GetCourse(CourseId(3)).name);
         }
 
+        // Selecting a course by its identity is navigation only and must not alter event data or undo state.
+        [TestMethod]
+        public async Task SelectCourseNavigatesWithoutChangingUndoState()
+        {
+            bool success = await controller.LoadInitialFile(TestUtil.GetTestFile("controller\\sampleevent1.coursescribe"), true);
+            Assert.IsTrue(success);
+
+            UndoStatus undoBefore = controller.GetUndoStatus();
+            bool dirtyBefore = controller.IsDirty;
+
+            controller.SelectCourse(CourseId(2));
+
+            Assert.AreEqual(CourseId(2), controller.CurrentCourseId);
+            UndoStatus undoAfter = controller.GetUndoStatus();
+            Assert.AreEqual(undoBefore.CanUndo, undoAfter.CanUndo);
+            Assert.AreEqual(undoBefore.CanRedo, undoAfter.CanRedo);
+            Assert.AreEqual(dirtyBefore, controller.IsDirty);
+        }
+
         [TestMethod]
         public async Task LoadMissingMapFile()
         {
@@ -361,6 +380,62 @@ Could not find a part of the path '" + info.eventFileName + "'.'\r\n";
             Assert.AreEqual("Yellow", eventDB.GetCourse(CourseId(2)).name);
             Assert.AreEqual("Rambo", eventDB.GetCourse(CourseId(3)).name);
             Assert.AreEqual("998", eventDB.GetControl(ControlId(25)).code);
+        }
+
+        /// <summary>Persists event-local snapshots in a sidecar across saving and reopening an event.</summary>
+        [TestMethod]
+        public async Task SaveAsPersistsHistorySnapshotsInSidecar()
+        {
+            string eventFileName = TestUtil.GetTestFile("history_snapshot_temp.coursescribe");
+            string manifestFileName = eventFileName + ".history.json";
+            File.Delete(eventFileName);
+            File.Delete(manifestFileName);
+            try {
+                bool success = await controller.LoadInitialFile(TestUtil.GetTestFile("controller\\sampleevent1.coursescribe"), true);
+                Assert.IsTrue(success);
+                controller.GetHistorySnapshotStore().Create(controller.GetEventDB(), "Before save");
+
+                Assert.IsTrue(controller.SaveAs(eventFileName));
+                Assert.IsTrue(File.Exists(manifestFileName));
+
+                Setup();
+                success = await controller.LoadInitialFile(eventFileName, true);
+                Assert.IsTrue(success);
+                Assert.AreEqual(1, controller.GetHistorySnapshotStore().Snapshots.Count);
+                Assert.AreEqual("Before save", controller.GetHistorySnapshotStore().Snapshots[0].Name);
+            }
+            finally {
+                File.Delete(eventFileName);
+                File.Delete(manifestFileName);
+            }
+        }
+
+        /// <summary>Persists history changes independently when the event file itself is not saved again.</summary>
+        [TestMethod]
+        public async Task PersistHistorySnapshotsDoesNotRequireSavingEventAgain()
+        {
+            string eventFileName = TestUtil.GetTestFile("history_snapshot_persist_temp.coursescribe");
+            string manifestFileName = eventFileName + ".history.json";
+            File.Delete(eventFileName);
+            File.Delete(manifestFileName);
+            try {
+                bool success = await controller.LoadInitialFile(TestUtil.GetTestFile("controller\\sampleevent1.coursescribe"), true);
+                Assert.IsTrue(success);
+                Assert.IsTrue(controller.SaveAs(eventFileName));
+                controller.GetHistorySnapshotStore().Create(controller.GetEventDB(), "Without event save");
+
+                controller.PersistHistorySnapshots();
+
+                Setup();
+                success = await controller.LoadInitialFile(eventFileName, true);
+                Assert.IsTrue(success);
+                Assert.AreEqual(1, controller.GetHistorySnapshotStore().Snapshots.Count);
+                Assert.AreEqual("Without event save", controller.GetHistorySnapshotStore().Snapshots[0].Name);
+            }
+            finally {
+                File.Delete(eventFileName);
+                File.Delete(manifestFileName);
+            }
         }
 
         [TestMethod]
@@ -1721,6 +1796,59 @@ Code:           layer:12  control:4  scale:1  text:GO  top-left:(38.29,-16.89)
             Assert.AreEqual(50, eventDB.GetCourse(CourseId(5)).load);
             Assert.AreEqual(25, eventDB.GetCourse(CourseId(8)).load);
             Assert.AreEqual(14, eventDB.GetCourse(CourseId(1)).load);
+        }
+
+        [TestMethod]
+        public void SetAllEventClassesRetainsNewClasses()
+        {
+            EventDB eventDB = controller.GetEventDB();
+            UndoMgr undoMgr = controller.GetUndoMgr();
+
+            undoMgr.BeginCommand(1234, "Add course");
+            Id<Course> courseId = eventDB.AddCourse(new Course(CourseKind.Normal, "Blue", 15000, 1));
+            undoMgr.EndCommand(1234);
+
+            Controller.EventClassInfo[] eventClasses = new Controller.EventClassInfo[] {
+                new Controller.EventClassInfo {
+                    classId = Id<EventClass>.None,
+                    name = "H21",
+                    courseId = courseId,
+                    participantCount = 12,
+                    mapCount = 1
+                }
+            };
+
+            controller.SetAllEventClasses(eventClasses);
+            eventDB.Validate();
+
+            Assert.AreEqual(1, eventDB.AllEventClasses.Count);
+            EventClass eventClass = eventDB.AllEventClasses.Single();
+            Assert.AreEqual("H21", eventClass.Name);
+            Assert.AreEqual(courseId, eventClass.CourseId);
+        }
+
+        [TestMethod]
+        public async Task SetAllCourseClasses()
+        {
+            EventDB eventDB = controller.GetEventDB();
+
+            bool success = await controller.LoadInitialFile(TestUtil.GetTestFile("controller\\marymoor3.coursescribe"), true);
+            Assert.IsTrue(success);
+
+            Controller.CourseLoadInfo[] classes = controller.GetAllCourseLoads();
+            classes[0].className = "D21";
+            classes[0].load = 34;
+
+            controller.SetAllCourseClasses(classes);
+            eventDB.Validate();
+
+            Assert.AreEqual("D21", eventDB.GetCourse(CourseId(1)).className);
+            Assert.AreEqual(34, eventDB.GetCourse(CourseId(1)).load);
+
+            controller.Undo();
+
+            Assert.IsNull(eventDB.GetCourse(CourseId(1)).className);
+            Assert.AreEqual(1, eventDB.GetCourse(CourseId(1)).load);
         }
 
 

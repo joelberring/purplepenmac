@@ -52,6 +52,7 @@ namespace PurplePen
         IUserInterface ui;      // interface to the UI.
         EventDB eventDB;        // event database
         UndoMgr undoMgr;        // undo manager.
+        HistorySnapshotStore historySnapshotStore; // snapshots for the currently loaded event.
         SelectionMgr selectionMgr;  // selection manager
         SymbolDB symbolDB;      // symbol database
         string fileName;        // full file name of the event.
@@ -104,6 +105,7 @@ namespace PurplePen
         {
             undoMgr = new UndoMgr(100);
             eventDB = new EventDB(undoMgr);
+            historySnapshotStore = new HistorySnapshotStore(eventDB);
             selectionMgr = new SelectionMgr(eventDB, symbolDB, this);
             currentMode = defaultMode = new DefaultMode(this, eventDB, symbolDB, selectionMgr);
 
@@ -520,6 +522,7 @@ namespace PurplePen
 
             if (success) {
                 this.fileName = Path.GetFullPath(fileName);
+                LoadHistorySnapshotManifest(this.fileName);
                 if (setAsLastLoadedFile && UserSettings.Current.LastLoadedFile != this.fileName) {
                     UserSettings.Current.LastLoadedFile = this.fileName;
                     UserSettings.Current.Save();
@@ -625,16 +628,11 @@ namespace PurplePen
             if (info.mapStandard == "2000") {
                 ev.courseAppearance.itemScaling = ItemScaling.None;
             }
-            else if (info.mapStandard == "Spr2019") {
-                ev.courseAppearance.itemScaling = ItemScaling.RelativeToMap;
-            }
             else {
-                if (info.allControlsPrintScale >= 9500 && info.allControlsPrintScale <= 15500) {
-                    ev.courseAppearance.itemScaling = ItemScaling.RelativeTo15000;
-                }
-                else {
-                    ev.courseAppearance.itemScaling = ItemScaling.RelativeToMap;
-                }
+                // Modern IOF standards define course symbols at a reference scale.
+                // CourseAppearance resolves this to 1:15000 for ISOM and 1:4000
+                // for ISSprOM, independently of the source map's original scale.
+                ev.courseAppearance.itemScaling = ItemScaling.RelativeTo15000;
             }
             eventDB.ChangeEvent(ev);
 
@@ -1146,6 +1144,27 @@ namespace PurplePen
             UpdateExtraControlsDisplay();
         }
 
+        // Select a course directly, rather than through its position in the course tab strip.
+        // This is navigation state only and deliberately does not create an undo command.
+        public void SelectCourse(Id<Course> courseId)
+        {
+            if (!eventDB.IsCoursePresent(courseId))
+                throw new ArgumentException("The requested course is not present in the event.", nameof(courseId));
+
+            CancelMode();
+            selectionMgr.SelectCourseView(new CourseDesignator(courseId));
+            UpdateExtraControlsDisplay();
+        }
+
+        /// <summary>Selects a control in the active course view without creating an undo command.</summary>
+        public void SelectControl(Id<ControlPoint> controlId)
+        {
+            eventDB.CheckControlId(controlId);
+            CancelMode();
+            selectionMgr.SelectControl(controlId);
+            UpdateExtraControlsDisplay();
+        }
+
         // Select a line in the description pane.
         public void SelectDescriptionLine(int line)
         {
@@ -1246,6 +1265,7 @@ namespace PurplePen
 
             if (success) {
                 this.fileName = Path.GetFullPath(newFileName);
+                SaveHistorySnapshotManifest(this.fileName);
                 UserSettings.Current.LastLoadedFile = this.fileName;
                 UserSettings.Current.Save();
                 ForceChangeUpdate();
@@ -1657,7 +1677,7 @@ namespace PurplePen
             SelectionInfo selection = selectionMgr.Selection;
 
             // We can delete any selected control or a special or a text line
-            if (selection.SelectionKind == SelectionKind.Control || selection.SelectionKind == SelectionKind.Special ||
+            if (selection.SelectionKind == SelectionKind.Control || selection.SelectionKind == SelectionKind.Special || selection.SelectionKind == SelectionKind.TrainingExercise ||
                 selection.SelectionKind == SelectionKind.TextLine || selection.SelectionKind == SelectionKind.MapExchangeOrFlipAtControl)
                 return true;
 
@@ -1686,6 +1706,10 @@ namespace PurplePen
                 undoMgr.BeginCommand(710, CommandNameText.DeleteObject);
                 ChangeEvent.DeleteSpecial(eventDB, selection.SelectedSpecial);
                 undoMgr.EndCommand(710);
+                return true;
+            }
+            else if (selection.SelectionKind == SelectionKind.TrainingExercise) {
+                DeleteTrainingExercise(selection.SelectedTrainingExercise);
                 return true;
             }
             else if (selection.SelectionKind == SelectionKind.TextLine) {
@@ -2084,8 +2108,9 @@ namespace PurplePen
         public void BeginSetPrintArea(PrintAreaKind printArea, IDisposable disposeOnEndMode)
         {
             RectangleF initialPrintArea = GetCurrentPrintAreaRectangle(printArea);
+            PrintArea storedArea = GetCurrentPrintArea(printArea);
 
-            SetCommandMode(new RectangleSelectMode(this, initialPrintArea, disposeOnEndMode));
+            SetCommandMode(new RectangleSelectMode(this, initialPrintArea, disposeOnEndMode, storedArea.rotation));
         }
 
         public void SetPrintAreaUpdate(PrintAreaKind printAreaKind, PrintArea printArea)
@@ -2093,6 +2118,7 @@ namespace PurplePen
             RectangleSelectMode rectSelectMode = currentMode as RectangleSelectMode;
             if (rectSelectMode != null) {
                 rectSelectMode.Rectangle = GetPrintAreaRectangle(CourseDesignatorFromPrintAreaKind(printAreaKind), printArea);
+                rectSelectMode.Rotation = printArea.rotation;
                 rectSelectMode.AllowDragging = true;
                 rectSelectMode.AllowResize = !printArea.restrictToPageSize;
 
@@ -2111,6 +2137,12 @@ namespace PurplePen
             }
         }
 
+        /// <summary>Gets the rotation currently shown by the interactive print-area mode.</summary>
+        public float SetPrintAreaCurrentRotation()
+        {
+            return currentMode is RectangleSelectMode mode ? mode.Rotation : 0F;
+        }
+
         // End the mode to set the print area, and set it.
         public void EndSetPrintArea(PrintAreaKind printAreaKind, PrintArea printArea)
         {
@@ -2119,6 +2151,7 @@ namespace PurplePen
                 // This is for backward compatibility.
                 RectangleF newRectangle = ((RectangleSelectMode)currentMode).Rectangle;
                 printArea.printAreaRectangle = newRectangle;
+                printArea.rotation = ((RectangleSelectMode)currentMode).Rotation;
 
                 undoMgr.BeginCommand(1127, CommandNameText.SetPrintArea);
                 if (printAreaKind == PrintAreaKind.AllCourses) {
@@ -3057,10 +3090,63 @@ namespace PurplePen
 
         public struct CourseLoadInfo
         {
-            internal Id<Course> courseId;
+            public Id<Course> courseId;
             public string courseName;
+            public string className;
             public int load;
         };
+
+        public struct EventClassInfo
+        {
+            public Id<EventClass> classId;
+            public string name;
+            public Id<Course> courseId;
+            public string courseName;
+            public int participantCount;
+            public int startInterval;
+            public int bibNumberStart;
+            public int bibNumberEnd;
+            public int mapCount;
+            public int reserveCount;
+            public int requiredMapCount;
+        }
+
+        public EventClassInfo[] GetAllEventClasses()
+        {
+            return eventDB.AllEventClassPairs.OrderBy(pair => pair.Value.Name, StringComparer.CurrentCultureIgnoreCase)
+                .Select(pair => new EventClassInfo {
+                    classId = pair.Key, name = pair.Value.Name, courseId = pair.Value.CourseId,
+                    courseName = eventDB.AllCourseIds.Contains(pair.Value.CourseId) ? eventDB.GetCourse(pair.Value.CourseId).name : "",
+                    participantCount = pair.Value.ParticipantCount, startInterval = pair.Value.StartInterval,
+                    bibNumberStart = pair.Value.BibNumberStart, bibNumberEnd = pair.Value.BibNumberEnd,
+                    mapCount = pair.Value.MapCount, reserveCount = pair.Value.ReserveCount,
+                    requiredMapCount = pair.Value.RequiredMapCount,
+                }).ToArray();
+        }
+
+        public void SetAllEventClasses(EventClassInfo[] values)
+        {
+            undoMgr.BeginCommand(9316, CommandNameText.SetCourseLoad);
+            HashSet<Id<EventClass>> retained = new HashSet<Id<EventClass>>();
+            foreach (EventClassInfo value in values) {
+                EventClass item = new EventClass { Name = value.name?.Trim() ?? "", CourseId = value.courseId,
+                    ParticipantCount = value.participantCount, StartInterval = value.startInterval,
+                    BibNumberStart = value.bibNumberStart, BibNumberEnd = value.bibNumberEnd,
+                    MapCount = value.mapCount, ReserveCount = value.reserveCount };
+                if (value.classId.IsNotNone && eventDB.AllEventClassIds.Contains(value.classId)) {
+                    retained.Add(value.classId);
+                    ChangeEvent.ChangeEventClass(eventDB, value.classId, item);
+                }
+                else {
+                    Id<EventClass> classId = eventDB.AddEventClass(item);
+                    retained.Add(classId);
+                }
+            }
+            foreach (Id<EventClass> id in eventDB.AllEventClassIds.ToArray())
+                if (!retained.Contains(id) && !values.Any(value => value.classId == id))
+                    eventDB.RemoveEventClass(id);
+            undoMgr.EndCommand(9316);
+        }
 
         // Get the load for all the courses, sorted in the right way.
         public CourseLoadInfo[] GetAllCourseLoads()
@@ -3075,7 +3161,8 @@ namespace PurplePen
                 CourseLoadInfo courseLoad = new CourseLoadInfo();
                 courseLoad.courseId = courseId;
                 courseLoad.courseName = course.name;
-                courseLoad.load = course.load;
+                courseLoad.className = EventClassSupport.GetCourseClassNames(eventDB, courseId);
+                courseLoad.load = EventClassSupport.GetCourseParticipantCount(eventDB, courseId);
                 loadList.Add(courseLoad);
             }
 
@@ -3089,6 +3176,19 @@ namespace PurplePen
 
             foreach (CourseLoadInfo loadInfo in loads) {
                 ChangeEvent.ChangeCourseLoad(eventDB, loadInfo.courseId, loadInfo.load);
+            }
+
+            undoMgr.EndCommand(9315);
+        }
+
+        // Set the class assignment and competitor load for all listed courses as one undoable change.
+        public void SetAllCourseClasses(CourseLoadInfo[] classes)
+        {
+            undoMgr.BeginCommand(9315, CommandNameText.SetCourseLoad);
+
+            foreach (CourseLoadInfo classInfo in classes) {
+                ChangeEvent.ChangeCourseClassName(eventDB, classInfo.courseId, classInfo.className);
+                ChangeEvent.ChangeCourseLoad(eventDB, classInfo.courseId, classInfo.load);
             }
 
             undoMgr.EndCommand(9315);
@@ -3428,6 +3528,12 @@ namespace PurplePen
             return result;
         }
 
+        /// <summary>Gets visual descriptions of the symbol layers used by the underlying vector map.</summary>
+        public List<TrainingMapSymbolInfo> GetTrainingMapSymbols()
+        {
+            return mapDisplay == null ? new List<TrainingMapSymbolInfo>() : mapDisplay.GetTrainingMapSymbols();
+        }
+
         // Get the default layer for lower purple.
         public int GetDefaultLowerPurpleLayer()
         {
@@ -3490,6 +3596,58 @@ namespace PurplePen
                 status.RedoName = undoMgr.RedoName;
 
             return status;
+        }
+
+        // Gets a read-only event and undo snapshot for the history review dialog.
+        public HistoryReviewStatus GetHistoryReviewStatus()
+        {
+            return HistoryReview.CreateStatus(eventDB, undoMgr);
+        }
+
+        // Gets the snapshot store belonging to the currently loaded event.
+        public HistorySnapshotStore GetHistorySnapshotStore()
+        {
+            return historySnapshotStore;
+        }
+
+        /// <summary>Persists the current event's supplemental snapshot history without modifying the event file.</summary>
+        public void PersistHistorySnapshots()
+        {
+            if (!String.IsNullOrWhiteSpace(fileName))
+                SaveHistorySnapshotManifest(fileName);
+        }
+
+        /// <summary>Returns the sidecar file reserved for snapshots belonging to an event file.</summary>
+        private static string HistorySnapshotManifestFileName(string eventFileName)
+        {
+            return Path.GetFullPath(eventFileName) + ".history.json";
+        }
+
+        /// <summary>Loads optional snapshot history without preventing a valid event file from opening.</summary>
+        private void LoadHistorySnapshotManifest(string eventFileName)
+        {
+            string manifestFileName = HistorySnapshotManifestFileName(eventFileName);
+            if (!File.Exists(manifestFileName))
+                return;
+
+            try {
+                historySnapshotStore = HistorySnapshotStore.LoadManifest(manifestFileName);
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is InvalidDataException) {
+                // History is supplementary. A corrupt or unavailable sidecar must never block opening the event.
+                historySnapshotStore = new HistorySnapshotStore(eventDB);
+            }
+        }
+
+        /// <summary>Saves snapshot history independently so a sidecar failure cannot affect the event file save.</summary>
+        private void SaveHistorySnapshotManifest(string eventFileName)
+        {
+            try {
+                historySnapshotStore.SaveManifest(HistorySnapshotManifestFileName(eventFileName));
+            }
+            catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is InvalidDataException || ex is ArgumentException) {
+                // The main event file has already been safely saved. Retain the in-memory store for a later retry.
+            }
         }
 
         // Undo one command of changes.
@@ -3837,7 +3995,73 @@ namespace PurplePen
         // Start the mode to add a new control of a certain kind (Start/Finish/Control/CrossingPoint).
         public void BeginAddControlMode(ControlPointKind controlKind, MapExchangeType mapExchangeType, bool keepAddingControls = false)
         {
+            // The toolbar presents continuous placement and course composition as modes alongside
+            // "Add control". Users naturally select a mode and then press Add control. Do not let
+            // that second click silently replace the selected workflow with one-shot placement.
+            if (controlKind == ControlPointKind.Normal && mapExchangeType == MapExchangeType.None &&
+                currentMode is AddControlMode activeAddControlMode) {
+                if (activeAddControlMode.IsComposeCourse)
+                    return;
+
+                keepAddingControls = keepAddingControls || activeAddControlMode.KeepsAddingControls;
+            }
+
             SetCommandMode(new AddControlMode(this, selectionMgr, undoMgr, eventDB, symbolDB, selectionMgr.Selection.ActiveCourseDesignator.CourseId.IsNone, controlKind, mapExchangeType, MapIssueKind.None, keepAddingControls));
+        }
+
+        // Indicates that the active tool continuously places ordinary controls.
+        public bool IsContinuousAddControlMode {
+            get {
+                return currentMode is AddControlMode addControlMode && !addControlMode.IsComposeCourse &&
+                    addControlMode.KeepsAddingControls;
+            }
+        }
+
+        // Indicates that the active tool is the continuous course-composition workflow.
+        public bool IsComposeCourseMode {
+            get { return currentMode is AddControlMode addControlMode && addControlMode.IsComposeCourse; }
+        }
+
+        // Determine whether the continuous compose-course workflow can be used in the active view.
+        // It intentionally excludes score courses, individual parts, and relay variations because
+        // those views require the user to choose an explicit insertion branch.
+        public CommandStatus CanComposeCourse()
+        {
+            CourseDesignator courseDesignator = selectionMgr.Selection.ActiveCourseDesignator;
+            if (courseDesignator.IsAllControls || !courseDesignator.AllParts || courseDesignator.IsVariation)
+                return CommandStatus.Disabled;
+
+            return eventDB.GetCourse(courseDesignator.CourseId).kind == CourseKind.Normal ? CommandStatus.Enabled : CommandStatus.Disabled;
+        }
+
+        // Start a normal-course composition workflow. If the course has no start yet, the first
+        // click creates it; later clicks add controls continuously in their selected order.
+        public void BeginComposeCourseMode()
+        {
+            if (CanComposeCourse() != CommandStatus.Enabled)
+                return;
+
+            CourseDesignator courseDesignator = selectionMgr.Selection.ActiveCourseDesignator;
+            bool addStartFirst = QueryEvent.FindControlOfKind(eventDB, courseDesignator.CourseId, ControlPointKind.Start).IsNone;
+            ControlPointKind initialKind = addStartFirst ? ControlPointKind.Start : ControlPointKind.Normal;
+
+            SetCommandMode(new AddControlMode(this, selectionMgr, undoMgr, eventDB, symbolDB, false, initialKind, MapExchangeType.None, MapIssueKind.None, true, addStartFirst, true));
+        }
+
+        // Removes one control from the course currently being composed. The AddControlMode identifies
+        // the clicked course-control; this method keeps the data change on the normal Controller path.
+        internal async Task<bool> RemoveComposeCourseControl(Id<CourseControl> courseControlId)
+        {
+            if (currentMode is not AddControlMode addControlMode || !addControlMode.IsComposeCourse ||
+                !eventDB.IsCourseControlPresent(courseControlId))
+                return false;
+
+            SelectionInfo selection = selectionMgr.Selection;
+            if (selection.ActiveCourseDesignator.IsAllControls)
+                return false;
+
+            selectionMgr.SelectCourseControl(courseControlId);
+            return await DeleteControlFromCourse(selection.ActiveCourseDesignator.CourseId, courseControlId, CommandNameText.DeleteControl);
         }
 
         // Start the mode to add a new map issue point with the given kind.
@@ -3858,6 +4082,170 @@ namespace PurplePen
             SetCommandMode(new AddLineAreaSpecialMode(this, selectionMgr, undoMgr, eventDB,
                            pts => ChangeEvent.AddLineAreaSpecial(eventDB, specialKind, pts),
                            isArea));
+        }
+
+        /// <summary>Gets the concrete course or course-part currently shown.</summary>
+        public CourseDesignator CurrentCourseDesignator {
+            get { return selectionMgr.Selection.ActiveCourseDesignator; }
+        }
+
+        /// <summary>Gets the active training presentation used by the on-screen course layout.</summary>
+        public TrainingExerciseRenderProfile TrainingExerciseRenderProfile {
+            get { return selectionMgr.TrainingExerciseRenderProfile; }
+        }
+
+        /// <summary>Sets the active training presentation and refreshes the map display.</summary>
+        public void SetTrainingExerciseRenderProfile(TrainingExerciseRenderProfile profile)
+        {
+            selectionMgr.SetTrainingExerciseRenderProfile(profile);
+            ForceChangeUpdate(true);
+        }
+
+        /// <summary>Replaces the training exercises for the active course in one undoable operation.</summary>
+        public void SaveTrainingExercises(CourseDesignator courseDesignator, IEnumerable<TrainingExercise> exercises)
+        {
+            if (courseDesignator == null || courseDesignator.IsAllControls)
+                throw new ArgumentException("A concrete course is required.", nameof(courseDesignator));
+
+            List<Id<TrainingExercise>> existing = eventDB.AllTrainingExercisePairs
+                .Where(pair => pair.Value.courseDesignator != null && pair.Value.courseDesignator.Equals(courseDesignator))
+                .Select(pair => pair.Key).ToList();
+            List<TrainingExercise> replacements = (exercises ?? Enumerable.Empty<TrainingExercise>()).ToList();
+
+            // Validate the complete replacement set before removing any existing exercises.
+            // This keeps a bad dialog submission from leaving the course partially empty.
+            EventDB.ValidateInfo validateInfo = new EventDB.ValidateInfo { eventDB = eventDB };
+            foreach (TrainingExercise exercise in replacements) {
+                if (exercise == null)
+                    throw new ArgumentException("Training exercise cannot be null.", nameof(exercises));
+                TrainingExercise copy = (TrainingExercise)exercise.Clone();
+                copy.courseDesignator = courseDesignator.Clone();
+                copy.Validate(new Id<TrainingExercise>(-1), validateInfo);
+            }
+
+            undoMgr.BeginCommand(56173, "Change training exercises");
+            try {
+                foreach (Id<TrainingExercise> id in existing)
+                    eventDB.RemoveTrainingExercise(id);
+                foreach (TrainingExercise exercise in replacements) {
+                    TrainingExercise copy = (TrainingExercise)exercise.Clone();
+                    copy.courseDesignator = courseDesignator.Clone();
+                    eventDB.AddTrainingExercise(copy);
+                }
+                undoMgr.EndCommand(56173);
+            }
+            catch {
+                // Keep the undo manager usable if validation or persistence fails.
+                if (undoMgr.CommandInProgress)
+                    undoMgr.Rollback();
+                throw;
+            }
+            ForceChangeUpdate();
+        }
+
+        /// <summary>Moves an existing training exercise by a map-coordinate delta.</summary>
+        public void MoveTrainingExercise(Id<TrainingExercise> exerciseId, float deltaX, float deltaY)
+        {
+            TrainingExercise exercise = eventDB.GetTrainingExercise(exerciseId);
+            PointF[] locations = (PointF[])exercise.locations.Clone();
+            for (int index = 0; index < locations.Length; ++index)
+                locations[index].X += deltaX;
+            for (int index = 0; index < locations.Length; ++index)
+                locations[index].Y += deltaY;
+
+            undoMgr.BeginCommand(871, CommandNameText.MoveObject);
+            ChangeEvent.ChangeTrainingExerciseLocations(eventDB, exerciseId, locations);
+            undoMgr.EndCommand(871);
+            ForceChangeUpdate();
+        }
+
+        /// <summary>Moves one vertex (or the center of an attack point) of a training exercise.</summary>
+        public void MoveTrainingExercisePoint(Id<TrainingExercise> exerciseId, int pointIndex, PointF newLocation)
+        {
+            TrainingExercise exercise = eventDB.GetTrainingExercise(exerciseId);
+            if (pointIndex < 0 || pointIndex >= exercise.locations.Length)
+                throw new ArgumentOutOfRangeException(nameof(pointIndex));
+            PointF[] locations = (PointF[])exercise.locations.Clone();
+            locations[pointIndex] = newLocation;
+
+            undoMgr.BeginCommand(877, CommandNameText.MoveBend);
+            ChangeEvent.ChangeTrainingExerciseLocations(eventDB, exerciseId, locations);
+            undoMgr.EndCommand(877);
+            ForceChangeUpdate();
+        }
+
+        /// <summary>Deletes a training exercise through the normal undoable edit path.</summary>
+        public void DeleteTrainingExercise(Id<TrainingExercise> exerciseId)
+        {
+            undoMgr.BeginCommand(710, CommandNameText.DeleteObject);
+            ChangeEvent.DeleteTrainingExercise(eventDB, exerciseId);
+            undoMgr.EndCommand(710);
+            ForceChangeUpdate();
+        }
+
+        // Start drawing a contour-only training area on the active concrete course.
+        public void BeginAddContourOnlyTrainingAreaMode()
+        {
+            CourseDesignator courseDesignator = selectionMgr.Selection.ActiveCourseDesignator;
+            if (courseDesignator.IsAllControls || courseDesignator.IsVariation || QueryEvent.HasVariations(eventDB, courseDesignator.CourseId))
+                return;
+
+            SetCommandMode(new AddContourOnlyTrainingAreaMode(this, selectionMgr, undoMgr, eventDB, courseDesignator));
+        }
+
+        /// <summary>Starts drawing a corridor training exercise on the active course.</summary>
+        public void BeginAddTrainingCorridorMode()
+        {
+            CourseDesignator courseDesignator = selectionMgr.Selection.ActiveCourseDesignator;
+            if (!courseDesignator.IsAllControls)
+                SetCommandMode(new AddTrainingExerciseMode(this, selectionMgr, undoMgr, eventDB, courseDesignator, TrainingExerciseKind.Corridor));
+        }
+
+        /// <summary>Starts drawing a line training exercise on the active course.</summary>
+        public void BeginAddTrainingLineMode()
+        {
+            CourseDesignator courseDesignator = selectionMgr.Selection.ActiveCourseDesignator;
+            if (!courseDesignator.IsAllControls)
+                SetCommandMode(new AddTrainingExerciseMode(this, selectionMgr, undoMgr, eventDB, courseDesignator, TrainingExerciseKind.Line));
+        }
+
+        /// <summary>Starts placing an attack-point training exercise on the active course.</summary>
+        public void BeginAddTrainingAttackPointMode()
+        {
+            CourseDesignator courseDesignator = selectionMgr.Selection.ActiveCourseDesignator;
+            if (!courseDesignator.IsAllControls)
+                SetCommandMode(new AddTrainingExerciseMode(this, selectionMgr, undoMgr, eventDB, courseDesignator, TrainingExerciseKind.AttackPoint));
+        }
+
+        /// <summary>Starts drawing a manual route-choice candidate for a concrete leg.</summary>
+        public void BeginAddRouteChoiceCandidateMode(Id<CourseControl> legStartCourseControlId)
+        {
+            CourseDesignator courseDesignator = selectionMgr.Selection.ActiveCourseDesignator;
+            if (courseDesignator.IsAllControls || courseDesignator.IsVariation ||
+                QueryEvent.HasVariations(eventDB, courseDesignator.CourseId))
+                return;
+            CourseControl start = eventDB.GetCourseControl(legStartCourseControlId);
+            if (start.nextCourseControl.IsNone || !QueryEvent.EnumCourseControlIds(eventDB, courseDesignator).Contains(legStartCourseControlId))
+                throw new ArgumentException("The selected course control is not a valid leg start.", nameof(legStartCourseControlId));
+            SetCommandMode(new AddRouteChoiceCandidateMode(this, selectionMgr, undoMgr, eventDB, courseDesignator, legStartCourseControlId));
+        }
+
+        /// <summary>Updates candidate metadata or geometry through an undoable command.</summary>
+        public void ChangeRouteChoiceCandidate(Id<RouteChoiceCandidate> candidateId, string name, string source, PointF[] locations, string notes)
+        {
+            undoMgr.BeginCommand(1330, "Change route-choice candidate");
+            ChangeEvent.ChangeRouteChoiceCandidate(eventDB, candidateId, name, source, locations, notes);
+            undoMgr.EndCommand(1330);
+            ForceChangeUpdate();
+        }
+
+        /// <summary>Deletes a candidate through an undoable command.</summary>
+        public void DeleteRouteChoiceCandidate(Id<RouteChoiceCandidate> candidateId)
+        {
+            undoMgr.BeginCommand(1331, CommandNameText.DeleteObject);
+            ChangeEvent.DeleteRouteChoiceCandidate(eventDB, candidateId);
+            undoMgr.EndCommand(1331);
+            ForceChangeUpdate();
         }
 
         // Start the mode to add a line special 
@@ -4235,6 +4623,33 @@ namespace PurplePen
             bool displayUpdateNeeded = await currentMode.LeftButtonClick(pane, location, pixelSize);
             if (displayUpdateNeeded)
                 ForceChangeUpdate();
+        }
+
+        /// <summary>Dispatches a map double-click to modes with an explicit gesture.</summary>
+        public async Task<bool> DoubleClick(Pane pane, PointF location, float pixelSize)
+        {
+            if (currentMode is AddControlMode addControlMode && addControlMode.IsComposeCourse) {
+                bool displayUpdateNeeded = await addControlMode.DoubleClick(pane, location, pixelSize);
+                if (displayUpdateNeeded)
+                    ForceChangeUpdate();
+                return displayUpdateNeeded;
+            }
+
+            return false;
+        }
+
+        // Handles Ctrl-clicks that have mode-specific behavior. Ordinary Ctrl-clicks are left for
+        // the UI to process as normal clicks when this returns false.
+        public async Task<bool> CtrlLeftButtonClick(Pane pane, PointF location, float pixelSize)
+        {
+            if (currentMode is AddControlMode addControlMode && addControlMode.IsComposeCourse) {
+                bool displayUpdateNeeded = await addControlMode.CtrlLeftButtonClick(pane, location, pixelSize);
+                if (displayUpdateNeeded)
+                    ForceChangeUpdate();
+                return displayUpdateNeeded;
+            }
+
+            return false;
         }
 
         public async Task RightButtonClick(Pane pane, PointF location, float pixelSize)

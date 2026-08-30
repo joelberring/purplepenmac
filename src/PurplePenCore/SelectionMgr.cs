@@ -56,6 +56,7 @@ namespace PurplePen
         LegInsertionLoc legInsertionLoc;               // If a leg is selected, which insertion location to use.
         Id<ControlPoint> selectedControl;            // ID of the selected control, if any.
         Id<Special> selectedSpecial;            // ID of the selected special, if any.
+        Id<TrainingExercise> selectedTrainingExercise;
         Symbol selectedKeySymbol;             // Symbol of the selected symbol in the key (SelectionKind.Key)
         DescriptionLine.TextLineKind selectedTextLineKind;              // Which kind of text line (SelectionKind.TextLine)
 
@@ -63,6 +64,10 @@ namespace PurplePen
         bool showAllControls;              // If true, secondary display of all controls not in the primary.
         ControlPointKind allControlsFilter;       // Filters to this kind of control point, unless set to None.
         List<Id<Course>> extraCourses;  // Displays these extra courses.
+
+        // The optional training presentation used when rebuilding the active course layout.
+        // None is the normal/default rendering and keeps all existing workflows unchanged.
+        TrainingExerciseRenderProfile trainingExerciseRenderProfile = TrainingExerciseRenderProfile.None;
 
         int selectionChangeNum;         // incremented every time one of the above changes, except within UpdateState.
         
@@ -175,6 +180,7 @@ namespace PurplePen
                 info.SelectedCourseControl2 = selectedCourseControl2;
                 info.LegInsertionLoc = legInsertionLoc;
                 info.SelectedSpecial = selectedSpecial;
+                info.SelectedTrainingExercise = selectedTrainingExercise;
                 info.SelectedKeySymbol = selectedKeySymbol;
                 info.SelectedTextLineKind = selectedTextLineKind;
                 return info;
@@ -216,6 +222,23 @@ namespace PurplePen
                 UpdateState();
                 return activeCourse;
             }
+        }
+
+        /// <summary>Gets the training presentation currently used for the active course.</summary>
+        public TrainingExerciseRenderProfile TrainingExerciseRenderProfile
+        {
+            get { return trainingExerciseRenderProfile; }
+        }
+
+        /// <summary>Changes the training presentation and rebuilds the active course on the next update.</summary>
+        public void SetTrainingExerciseRenderProfile(TrainingExerciseRenderProfile profile)
+        {
+            if (trainingExerciseRenderProfile == profile)
+                return;
+
+            trainingExerciseRenderProfile = profile;
+            ++selectionChangeNum;
+            controller.QueueIdleEvent();
         }
 
         // Layout that shows the topology.
@@ -352,6 +375,15 @@ namespace PurplePen
             SetSelection(SelectionKind.Special, Id<CourseControl>.None, Id<CourseControl>.None, LegInsertionLoc.Normal, Id<ControlPoint>.None, specialId, null, DescriptionLine.TextLineKind.None);
         }
 
+        /// <summary>Selects a visible training exercise without using the Special id namespace.</summary>
+        public void SelectTrainingExercise(Id<TrainingExercise> trainingExerciseId)
+        {
+            eventDB.CheckTrainingExerciseId(trainingExerciseId);
+            SetSelection(SelectionKind.TrainingExercise, Id<CourseControl>.None, Id<CourseControl>.None, LegInsertionLoc.Normal,
+                         Id<ControlPoint>.None, Id<Special>.None, null, DescriptionLine.TextLineKind.None);
+            selectedTrainingExercise = trainingExerciseId;
+        }
+
         // Select a course object in the current displayed course.
         public void SelectCourseObject(CourseObj courseObject)
         {
@@ -362,6 +394,9 @@ namespace PurplePen
             }
             else if (courseObject.specialId.IsNotNone) {
                 SetSelection(SelectionKind.Special, Id<CourseControl>.None, Id<CourseControl>.None, LegInsertionLoc.Normal, Id<ControlPoint>.None, courseObject.specialId, null, DescriptionLine.TextLineKind.None);
+            }
+            else if (courseObject.trainingExerciseId.IsNotNone) {
+                SelectTrainingExercise(courseObject.trainingExerciseId);
             }
             else if (courseObject is LegCourseObj || courseObject is FlaggedLegCourseObj || courseObject is TopologyLegCourseObj) {
                 SetSelection(SelectionKind.Leg, courseObject.courseControlId, ((LineCourseObj) courseObject).courseControlId2, LegInsertionLoc.Normal, courseObject.controlId, Id<Special>.None, null, DescriptionLine.TextLineKind.None);
@@ -408,6 +443,8 @@ namespace PurplePen
             this.legInsertionLoc = legInsertionLoc;
             this.selectedControl = controlId;
             this.selectedSpecial = specialId;
+            if (selectionKind != SelectionKind.TrainingExercise)
+                this.selectedTrainingExercise = Id<TrainingExercise>.None;
             this.selectedKeySymbol = keySymbol;
             this.selectedTextLineKind = textLineKind;
         }
@@ -536,6 +573,13 @@ namespace PurplePen
                 // Selected special is not in current course
                 ClearSelection();
             }
+
+            if (selectedTrainingExercise.IsNotNone && !eventDB.IsTrainingExercisePresent(selectedTrainingExercise))
+                ClearSelection();
+            else if (selectedTrainingExercise.IsNotNone && (activeCourseDesignator.IsAllControls ||
+                     eventDB.GetTrainingExercise(selectedTrainingExercise).courseDesignator == null ||
+                     eventDB.GetTrainingExercise(selectedTrainingExercise).courseDesignator.CourseId != activeCourseDesignator.CourseId))
+                ClearSelection();
         }
 
         // Update the names of all course views, and get the active course view, based on the active course id.
@@ -607,7 +651,11 @@ namespace PurplePen
                                        (purpleOverprint && (extraCourses == null || extraCourses.Count == 0)));
             activeCourse.SetLowerLayerColor(CourseLayer.MainCourse, NormalCourseAppearance.lowerPurpleOcadId, NormalCourseAppearance.lowerPurpleColorName, purpleC, purpleM, purpleY, purpleK,
                                        (purpleOverprint && (extraCourses == null || extraCourses.Count == 0)));
-            CourseFormatter.FormatCourseToLayout(symbolDB, activeCourseView, appearance, activeCourse, CourseLayer.MainCourse);
+            CourseFormatter.FormatCourseToLayout(symbolDB, activeCourseView, appearance, activeCourse, CourseLayer.MainCourse,
+                new CourseFormatterOptions() {
+                    trainingExerciseRenderProfile = trainingExerciseRenderProfile,
+                    trainingRenderBounds = activeCourseView.GetViewBounds()
+                });
 
             if (showAllControls && !activeCourseDesignator.IsAllControls) {
                 // Create the all controls view.
@@ -816,6 +864,11 @@ namespace PurplePen
                     }
                     else if (selectionKind == SelectionKind.Special &&
                         courseobj.specialId == selectedSpecial) 
+                    {
+                        list.Add(courseobj);
+                    }
+                    else if (selectionKind == SelectionKind.TrainingExercise &&
+                             courseobj.trainingExerciseId == selectedTrainingExercise)
                     {
                         list.Add(courseobj);
                     }

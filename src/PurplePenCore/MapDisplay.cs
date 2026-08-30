@@ -320,6 +320,77 @@ namespace PurplePen
             }
         }
 
+        /// <summary>Returns used map symbols which reference one colour, including their original toolbox icons.</summary>
+        public List<SourceMapSymbol> GetSymbolsUsingMapColor(SymColor color)
+        {
+            List<SourceMapSymbol> result = new List<SourceMapSymbol>();
+            if (mapType != MapType.OCAD || map == null || color == null)
+                return result;
+
+            using (map.Read()) {
+                // Map.SymdefsUsingColor follows an older API convention and returns
+                // null when the colour exists in the colour table but no symbol uses it.
+                // Such unused colours are valid and must remain available to print-profile
+                // mapping even though they have no symbol preview.
+                SymDef[] symdefsUsingColor = map.SymdefsUsingColor(color) ?? Array.Empty<SymDef>();
+                foreach (SymDef symdef in symdefsUsingColor.Where(definition => definition.Symbols.Count > 0)
+                                                           .OrderBy(definition => definition.SymbolId, StringComparer.Ordinal)) {
+                    int width;
+                    int height;
+                    int[] pixels = symdef.ToolboxImage.GetAllBits(out width, out height);
+                    result.Add(new SourceMapSymbol {
+                        SymbolId = symdef.SymbolId ?? String.Empty,
+                        Name = symdef.Name ?? String.Empty,
+                        IconArgb = pixels,
+                        IconWidth = width,
+                        IconHeight = height,
+                    });
+                }
+            }
+            return result;
+        }
+
+        /// <summary>Returns the symbol layers actually used by the current OCAD/OpenMapper map.</summary>
+        public List<TrainingMapSymbolInfo> GetTrainingMapSymbols()
+        {
+            List<TrainingMapSymbolInfo> result = new List<TrainingMapSymbolInfo>();
+            if (mapType != MapType.OCAD || map == null)
+                return result;
+
+            using (map.Read()) {
+                foreach (SymDef symdef in map.AllSymdefs) {
+                    if (String.IsNullOrWhiteSpace(symdef.SymbolId) || symdef.Symbols.Count == 0)
+                        continue;
+                    result.Add(new TrainingMapSymbolInfo(symdef.SymbolId, symdef.Name, GetRepresentativeColor(map, symdef)));
+                }
+            }
+
+            return result.OrderBy(info => info.SymbolId, StringComparer.Ordinal).ToList();
+        }
+
+        /// <summary>Finds a representative display colour for a vector-map symbol.</summary>
+        private static CmykColor GetRepresentativeColor(Map sourceMap, SymDef symdef)
+        {
+            if (symdef is LineSymDef lineSymdef && lineSymdef.LineColor != null)
+                return lineSymdef.LineColor.ColorValue;
+            if (symdef is AreaSymDef areaSymdef && areaSymdef.FillColor != null)
+                return areaSymdef.FillColor.ColorValue;
+            if (symdef is TextSymDef textSymdef && textSymdef.FontColor != null)
+                return textSymdef.FontColor.ColorValue;
+            if (symdef is RectangleSymDef rectangleSymdef && rectangleSymdef.LineColor != null)
+                return rectangleSymdef.LineColor.ColorValue;
+
+            foreach (SymColor color in sourceMap.AllColors) {
+                SymDef[] symdefsUsingColor = sourceMap.SymdefsUsingColor(color) ?? Array.Empty<SymDef>();
+                if (symdefsUsingColor.Contains(symdef))
+                    return color.ColorValue;
+            }
+            return CmykColor.FromCmyk(0, 0, 0, 1);
+        }
+
+        /// <summary>Export-only vector-map colour replacements applied during drawing and never written to the source map.</summary>
+        public IDictionary<SymColor, MapColorOverride> MapColorOverrides { get; set; }
+
         // Templates in the map, or empty list in no map or bitmap map.
         public IList<TemplateInfo> GetMapTemplates()
         {
@@ -614,6 +685,122 @@ namespace PurplePen
             }
         }
 
+        // Draw runner contour-only training areas after the vector base map and before course symbols.
+        // The source map is only read; filtering is carried by a temporary RenderOptions instance.
+        private void DrawContourOnlyOverlays(IGraphicsTarget grTarget, RectangleF visRect, RenderOptions renderOptions, Action throwOnCancel)
+        {
+            if (mapType != MapType.OCAD || map == null || course == null || course.ContourOnlyOverlays.Count == 0)
+                return;
+
+            float saveIntensity = grTarget.Intensity;
+            grTarget.Intensity = mapIntensity;
+            grTarget.PushAntiAliasing(Printing ? false : antialiased);
+
+            using (map.Write()) {
+                foreach (TrainingContourOnlyOverlay overlay in course.ContourOnlyOverlays) {
+                    if (overlay.MaskOpacity <= 0)
+                        continue;
+
+                    object whiteMaskBrush = new object();
+                    grTarget.CreateSolidBrush(whiteMaskBrush, CmykColor.FromCmyka(0, 0, 0, 0, overlay.MaskOpacity));
+                    grTarget.FillPolygon(whiteMaskBrush, overlay.LocationsForRendering, AreaFillMode.Winding);
+
+                    RenderOptions contourRenderOptions = renderOptions.Clone();
+                    contourRenderOptions.colorBeginDrawExclusive = null;
+                    contourRenderOptions.colorEndDrawInclusive = null;
+                    contourRenderOptions.renderTemplates = RenderTemplateOption.MapOnly;
+                    contourRenderOptions.symdefFilter = symdef => TrainingContourOnlyRendering.IncludesSymbol(symdef, overlay.AllowedSymbolIdsForRendering);
+
+                    grTarget.PushClip(TrainingContourOnlyRendering.CreatePolygonPath(overlay.LocationsForRendering), AreaFillMode.Winding);
+                    try {
+                        map.Draw(grTarget, visRect, contourRenderOptions, throwOnCancel);
+                    }
+                    finally {
+                        grTarget.PopClip();
+                    }
+                }
+            }
+
+            grTarget.PopAntiAliasing();
+            grTarget.Intensity = saveIntensity;
+        }
+
+        // Draw runner corridor masks directly over the vector map. Keeping this out of the
+        // course map is important: CourseObj white-out symbols are opaque, while a direct
+        // CMYK brush preserves the configured mask opacity on every graphics backend.
+        private void DrawCorridorMaskOverlays(IGraphicsTarget grTarget)
+        {
+            if (course == null || course.CorridorMaskOverlays.Count == 0)
+                return;
+
+            float saveIntensity = grTarget.Intensity;
+            grTarget.Intensity = mapIntensity;
+            grTarget.PushAntiAliasing(Printing ? false : antialiased);
+            try {
+                foreach (TrainingCorridorMaskOverlay overlay in course.CorridorMaskOverlays) {
+                    if (overlay.MaskOpacity <= 0)
+                        continue;
+
+                    object whiteMaskBrush = new object();
+                    grTarget.CreateSolidBrush(whiteMaskBrush, CmykColor.FromCmyka(0, 0, 0, 0, overlay.MaskOpacity));
+                    grTarget.FillPath(whiteMaskBrush,
+                                      TrainingContourOnlyRendering.CreateCorridorMaskPath(overlay.OuterPolygonForRendering, overlay.CorridorPolygonForRendering),
+                                      AreaFillMode.Winding);
+                }
+            }
+            finally {
+                grTarget.PopAntiAliasing();
+                grTarget.Intensity = saveIntensity;
+            }
+        }
+
+        // Restore lower-purple course objects in contour areas after the upper map colors were drawn.
+        // Drawing all selected polygons through one winding clip avoids darkening course marks where areas overlap.
+        private void DrawLowerCourseInContourOnlyOverlays(IGraphicsTarget grTarget, RectangleF visRect, RenderOptions renderOptions)
+        {
+            if (course == null || courseMap == null || course.ContourOnlyOverlays.Count == 0)
+                return;
+
+            List<GraphicsPathPart> clipParts = new List<GraphicsPathPart>();
+            foreach (TrainingContourOnlyOverlay overlay in course.ContourOnlyOverlays) {
+                if (overlay.MaskOpacity > 0)
+                    clipParts.AddRange(TrainingContourOnlyRendering.CreatePolygonPath(overlay.LocationsForRendering));
+            }
+            if (clipParts.Count == 0)
+                return;
+
+            grTarget.PushClip(clipParts, AreaFillMode.Winding);
+            try {
+                DrawCourseMap(grTarget, visRect, renderOptions);
+            }
+            finally {
+                grTarget.PopClip();
+            }
+        }
+
+        // Restore lower-purple course objects inside corridors after the semi-transparent mask
+        // has been applied. The upper-purple pass is drawn normally afterwards.
+        private void DrawLowerCourseInCorridorMasks(IGraphicsTarget grTarget, RectangleF visRect, RenderOptions renderOptions)
+        {
+            if (course == null || courseMap == null || course.CorridorMaskOverlays.Count == 0)
+                return;
+
+            List<GraphicsPathPart> clipParts = new List<GraphicsPathPart>();
+            foreach (TrainingCorridorMaskOverlay overlay in course.CorridorMaskOverlays)
+                if (overlay.MaskOpacity > 0)
+                    clipParts.AddRange(TrainingContourOnlyRendering.CreatePolygonPath(overlay.CorridorPolygonForRendering));
+            if (clipParts.Count == 0)
+                return;
+
+            grTarget.PushClip(clipParts, AreaFillMode.Winding);
+            try {
+                DrawCourseMap(grTarget, visRect, renderOptions);
+            }
+            finally {
+                grTarget.PopClip();
+            }
+        }
+
         // Draw the bitmap map part.
         void DrawBitmapMap(IGraphicsTarget grTarget, RectangleF visRect, float minResolution)
         {
@@ -744,6 +931,7 @@ namespace PurplePen
             renderOptions.showSymbolBounds = showBounds;
             renderOptions.renderTemplates = RenderTemplateOption.MapAndTemplates;
             renderOptions.blendOverprintedColors = ocadOverprintEffect;
+            renderOptions.colorOverrides = MapColorOverrides;
 
             // First draw the real map.
             float saveIntensity;
@@ -776,6 +964,13 @@ namespace PurplePen
                 break;
             }
 
+            // With ordinary layering the complete vector map is now present, so contour-only
+            // areas can replace the selected polygon before the course map is drawn.
+            if (LowerPurpleMapLayer == null) {
+                DrawCorridorMaskOverlays(grTarget);
+                DrawContourOnlyOverlays(grTarget, visRect, renderOptions, throwOnCancel);
+            }
+
             // Now draw the courseMap on top.
             if (LowerPurpleMapLayer != null) {
                 // Only draw the part below the white-out layer, which is all of the lower purple.
@@ -801,6 +996,19 @@ namespace PurplePen
                 DrawOcadMap(grTarget, visRect, renderOptions, throwOnCancel);
                 grTarget.PopAntiAliasing();
                 grTarget.Intensity = saveIntensity;
+
+                // The upper map colors complete the base map in lower-purple mode. Apply the
+                // training pass here so it cannot be overwritten by a later map color layer.
+                DrawCorridorMaskOverlays(grTarget);
+                DrawContourOnlyOverlays(grTarget, visRect, renderOptions, throwOnCancel);
+
+                // The lower course color was necessarily drawn before the upper map colors.
+                // Restore only its covered parts now, then continue with the normal upper course pass.
+                RenderOptions lowerCourseRenderOptions = renderOptions.Clone();
+                lowerCourseRenderOptions.colorBeginDrawExclusive = null;
+                lowerCourseRenderOptions.colorEndDrawInclusive = colorIdBelowWhiteOut;
+                DrawLowerCourseInCorridorMasks(grTarget, visRect, lowerCourseRenderOptions);
+                DrawLowerCourseInContourOnlyOverlays(grTarget, visRect, lowerCourseRenderOptions);
 
                 // Draw the rest of the course map on top.
                 if (throwOnCancel != null) { throwOnCancel(); }

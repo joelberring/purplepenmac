@@ -90,7 +90,9 @@ namespace PurplePen
 
 #endif
 
-            CoursePageLayout pageLayout = new CoursePageLayout(eventDB, symbolDB, controller, appearance, coursePrintSettings.CropLargePrintArea);
+            CoursePageLayout pageLayout = new CoursePageLayout(eventDB, symbolDB, controller, appearance,
+                                                               coursePrintSettings.CropLargePrintArea,
+                                                               coursePrintSettings.ScaleCalibrationFactor);
             IEnumerable<CourseDesignator> courseDesignators = QueryEvent.EnumerateCourseDesignators(eventDB, coursePrintSettings.CourseIds, coursePrintSettings.VariationChoicesPerCourse, !coursePrintSettings.PrintMapExchangesOnOneMap);
             pages = pageLayout.LayoutPages(courseDesignators);
 
@@ -149,7 +151,10 @@ namespace PurplePen
             layout.SetLayerColor(CourseLayer.MainCourse, ocadId, NormalCourseAppearance.courseColorName, purpleC, purpleM, purpleY, purpleK, purpleOverprint);
             layout.SetLowerLayerColor(CourseLayer.MainCourse, NormalCourseAppearance.lowerPurpleOcadId, NormalCourseAppearance.lowerPurpleColorName, purpleC, purpleM, purpleY, purpleK, purpleOverprint);
 
-            CourseFormatter.FormatCourseToLayout(symbolDB, courseView, appearance, layout, CourseLayer.MainCourse);
+            CourseFormatterOptions formatterOptions = new CourseFormatterOptions();
+            formatterOptions.trainingExerciseRenderProfile = coursePrintSettings.TrainingExerciseRenderProfile;
+            formatterOptions.trainingRenderBounds = courseView.GetViewBounds();
+            CourseFormatter.FormatCourseToLayout(symbolDB, courseView, appearance, layout, CourseLayer.MainCourse, formatterOptions);
 
             // Set the course layout into the map display
             mapDisplay.SetCourse(layout);
@@ -175,11 +180,16 @@ namespace PurplePen
             // Create the bitmap. Can do this once because each band is the same size.
             int bitmapWidth = (int) Math.Round(bands[0].printRectangle.Width * dpi / 100F);
             int bitmapHeight = (int) Math.Round(bands[0].printRectangle.Height * dpi / 100F);
+            int pageBitmapWidth = (int)Math.Round(page.printRectangle.Width * dpi / 100F);
+            int pageBitmapHeight = (int)Math.Round(page.printRectangle.Height * dpi / 100F);
             IGraphicsBitmap bitmap = Services.BitmapLoader.CreateEmptyBitmap(bitmapWidth, bitmapHeight, null);
 
             foreach (CoursePage band in bands) {
-                // Set the transform
-                Matrix transform = Geometry.CreateInvertedRectangleTransform(band.mapRectangle, new RectangleF(0, 0, bitmapWidth, bitmapHeight));
+                // Build the map-to-page transform for the complete page, then move the
+                // current printer band to the bitmap origin. Rendering each band's source
+                // rectangle independently only works when the map is unrotated: after a
+                // rotation, map content crosses band boundaries.
+                Matrix transform = CreateBandTransform(page, band, dpi, pageBitmapWidth, pageBitmapHeight);
                 mapDisplay.Draw(bitmap, transform);
 
                 // Draw the bitmap on the printer.
@@ -188,6 +198,27 @@ namespace PurplePen
 
             // And we are done with the bitmap.
             bitmap.Dispose();
+        }
+
+        /// <summary>Creates the complete-page map transform, shifted so one printer band starts at the bitmap origin.</summary>
+#if TEST
+        internal
+#else
+        private
+#endif
+        static Matrix CreateBandTransform(CoursePage page, CoursePage band, float dpi, int pageBitmapWidth, int pageBitmapHeight)
+        {
+            Matrix transform = Geometry.CreateInvertedRectangleTransform(page.mapRectangle,
+                new RectangleF(0, 0, pageBitmapWidth, pageBitmapHeight));
+            if (Math.Abs(page.mapRotation) > 0.0001F) {
+                PointF center = Geometry.RectCenter(page.mapRectangle);
+                transform.RotateAt(page.mapRotation, center, MatrixOrder.Prepend);
+            }
+
+            float bandOffsetX = (band.printRectangle.Left - page.printRectangle.Left) * dpi / 100F;
+            float bandOffsetY = (band.printRectangle.Top - page.printRectangle.Top) * dpi / 100F;
+            transform.Translate(-bandOffsetX, -bandOffsetY, MatrixOrder.Append);
+            return transform;
         }
 
         public void PrintingComplete()

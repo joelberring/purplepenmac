@@ -90,9 +90,17 @@ namespace PurplePen.MapModel
             get {
                 if (map == null)
                     return RawColorValue;
-                else
-                    return map.TransformColor(RawColorValue);
+                MapColorOverride colorOverride = map.GetActiveColorOverride(this);
+                return map.TransformColor(colorOverride == null ? RawColorValue : colorOverride.Color);
             } 
+        }
+
+        /// <summary>Gets the overprint value for the active render operation without changing the stored colour.</summary>
+        internal bool RenderOverPrint {
+            get {
+                MapColorOverride colorOverride = map == null ? null : map.GetActiveColorOverride(this);
+                return colorOverride == null ? overprint : colorOverride.Overprint;
+            }
         }
 
         public object GetBrushKey(IGraphicsTarget g)

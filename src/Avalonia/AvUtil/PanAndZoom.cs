@@ -436,7 +436,7 @@ namespace AvUtil
 
             //Debug.WriteLine("Pointer Pressed " + props.PointerUpdateKind + $" logpixel({pointer.Position.X},{pointer.Position.Y}) world({worldPos.X},{worldPos.Y})");
 
-            BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, mouseButton, BasicMouseAction.Down, pointer.Position, worldPos, e.Timestamp);
+            BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, mouseButton, BasicMouseAction.Down, pointer.Position, worldPos, e.Timestamp, e.KeyModifiers);
             RaiseEvent(eventArgs);
         }
 
@@ -461,7 +461,7 @@ namespace AvUtil
                 EndPanning(pointer.Position);
             }
             else {
-                BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, mouseButton, BasicMouseAction.Up, pointer.Position, worldPos, e.Timestamp);
+                BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, mouseButton, BasicMouseAction.Up, pointer.Position, worldPos, e.Timestamp, e.KeyModifiers);
                 RaiseEvent(eventArgs);
             }
         }
@@ -475,7 +475,7 @@ namespace AvUtil
 
             PointerPoint pointer = e.GetCurrentPoint(this);
             Point worldPos = PixelToWorld(pointer.Position);
-            BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, MouseButton.None, BasicMouseAction.Enter, pointer.Position, worldPos, e.Timestamp);
+            BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, MouseButton.None, BasicMouseAction.Enter, pointer.Position, worldPos, e.Timestamp, e.KeyModifiers);
             RaiseEvent(eventArgs);
         }
 
@@ -487,7 +487,7 @@ namespace AvUtil
                 return;
 
             PointerPoint pointer = e.GetCurrentPoint(this);
-            BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, MouseButton.None, BasicMouseAction.Leave, new Point(), new Point(), e.Timestamp);
+            BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, MouseButton.None, BasicMouseAction.Leave, new Point(), new Point(), e.Timestamp, e.KeyModifiers);
             RaiseEvent(eventArgs);
         }
 
@@ -508,7 +508,7 @@ namespace AvUtil
                 PanMove(pointer.Position);
             }
             else {
-                BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, MouseButton.None, BasicMouseAction.Move, pointer.Position, worldPos, e.Timestamp);
+                BasicMouseEventArgs eventArgs = new BasicMouseEventArgs(BasicMouseActivityEvent, this, MouseButton.None, BasicMouseAction.Move, pointer.Position, worldPos, e.Timestamp, e.KeyModifiers);
                 RaiseEvent(eventArgs);
             }
         }
@@ -961,7 +961,7 @@ namespace AvUtil
         // Note that PanUntilReleased is an OUT -- it is set by the handler of the event to begin panning.
         public class BasicMouseEventArgs: RoutedEventArgs
         {
-            public BasicMouseEventArgs(RoutedEvent? routedEvent, object? source, MouseButton button, BasicMouseAction action, Point logicalPixelLocation, Point worldLocation, ulong timeStamp)
+            public BasicMouseEventArgs(RoutedEvent? routedEvent, object? source, MouseButton button, BasicMouseAction action, Point logicalPixelLocation, Point worldLocation, ulong timeStamp, KeyModifiers keyModifiers = KeyModifiers.None)
                 : base(routedEvent, source)
             {
                 this.Button = button;
@@ -969,6 +969,7 @@ namespace AvUtil
                 this.LogicalPixelLocation = logicalPixelLocation;
                 this.WorldLocation = worldLocation;
                 this.TimeStamp = timeStamp;
+                this.KeyModifiers = keyModifiers;
             }
 
             public MouseButton Button;              // Not used for a Move action.
@@ -976,6 +977,7 @@ namespace AvUtil
             public Point LogicalPixelLocation;      // location in logical pixels in the control
             public Point WorldLocation;             // location in world coordinates in the control.
             public ulong TimeStamp;                 // When the event occured, in milliseconds
+            public KeyModifiers KeyModifiers;        // Keyboard modifiers held when the event occurred.
         }
 
         // Information sent with a ViewportChanging or ViewportChanged event.

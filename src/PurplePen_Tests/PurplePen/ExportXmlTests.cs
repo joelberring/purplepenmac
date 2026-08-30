@@ -101,6 +101,18 @@ namespace PurplePen.Tests
         }
 
         [TestMethod]
+        public async Task ExportedRelayXmlComparesWithoutCourseFamilyDifferences()
+        {
+            await Setup("exportxml\\relay.ppen");
+
+            string exportedXml = File.ReadAllText(TestUtil.GetTestFile("exportxml\\relay_expected_v3.xml"));
+            IofCourseDataModel model = IofCourseDataExchange.Parse(exportedXml);
+            List<IofCourseDataDifference> differences = IofCourseDataExchange.Compare(model, controller.GetEventDB());
+
+            Assert.AreEqual(0, differences.Count, String.Join("\n", differences.Select(difference => difference.Kind + ": " + difference.Course + " " + difference.Detail)));
+        }
+
+        [TestMethod]
         public async Task ExportXmlTestOtherLocaleV2()
         {
             CultureInfo cultureUISave = Thread.CurrentThread.CurrentUICulture;

@@ -57,7 +57,7 @@ namespace PurplePen.ViewModels
 
     /// <summary>
     /// One row in the Course Load grid. Wraps a <see cref="Controller.CourseLoadInfo"/>
-    /// (carrying the course's id and name) plus the editable competitor-load
+    /// (carrying the course's id, name and optional class assignment) plus the editable competitor-load
     /// text (blank means "no load").
     /// </summary>
     public partial class LoadRow : ObservableObject
@@ -69,6 +69,10 @@ namespace PurplePen.ViewModels
         /// <summary>The course name (read-only column).</summary>
         public string CourseName => info.courseName;
 
+        /// <summary>The optional class assigned to this course.</summary>
+        [ObservableProperty]
+        private string className;
+
         /// <summary>The editable load text. Blank means no load (-1).</summary>
         [ObservableProperty]
         private string loadText;
@@ -76,6 +80,7 @@ namespace PurplePen.ViewModels
         public LoadRow(Controller.CourseLoadInfo info)
         {
             this.info = info;
+            className = info.className ?? "";
             loadText = info.load < 0 ? "" : info.load.ToString();
         }
 
@@ -101,6 +106,7 @@ namespace PurplePen.ViewModels
         public Controller.CourseLoadInfo ToCourseLoadInfo()
         {
             Controller.CourseLoadInfo result = info;
+            result.className = string.IsNullOrWhiteSpace(ClassName) ? null : ClassName.Trim();
             TryGetLoad(out int load);
             result.load = load;
             return result;

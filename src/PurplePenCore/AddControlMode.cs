@@ -60,11 +60,14 @@ namespace PurplePen
         MapIssueKind mapIssueKind;
         CourseAppearance appearance;
         bool keepAddingControls;
+        bool switchToContinuousControlsAfterPlacement;
+        bool composeCourse;
+        Id<CourseControl> lastPlacedCourseControlId = Id<CourseControl>.None;
 
         PointCourseObj highlight;    // the highlight of the control we are creating.
         CourseObj[] additionalHighlights;  // additional highlights to show also. 
 
-        public AddControlMode(Controller controller, SelectionMgr selectionMgr, UndoMgr undoMgr, EventDB eventDB, SymbolDB symbolDB, bool allControls, ControlPointKind controlKind, MapExchangeType mapExchangeType, MapIssueKind mapIssueKind, bool keepAddingControls)
+        public AddControlMode(Controller controller, SelectionMgr selectionMgr, UndoMgr undoMgr, EventDB eventDB, SymbolDB symbolDB, bool allControls, ControlPointKind controlKind, MapExchangeType mapExchangeType, MapIssueKind mapIssueKind, bool keepAddingControls, bool switchToContinuousControlsAfterPlacement = false, bool composeCourse = false)
         {
             this.controller = controller;
             this.selectionMgr = selectionMgr;
@@ -76,8 +79,20 @@ namespace PurplePen
             this.mapExchangeType = mapExchangeType;
             this.mapIssueKind = mapIssueKind;
             this.keepAddingControls = keepAddingControls;
+            this.switchToContinuousControlsAfterPlacement = switchToContinuousControlsAfterPlacement;
+            this.composeCourse = composeCourse;
             this.appearance = controller.GetCourseAppearance();
             this.courseObjRatio = selectionMgr.ActiveCourseView.CourseObjRatio(appearance);
+        }
+
+        // True when this add-control mode was started by the compose-course command.
+        public bool IsComposeCourse {
+            get { return composeCourse; }
+        }
+
+        // True when this mode keeps placing normal controls after each click.
+        public bool KeepsAddingControls {
+            get { return keepAddingControls; }
         }
 
         public override void BeginMode()
@@ -250,12 +265,30 @@ namespace PurplePen
         public override DragAction LeftButtonDown(Pane pane, PointF location, float pixelSize, ref bool displayUpdateNeeded)
         {
             if (pane == Pane.Map) {
+                if (composeCourse) {
+                    CourseObj draggable = HitTestComposeDraggable(location, pixelSize);
+                    if (draggable != null) {
+                        controller.SetCommandMode(new DragObjectMode(controller, eventDB, selectionMgr, draggable, location, true));
+                        displayUpdateNeeded = true;
+                        return DragAction.ImmediateDrag;
+                    }
+                }
                 // Delay to see if click or pan map.
                 return DragAction.DelayedMapPan;
             }
             else {
                 return DragAction.None;
             }
+        }
+
+        private CourseObj HitTestComposeDraggable(PointF location, float pixelSize)
+        {
+            CourseLayout layout = controller.GetCourseLayout();
+            Predicate<CourseObj> filter = co => co is PointCourseObj || co is ControlNumberCourseObj || co is CodeCourseObj;
+            CourseObj result = layout.HitTest(location, pixelSize, CourseLayer.MainCourse, filter);
+            if (result == null)
+                result = layout.HitTest(location, pixelSize, CourseLayer.Descriptions, filter);
+            return result;
         }
 
         public override async Task<bool> LeftButtonClick(Pane pane, PointF location, float pixelSize)
@@ -345,14 +378,75 @@ namespace PurplePen
 
                 // select the new control.
                 selectionMgr.SelectCourseControl(courseControlId);
+                if (composeCourse && controlKind == ControlPointKind.Normal)
+                    lastPlacedCourseControlId = courseControlId;
             }
 
             undoMgr.EndCommand(1321);
+
+            if (switchToContinuousControlsAfterPlacement) {
+                // The compose-course workflow starts with a start triangle, then continues
+                // with consecutive controls without requiring the user to select a new tool.
+                controller.SetTemporaryControlView(false, ControlPointKind.None);
+                controlKind = ControlPointKind.Normal;
+                keepAddingControls = true;
+                switchToContinuousControlsAfterPlacement = false;
+                controller.SetTemporaryControlView(true, controlKind);
+            }
 
             if (!keepAddingControls)
                 controller.DefaultCommandMode();
 
             return false;
+        }
+
+        /// <summary>
+        /// Converts the normal-control provisional click immediately preceding a
+        /// double-click into a finish at the clicked location, then exits compose mode.
+        /// </summary>
+        public Task<bool> DoubleClick(Pane pane, PointF location, float pixelSize)
+        {
+            if (!composeCourse || pane != Pane.Map || lastPlacedCourseControlId.IsNone ||
+                !eventDB.IsCourseControlPresent(lastPlacedCourseControlId))
+                return Task.FromResult(false);
+
+            Id<Course> courseId = selectionMgr.Selection.ActiveCourseDesignator.CourseId;
+            CourseControl provisional = eventDB.GetCourseControl(lastPlacedCourseControlId);
+            if (courseId.IsNone || eventDB.GetControl(provisional.control).kind != ControlPointKind.Normal)
+                return Task.FromResult(false);
+
+            undoMgr.BeginCommand(1322, CommandNameText.AddFinish);
+            ICollection<Id<ControlPoint>> removedControls = ChangeEvent.RemoveCourseControl(eventDB, courseId, lastPlacedCourseControlId);
+            foreach (Id<ControlPoint> removedControl in removedControls) {
+                if (QueryEvent.CoursesUsingControl(eventDB, removedControl, true).Length == 0 && eventDB.IsControlPresent(removedControl))
+                    ChangeEvent.RemoveControl(eventDB, removedControl);
+            }
+
+            Id<ControlPoint> finishControl = ChangeEvent.AddControlPoint(eventDB, ControlPointKind.Finish, null, location, 0);
+            ChangeEvent.ChangeDescriptionSymbol(eventDB, finishControl, 0, "14.3");
+            Id<CourseControl> finishCourseControl = ChangeEvent.AddFinishToCourse(eventDB, finishControl, courseId, false);
+            selectionMgr.SelectCourseControl(finishCourseControl);
+            undoMgr.EndCommand(1322);
+
+            lastPlacedCourseControlId = Id<CourseControl>.None;
+            controller.DefaultCommandMode();
+            return Task.FromResult(true);
+        }
+
+        // Removes the course control under a Ctrl-click while composing a course. The control point
+        // itself remains in the controls collection unless the existing orphan-control prompt says otherwise.
+        public async Task<bool> CtrlLeftButtonClick(Pane pane, PointF location, float pixelSize)
+        {
+            if (!composeCourse || pane != Pane.Map)
+                return false;
+
+            CourseLayout layout = controller.GetCourseLayout();
+            PointCourseObj courseObj = layout.HitTest(location, pixelSize, CourseLayer.MainCourse,
+                                                       (co => co is PointCourseObj)) as PointCourseObj;
+            if (courseObj == null || courseObj.courseControlId.IsNone)
+                return false;
+
+            return await controller.RemoveComposeCourseControl(courseObj.courseControlId);
         }
 
         // Create the highlight, and put it at the given location.

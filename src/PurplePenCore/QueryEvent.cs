@@ -631,7 +631,7 @@ namespace PurplePen
             int totalLoad = 0;
 
             foreach (Id<Course> courseId in courses) {
-                int load = eventDB.GetCourse(courseId).load;
+                int load = EventClassSupport.GetCourseParticipantCount(eventDB, courseId);
                 if (load >= 0) {
                     anyLoadFound = true;
                     if (HasVariations(eventDB, courseId)) {
@@ -659,7 +659,7 @@ namespace PurplePen
             int totalLoad = 0;
 
             foreach (Id<Course> courseId in courses) {
-                int load = eventDB.GetCourse(courseId).load;
+                int load = EventClassSupport.GetCourseParticipantCount(eventDB, courseId);
                 if (load >= 0) {
                     anyLoadFound = true;
                     double variationPercent = ComputeVisitFraction(eventDB, courseId, controlId);
@@ -680,7 +680,7 @@ namespace PurplePen
             int totalLoad = 0;
 
             foreach (Id<Course> courseId in courses) {
-                int load = eventDB.GetCourse(courseId).load;
+                int load = EventClassSupport.GetCourseParticipantCount(eventDB, courseId);
                 if (load >= 0) {
                     anyLoadFound = true;
                     if (HasVariations(eventDB, courseId)) {
@@ -783,11 +783,7 @@ namespace PurplePen
         // What is the load for this course. Return -1 if not set.
         public static int GetCourseLoad(EventDB eventDB, Id<Course> courseId)
         {
-            int load = eventDB.GetCourse(courseId).load;
-            if (load >= 0)
-                return load;
-            else
-                return -1;
+            return EventClassSupport.GetCourseParticipantCount(eventDB, courseId);
         }
 
         // Figure out all unused controls.
@@ -849,8 +845,8 @@ namespace PurplePen
         // Do all courses have loads set?
         public static bool AllCoursesHaveLoads(EventDB eventDB)
         {
-            foreach (Course course in eventDB.AllCourses) {
-                if (!course.hideFromReports && course.load < 0)
+            foreach (KeyValuePair<Id<Course>, Course> pair in eventDB.AllCoursePairs) {
+                if (!pair.Value.hideFromReports && GetCourseLoad(eventDB, pair.Key) < 0)
                     return false;
             }
 
@@ -860,8 +856,8 @@ namespace PurplePen
         // Do any courses have loads set?
         public static bool AnyCoursesHaveLoads(EventDB eventDB)
         {
-            foreach (Course course in eventDB.AllCourses) {
-                if (!course.hideFromReports && course.load >= 0)
+            foreach (KeyValuePair<Id<Course>, Course> pair in eventDB.AllCoursePairs) {
+                if (!pair.Value.hideFromReports && GetCourseLoad(eventDB, pair.Key) >= 0)
                     return true;
             }
 

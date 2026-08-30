@@ -23,9 +23,9 @@
         x:DataType="vm:SetPrintAreaDialogViewModel"
         Title="{resx:Localize SetPrintAreaDialog_Text}"
         Icon="/Assets/transparent.ico"
-        d:DesignWidth="360" d:DesignHeight="380"
-        SizeToContent="WidthAndHeight"
-        CanResize="False"
+        d:DesignWidth="410" d:DesignHeight="650"
+        Width="410" Height="650" MinHeight="520"
+        CanResize="True"
         CanMinimize="False"
         CanMaximize="False"
         WindowStartupLocation="Manual"
@@ -71,13 +71,68 @@
                                         Landscape="{Binding Landscape, Mode=TwoWay}"/>
             </HeaderedContentControl>
 
+            <HeaderedContentControl Header="{resx:Localize SetPrintAreaDialog_templates_Text}" Padding="8">
+                <StackPanel Spacing="6">
+                    <TextBlock Text="{resx:Localize SetPrintAreaDialog_templatesHelp_Text}" TextWrapping="Wrap" Opacity="0.75"/>
+                    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="6">
+                        <ComboBox ItemsSource="{Binding Templates}" SelectedItem="{Binding SelectedTemplate, Mode=TwoWay}"
+                                  DisplayMemberBinding="{Binding Name}"/>
+                        <Button Grid.Column="1" Content="{resx:Localize SetPrintAreaDialog_applyTemplate_Text}"
+                                Command="{Binding ApplyTemplateCommand}" Classes="Small"/>
+                        <Button Grid.Column="2" Content="{resx:Localize SetPrintAreaDialog_deleteTemplate_Text}"
+                                Command="{Binding DeleteTemplateCommand}" Classes="Small"/>
+                    </Grid>
+                    <Grid ColumnDefinitions="*,Auto" ColumnSpacing="6">
+                        <TextBox PlaceholderText="{resx:Localize SetPrintAreaDialog_templateName_Text}"
+                                 Text="{Binding TemplateName, Mode=TwoWay}"/>
+                        <Button Grid.Column="1" Content="{resx:Localize SetPrintAreaDialog_saveTemplate_Text}"
+                                Command="{Binding SaveTemplateCommand}" Classes="Small"/>
+                    </Grid>
+                </StackPanel>
+            </HeaderedContentControl>
+
             <CheckBox x:Name="checkBoxAutomatic"
                       Content="{resx:Localize SetPrintAreaDialog_checkBoxAutomatic_Text}"
                       IsChecked="{Binding Automatic, Mode=TwoWay}"/>
+            <TextBlock Text="{resx:Localize SetPrintAreaDialog_automaticHelp_Text}" TextWrapping="Wrap" Opacity="0.75" Margin="22,-8,0,0"/>
 
             <CheckBox x:Name="checkBoxFixSizeToPaper"
                       Content="{resx:Localize SetPrintAreaDialog_checkBoxFixSizeToPaper_Text}"
                       IsChecked="{Binding FixSizeToPaper, Mode=TwoWay}"/>
+            <TextBlock Text="{resx:Localize SetPrintAreaDialog_fixSizeHelp_Text}" TextWrapping="Wrap" Opacity="0.75" Margin="22,-8,0,0"/>
+
+            <Grid ColumnDefinitions="Auto,110,Auto" ColumnSpacing="8">
+                <TextBlock VerticalAlignment="Center" Text="{resx:Localize SetPrintAreaDialog_rotation_Text}"/>
+                <NumericUpDown Grid.Column="1" Minimum="-180" Maximum="180" Increment="1"
+                               FormatString="0.##°"
+                               Value="{Binding RotationDegrees, Mode=TwoWay}"/>
+                <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="{resx:Localize SetPrintAreaDialog_rotationHelp_Text}"/>
+            </Grid>
+
+            <Border BorderBrush="#777777" BorderThickness="1" Background="#F4F4F4"
+                    Width="280" Height="150" HorizontalAlignment="Center" Padding="12">
+                <Grid HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Border Width="170" Height="104" BorderBrush="#333333" BorderThickness="2"
+                            Background="#FFFFFF" RenderTransformOrigin="50%,50%">
+                        <Border.RenderTransform>
+                            <RotateTransform Angle="{Binding RotationDegrees}"/>
+                        </Border.RenderTransform>
+                        <Border Width="138" Height="72" BorderBrush="#7A4A9B" BorderThickness="2"
+                                Background="#EEE6F2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </Grid>
+            </Border>
+
+            <Border IsVisible="{Binding HasLowMarginWarning}"
+                    Background="#FFF4CE"
+                    BorderBrush="#C88A00"
+                    BorderThickness="1"
+                    CornerRadius="3"
+                    Padding="8,6">
+                <TextBlock x:Name="lowMarginWarning"
+                           Text="{resx:Localize SetPrintAreaDialog_lowMarginWarning_Text}"
+                           TextWrapping="Wrap"/>
+            </Border>
 
             <TextBlock x:Name="setPrintAreaLabel"
                        TextWrapping="Wrap"

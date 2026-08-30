@@ -232,7 +232,22 @@ namespace AvPurplePen.Views
             case MapViewer.FancyMouseAction.Click:
                 if (isRightButton)
                     await vm.MapViewerRightButtonClick(location, pixelSize);
+                else if ((e.KeyModifiers & KeyModifiers.Control) != 0 &&
+                         await vm.MapViewerCtrlLeftButtonClick(location, pixelSize))
+                    break;
                 else
+                    await vm.MapViewerLeftButtonClick(location, pixelSize);
+                break;
+
+            case MapViewer.FancyMouseAction.DoubleClick:
+                // A mode may consume the gesture (compose-course uses it to finish).
+                // Otherwise preserve the normal second-click behavior for every other mode.
+                if (isRightButton)
+                    await vm.MapViewerRightButtonClick(location, pixelSize);
+                else if ((e.KeyModifiers & KeyModifiers.Control) != 0 &&
+                         await vm.MapViewerCtrlLeftButtonClick(location, pixelSize))
+                    break;
+                else if (!await vm.MapViewerDoubleClick(location, pixelSize))
                     await vm.MapViewerLeftButtonClick(location, pixelSize);
                 break;
 

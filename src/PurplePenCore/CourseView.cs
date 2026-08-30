@@ -384,33 +384,13 @@ namespace PurplePen
         // the map, then this is always 1.0.
         public float CourseObjRatio(CourseAppearance appearance)
         {
-            switch (appearance.itemScaling) {
-                case ItemScaling.None:
-                    return ScaleRatio;
-                case ItemScaling.RelativeToMap:
-                    return 1.0F;
-                case ItemScaling.RelativeTo15000:
-                    return 15000F / mapScale;
-                default:
-                    Debug.Fail("Unknown ItemScaling value");
-                    return ScaleRatio;
-            }
+            return appearance.GetCourseObjectScaleRatio(mapScale, printScale);
         }
 
         // Get the scale that circle gaps are stored at.
         public float CircleGapScale(CourseAppearance appearance)
         {
-            switch (appearance.itemScaling) {
-                case ItemScaling.None:
-                    return PrintScale;
-                case ItemScaling.RelativeToMap:
-                    return MapScale;
-                case ItemScaling.RelativeTo15000:
-                    return 15000F;
-                default:
-                    Debug.Fail("unknown ItemScaling value");
-                    return PrintScale;
-            }
+            return appearance.GetCircleGapScale(mapScale, printScale);
         }
 
         // Get the index of the next control. If this is a splitting control, just takes the first.

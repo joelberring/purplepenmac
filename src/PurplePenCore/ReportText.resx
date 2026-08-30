@@ -312,6 +312,9 @@
   <data name="RelayVariation_BranchWarning" xml:space="preserve">
     <value>Warning: due to the number of legs specified, the fork at control {0} will not be used evenly. {1} leg(s) will use branch(es) {2}, while {3} leg(s) will use branch(es) {4}. </value>
   </data>
+  <data name="RelayVariation_ForkKey" xml:space="preserve">
+    <value>Fork Key</value>
+  </data>
   <data name="RelayVariation_LegHeader" xml:space="preserve">
     <value>Leg {0}</value>
     <comment>{0} replaced with leg number</comment>
@@ -327,4 +330,66 @@
     <value>Relay Assignments for {0}</value>
     <comment>{0} replaced with course name</comment>
   </data>
+  <data name="EventReadiness_Title" xml:space="preserve"><value>Competition Readiness: {0}</value></data>
+  <data name="EventReadiness_NoBlockers" xml:space="preserve"><value>No blocking course-structure issues were found.</value></data>
+  <data name="EventReadiness_BlockerSummary" xml:space="preserve"><value>{0} blocking course-structure issue(s) need attention.</value></data>
+  <data name="EventReadiness_NoWarnings" xml:space="preserve"><value>No control-safety or control-data warnings were found.</value></data>
+  <data name="EventReadiness_WarningSummary" xml:space="preserve"><value>{0} warning(s) should be reviewed before publication.</value></data>
+  <data name="EventReadiness_Checks" xml:space="preserve"><value>Readiness checks</value></data>
+  <data name="EventReadiness_GeometryDetails" xml:space="preserve"><value>Geometry warnings to review</value></data>
+  <data name="EventReadiness_GeometryType" xml:space="preserve"><value>Warning</value></data>
+  <data name="EventReadiness_GeometryMeasure" xml:space="preserve"><value>Measure</value></data>
+  <data name="EventReadiness_ShortLeg" xml:space="preserve"><value>Short leg</value></data>
+  <data name="EventReadiness_SharpTurn" xml:space="preserve"><value>Acute turn</value></data>
+  <data name="EventReadiness_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="EventReadiness_Area" xml:space="preserve"><value>Area</value></data>
+  <data name="EventReadiness_Count" xml:space="preserve"><value>Issues</value></data>
+  <data name="EventReadiness_Action" xml:space="preserve"><value>Next action</value></data>
+  <data name="EventReadiness_Ready" xml:space="preserve"><value>Ready</value></data>
+  <data name="EventReadiness_Blocker" xml:space="preserve"><value>Blocking</value></data>
+  <data name="EventReadiness_Warning" xml:space="preserve"><value>Review</value></data>
+  <data name="EventReadiness_CourseStructure" xml:space="preserve"><value>Course structure</value></data>
+  <data name="EventReadiness_ControlSafety" xml:space="preserve"><value>Control safety</value></data>
+  <data name="EventReadiness_ShortLegs" xml:space="preserve"><value>Short legs (under 100 m)</value></data>
+  <data name="EventReadiness_SharpTurns" xml:space="preserve"><value>Acute turns (under 45°)</value></data>
+  <data name="EventReadiness_LegCrossings" xml:space="preserve"><value>Leg crossings</value></data>
+  <data name="EventReadiness_ControlData" xml:space="preserve"><value>Control data</value></data>
+  <data name="EventReadiness_Relay" xml:space="preserve"><value>Relay variation balance</value></data>
+  <data name="EventReadiness_CourseAction" xml:space="preserve"><value>Open Event Audit and correct starts, finishes, repeated controls and score points.</value></data>
+  <data name="EventReadiness_ControlAction" xml:space="preserve"><value>Review close controls and legs used in both directions.</value></data>
+  <data name="EventReadiness_ShortLegsAction" xml:space="preserve"><value>Review legs shorter than 100 m for clarity and suitable control spacing.</value></data>
+  <data name="EventReadiness_SharpTurnsAction" xml:space="preserve"><value>Review acute turns and doglegs for readable control circles and safe runner flow.</value></data>
+  <data name="EventReadiness_LegCrossingsAction" xml:space="preserve"><value>Review crossing course lines and reroute legs where the map is difficult to read.</value></data>
+  <data name="EventReadiness_DataAction" xml:space="preserve"><value>Review unused controls, descriptions and punch patterns.</value></data>
+  <data name="EventReadiness_RelayAction" xml:space="preserve"><value>Review relay variation assignments and branch balance.</value></data>
+  <data name="EventReadiness_NoAction" xml:space="preserve"><value>No action needed.</value></data>
+  <data name="EventReadiness_Details" xml:space="preserve"><value>Use Reports → Event Audit for the complete, item-by-item list.</value></data>
+  <data name="EventReadiness_LegCrossing" xml:space="preserve"><value>Crossing legs</value></data>
+  <data name="EventReadiness_Numbering" xml:space="preserve"><value>Control-number layout</value></data>
+  <data name="EventReadiness_Print" xml:space="preserve"><value>Scale and print area</value></data>
+  <data name="EventReadiness_Classes" xml:space="preserve"><value>Class/course mapping</value></data>
+  <data name="EventReadiness_Backside" xml:space="preserve"><value>Backside readiness</value></data>
+  <data name="EventReadiness_NumberingAction" xml:space="preserve"><value>Review overlapping control-number positions; custom positions are reported but not changed automatically.</value></data>
+  <data name="EventReadiness_PrintAction" xml:space="preserve"><value>Review each course scale, paper size, margins and print rectangle.</value></data>
+  <data name="EventReadiness_ClassesAction" xml:space="preserve"><value>Assign one unambiguous class name to each published course.</value></data>
+  <data name="EventReadiness_BacksideAction" xml:space="preserve"><value>Review the PDF backside settings and imported participant records.</value></data>
+  <data name="EventReadiness_NumberingDetails" xml:space="preserve"><value>Control-number positions to review</value></data>
+  <data name="EventReadiness_NumberPair" xml:space="preserve"><value>Numbers</value></data>
+  <data name="EventReadiness_NumberPlacement" xml:space="preserve"><value>Placement</value></data>
+  <data name="EventReadiness_CustomPlacement" xml:space="preserve"><value>Custom/locked-like placement</value></data>
+  <data name="EventReadiness_AutomaticPlacement" xml:space="preserve"><value>Automatic placement</value></data>
+  <data name="EventReadiness_PrintDetails" xml:space="preserve"><value>Scale and print details</value></data>
+  <data name="EventReadiness_Reason" xml:space="preserve"><value>Reason</value></data>
+  <data name="EventReadiness_InvalidScale" xml:space="preserve"><value>Scale is outside the supported competition range (1:100–1:100000) or is not numeric.</value></data>
+  <data name="EventReadiness_MissingPrintArea" xml:space="preserve"><value>Print area is missing.</value></data>
+  <data name="EventReadiness_InvalidPaper" xml:space="preserve"><value>Paper width or height is missing or invalid.</value></data>
+  <data name="EventReadiness_InvalidMargins" xml:space="preserve"><value>Margins are negative or consume the entire paper.</value></data>
+  <data name="EventReadiness_InvalidPrintArea" xml:space="preserve"><value>Manual print rectangle is empty or has invalid dimensions.</value></data>
+  <data name="EventReadiness_ClassDetails" xml:space="preserve"><value>Class/course mappings to review</value></data>
+  <data name="EventReadiness_Class" xml:space="preserve"><value>Class</value></data>
+  <data name="EventReadiness_MissingClass" xml:space="preserve"><value>No class name is assigned.</value></data>
+  <data name="EventReadiness_DuplicateClass" xml:space="preserve"><value>This class name is assigned to multiple courses.</value></data>
+  <data name="EventReadiness_BacksideDetails" xml:space="preserve"><value>Backside details</value></data>
+  <data name="EventReadiness_BacksideNoRecords" xml:space="preserve"><value>Backside information is enabled, but no participant records were imported.</value></data>
+  <data name="EventReadiness_BacksideMissingClass" xml:space="preserve"><value>Course has no class name, so participant matching cannot be verified.</value></data>
 </root>

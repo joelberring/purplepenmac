@@ -146,6 +146,16 @@ namespace PurplePen
             return id;
         }
 
+        /// <summary>Adds an object while loading/migrating a file, without creating an undo action.</summary>
+        public Id<T> AddDuringLoad(T obj)
+        {
+            Id<T> id = new Id<T>(next);
+            dict.Add(id, (T)obj.Clone());
+            next++;
+            ++changenum;
+            return id;
+        }
+
         /// <summary>
         /// Remove the object with the given id from the store. 
         /// </summary>

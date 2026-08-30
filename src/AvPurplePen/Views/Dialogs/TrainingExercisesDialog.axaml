@@ -1,0 +1,178 @@
+<!-- TrainingExercisesDialog.axaml: edit training overlays without changing course data. -->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PurplePen.ViewModels"
+        xmlns:resx="using:AvPurplePen"
+        x:Class="AvPurplePen.Views.TrainingExercisesDialog"
+        x:DataType="vm:TrainingExercisesDialogViewModel"
+        Title="{resx:Localize TrainingExercisesDialog_Title}"
+        Width="980" Height="690" MinWidth="840" MinHeight="580" WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="16">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,14,0,0">
+      <Button Content="{resx:Localize CancelButton}" Width="110" Click="CancelButton_Click"/>
+      <Button Content="{resx:Localize TrainingExercisesDialog_Save}" Width="110" Click="SaveButton_Click" IsEnabled="{Binding IsSaveEnabled}"/>
+    </StackPanel>
+
+    <Grid RowDefinitions="Auto,Auto,*" RowSpacing="10">
+      <TextBlock Text="{resx:Localize TrainingExercisesDialog_Intro}" TextWrapping="Wrap"/>
+      <TextBlock Grid.Row="1" Text="{resx:Localize TrainingExercisesDialog_GeometryNote}" TextWrapping="Wrap" Opacity="0.75"/>
+
+      <Grid Grid.Row="2" ColumnDefinitions="250,12,*">
+        <Border Grid.Column="0" BorderThickness="1" BorderBrush="{DynamicResource DarkGreyBorder}" CornerRadius="3" Padding="6">
+          <DockPanel>
+            <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+              <Button Command="{Binding RemoveExerciseCommand}" Content="{resx:Localize TrainingExercisesDialog_Remove}" Classes="Small"/>
+            </StackPanel>
+            <ListBox ItemsSource="{Binding Exercises}" SelectedItem="{Binding SelectedExercise, Mode=TwoWay}">
+              <ListBox.ItemTemplate>
+                <DataTemplate x:DataType="vm:TrainingExerciseEditorItem">
+                  <StackPanel Margin="4,5">
+                    <TextBlock Text="{Binding CourseName}" FontSize="11" Opacity="0.7"/>
+                    <StackPanel Orientation="Horizontal" Spacing="3">
+                      <TextBlock Text="{resx:Localize TrainingExercisesDialog_Corridor}" IsVisible="{Binding IsCorridor}"/>
+                      <TextBlock Text="{resx:Localize TrainingExercisesDialog_AttackPoint}" IsVisible="{Binding IsAttackPoint}"/>
+                      <TextBlock Text="{resx:Localize TrainingExercisesDialog_Line}" IsVisible="{Binding IsLine}"/>
+                      <TextBlock Text="{resx:Localize TrainingExercisesDialog_ContourOnly}" IsVisible="{Binding IsContourOnly}"/>
+                      <TextBlock Text="{Binding DisplayOrdinal, StringFormat='#{0}'}" Opacity="0.7"/>
+                    </StackPanel>
+                    <TextBlock Text="{Binding Instruction}" FontSize="11" Opacity="0.75" TextTrimming="CharacterEllipsis"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+          </DockPanel>
+        </Border>
+
+        <Border Grid.Column="2" BorderThickness="1" BorderBrush="{DynamicResource DarkGreyBorder}" CornerRadius="3" Padding="18">
+          <ScrollViewer VerticalScrollBarVisibility="Auto">
+            <StackPanel Spacing="12">
+              <TextBlock Text="{resx:Localize TrainingExercisesDialog_Details}" FontSize="18" FontWeight="Bold"/>
+              <!-- Bind the editor directly to the selected item. Direct bindings keep
+                   conditional rows collapsed and avoid overlapping fallback content. -->
+              <ContentControl Content="{Binding SelectedExercise}">
+                <ContentControl.ContentTemplate>
+                  <DataTemplate x:DataType="vm:TrainingExerciseEditorItem">
+                    <StackPanel Spacing="18">
+                      <Border Background="{DynamicResource InputBackground}"
+                              BorderBrush="{DynamicResource DarkGreyBorder}"
+                              BorderThickness="1" CornerRadius="4" Padding="14">
+                        <StackPanel Spacing="5">
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_Type}" FontSize="12" Opacity="0.7"/>
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_Corridor}" FontSize="17" FontWeight="Bold" IsVisible="{Binding IsCorridor}"/>
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_AttackPoint}" FontSize="17" FontWeight="Bold" IsVisible="{Binding IsAttackPoint}"/>
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_Line}" FontSize="17" FontWeight="Bold" IsVisible="{Binding IsLine}"/>
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_ContourOnly}" FontSize="17" FontWeight="Bold" IsVisible="{Binding IsContourOnly}"/>
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_CorridorHelp}" TextWrapping="Wrap" Opacity="0.75" IsVisible="{Binding IsCorridor}"/>
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_AttackPointHelp}" TextWrapping="Wrap" Opacity="0.75" IsVisible="{Binding IsAttackPoint}"/>
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_LineHelp}" TextWrapping="Wrap" Opacity="0.75" IsVisible="{Binding IsLine}"/>
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_ContourOnlyHelp}" TextWrapping="Wrap" Opacity="0.75" IsVisible="{Binding IsContourOnly}"/>
+                          <TextBlock Text="{resx:Localize TrainingExercisesDialog_TypeLockedHint}" FontSize="11" TextWrapping="Wrap" Opacity="0.6"/>
+                        </StackPanel>
+                      </Border>
+
+                      <StackPanel Spacing="6">
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_Instruction}" FontWeight="SemiBold"/>
+                        <TextBox Text="{Binding Instruction, Mode=TwoWay}"
+                                 PlaceholderText="{resx:Localize TrainingExercisesDialog_InstructionPlaceholder}"/>
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_InstructionHelp}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                      </StackPanel>
+
+                      <StackPanel Spacing="6" IsVisible="{Binding IsCorridor}">
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_Width}" FontWeight="SemiBold"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <NumericUpDown Value="{Binding Width, Mode=TwoWay}" Width="150" HorizontalAlignment="Left"
+                                         Minimum="0.5" Maximum="50" Increment="0.1" FormatString="0.0"/>
+                          <TextBlock Text="mm" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_WidthHelp}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                      </StackPanel>
+
+                      <StackPanel Spacing="6" IsVisible="{Binding IsCorridor}">
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_WhiteMargin}" FontWeight="SemiBold"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <NumericUpDown Value="{Binding WhiteMargin, Mode=TwoWay}" Width="150" HorizontalAlignment="Left"
+                                         Minimum="0" Maximum="25" Increment="0.1" FormatString="0.0"/>
+                          <TextBlock Text="mm" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_WhiteMarginHelp}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                      </StackPanel>
+
+                      <StackPanel Spacing="6" IsVisible="{Binding IsAttackPoint}">
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_AttackPointSize}" FontWeight="SemiBold"/>
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                          <NumericUpDown Value="{Binding Width, Mode=TwoWay}" Width="150" HorizontalAlignment="Left"
+                                         Minimum="0.5" Maximum="50" Increment="0.1" FormatString="0.0"/>
+                          <TextBlock Text="mm" VerticalAlignment="Center"/>
+                        </StackPanel>
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_AttackPointSizeHelp}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                      </StackPanel>
+
+                      <StackPanel Spacing="6" IsVisible="{Binding IsCorridor}">
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_CorridorMasking}" FontWeight="SemiBold"/>
+                        <NumericUpDown Value="{Binding MaskOpacityPercent, Mode=TwoWay}" Width="150" HorizontalAlignment="Left"
+                                       Minimum="0" Maximum="100" FormatString="0'%'"/>
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_CorridorMaskingHelp}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                      </StackPanel>
+
+                      <StackPanel Spacing="6" IsVisible="{Binding IsContourOnly}">
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_ContourMasking}" FontWeight="SemiBold"/>
+                        <NumericUpDown Value="{Binding MaskOpacityPercent, Mode=TwoWay}" Width="150" HorizontalAlignment="Left"
+                                       Minimum="0" Maximum="100" FormatString="0'%'"/>
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_ContourMaskingHelp}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                      </StackPanel>
+
+                      <StackPanel Spacing="6" IsVisible="{Binding IsContourOnly}">
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_VisibleMapLayers}" FontWeight="SemiBold"/>
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_VisibleMapLayersHelp}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                        <Border BorderBrush="{DynamicResource DarkGreyBorder}" BorderThickness="1" CornerRadius="4"
+                                ClipToBounds="True" IsVisible="{Binding HasSymbolChoices}">
+                          <ScrollViewer MaxHeight="230" VerticalScrollBarVisibility="Auto">
+                            <ItemsControl ItemsSource="{Binding SymbolChoices}">
+                              <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="vm:TrainingMapSymbolChoice">
+                                  <Border BorderBrush="{DynamicResource DarkGreyBorder}" BorderThickness="0,0,0,1" Padding="10,7">
+                                    <Grid ColumnDefinitions="Auto,Auto,80,*" ColumnSpacing="10">
+                                      <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" VerticalAlignment="Center"/>
+                                      <Border Grid.Column="1" Width="32" Height="18" CornerRadius="3"
+                                              Background="{Binding PreviewColor}" BorderBrush="{DynamicResource DarkGreyBorder}" BorderThickness="1"/>
+                                      <TextBlock Grid.Column="2" Text="{Binding SymbolId}" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                      <TextBlock Grid.Column="3" Text="{Binding Name}" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
+                                    </Grid>
+                                  </Border>
+                                </DataTemplate>
+                              </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                          </ScrollViewer>
+                        </Border>
+                        <TextBox Text="{Binding AllowedSymbolIdsText, Mode=TwoWay}" IsVisible="{Binding HasNoSymbolChoices}"
+                                 PlaceholderText="101; 102; 103"
+                                 ToolTip.Tip="{resx:Localize TrainingExercisesDialog_AllowedSymbolsHint}"/>
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_ContourSupportNote}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                      </StackPanel>
+
+                      <StackPanel Spacing="7">
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_VisibleIn}" FontWeight="SemiBold"/>
+                        <TextBlock Text="{resx:Localize TrainingExercisesDialog_VisibleInHelp}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                        <WrapPanel Orientation="Horizontal">
+                          <CheckBox Margin="0,0,20,0" IsChecked="{Binding ShowToRunner, Mode=TwoWay}" Content="{resx:Localize TrainingExercisesDialog_Runner}"/>
+                          <CheckBox Margin="0,0,20,0" IsChecked="{Binding ShowToCoach, Mode=TwoWay}" Content="{resx:Localize TrainingExercisesDialog_Coach}"/>
+                          <CheckBox IsChecked="{Binding ShowAnswer, Mode=TwoWay}" Content="{resx:Localize TrainingExercisesDialog_Answer}"/>
+                        </WrapPanel>
+                      </StackPanel>
+                    </StackPanel>
+                  </DataTemplate>
+                </ContentControl.ContentTemplate>
+              </ContentControl>
+              <StackPanel Orientation="Horizontal" Spacing="6">
+                <Button Command="{Binding MoveExerciseUpCommand}" Content="{resx:Localize TrainingExercisesDialog_MoveUp}" Classes="Small"/>
+                <Button Command="{Binding MoveExerciseDownCommand}" Content="{resx:Localize TrainingExercisesDialog_MoveDown}" Classes="Small"/>
+                <Button Command="{Binding DuplicateExerciseCommand}" Content="{resx:Localize TrainingExercisesDialog_Duplicate}" Classes="Small"/>
+              </StackPanel>
+              <TextBlock Text="{resx:Localize TrainingExercisesDialog_Invalid}" Foreground="IndianRed" TextWrapping="Wrap" IsVisible="{Binding HasValidationErrors}"/>
+            </StackPanel>
+          </ScrollViewer>
+        </Border>
+      </Grid>
+    </Grid>
+  </DockPanel>
+</Window>

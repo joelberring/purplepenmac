@@ -85,86 +85,93 @@
                                     Header="{resx:Localize CourseAppearanceDialog_groupBoxSizes_Text}"
                                     Padding="10,12,10,8">
                 <Grid ColumnDefinitions="4*,*,8,90,6,26"
-                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
+                      RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto">
 
                     <!-- Use IOF standard sizes -->
                     <CheckBox x:Name="checkBoxStandardSizes"
                               Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="6"
                               Content="{resx:Localize CourseAppearanceDialog_checkBoxStandardSizes_Text}"
                               IsChecked="{Binding UseIofStandardSizes, Mode=TwoWay}"
-                              Margin="0,0,0,8"/>
+                              Margin="0,0,0,3"/>
+
+                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="6"
+                               Text="{resx:Localize CourseAppearanceDialog_standardSizesHelp_Text}"
+                               TextWrapping="Wrap"
+                               Opacity="0.72"
+                               FontSize="11"
+                               Margin="24,0,0,8"/>
 
                     <!-- Control circle diameter -->
-                    <TextBlock Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
                                Text="{resx:Localize CourseAppearanceDialog_labelControlCircle_Text}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
                     <NumericUpDown x:Name="upDownControlCircle"
-                                   Grid.Row="1" Grid.Column="3"
+                                   Grid.Row="2" Grid.Column="3"
                                    Width="70"
                                    Value="{Binding ControlCircleDiameter, Mode=TwoWay}"
                                    IsEnabled="{Binding SizesEnabled}"
                                    Minimum="1" Maximum="50" Increment="0.1"
                                    FormatString="0.00" Margin="0,0,0,6"/>
-                    <TextBlock Grid.Row="1" Grid.Column="5"
+                    <TextBlock Grid.Row="2" Grid.Column="5"
                                Text="{resx:Localize CourseAppearanceDialog_labelMM1_Text}"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
 
                     <!-- Line width -->
-                    <TextBlock Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2"
+                    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
                                Text="{resx:Localize CourseAppearanceDialog_labelLineWidth_Text}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
                     <NumericUpDown x:Name="upDownLineWidth"
-                                   Grid.Row="2" Grid.Column="3"
+                                   Grid.Row="3" Grid.Column="3"
                                    Width="70"
                                    Value="{Binding LineWidth, Mode=TwoWay}"
                                    IsEnabled="{Binding SizesEnabled}"
                                    Minimum="0.01" Maximum="10" Increment="0.01"
                                    FormatString="0.00" Margin="0,0,0,6"/>
-                    <TextBlock Grid.Row="2" Grid.Column="5"
+                    <TextBlock Grid.Row="3" Grid.Column="5"
                                Text="{resx:Localize CourseAppearanceDialog_label2_Text}"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
 
                     <!-- Center dot diameter -->
-                    <TextBlock Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="2"
+                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
                                Text="{resx:Localize CourseAppearanceDialog_label7_Text}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
                     <NumericUpDown x:Name="upDownCenterDot"
-                                   Grid.Row="3" Grid.Column="3"
+                                   Grid.Row="4" Grid.Column="3"
                                    Width="70"
                                    Value="{Binding CenterDotDiameter, Mode=TwoWay}"
                                    IsEnabled="{Binding SizesEnabled}"
                                    Minimum="0" Maximum="3" Increment="0.01"
                                    FormatString="0.00" Margin="0,0,0,6"/>
-                    <TextBlock Grid.Row="3" Grid.Column="5"
+                    <TextBlock Grid.Row="4" Grid.Column="5"
                                Text="{resx:Localize CourseAppearanceDialog_label8_Text}"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
 
                     <!-- Control number height -->
-                    <TextBlock Grid.Row="4" Grid.Column="0" Grid.ColumnSpan="2"
+                    <TextBlock Grid.Row="5" Grid.Column="0" Grid.ColumnSpan="2"
                                Text="{resx:Localize CourseAppearanceDialog_labelControlNumber_Text}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
                     <NumericUpDown x:Name="upDownNumberHeight"
-                                   Grid.Row="4" Grid.Column="3"
+                                   Grid.Row="5" Grid.Column="3"
                                    Width="70"
                                    Value="{Binding NumberHeight, Mode=TwoWay}"
                                    IsEnabled="{Binding SizesEnabled}"
                                    Minimum="1" Maximum="50" Increment="0.1"
                                    FormatString="0.00" Margin="0,0,0,6"/>
-                    <TextBlock Grid.Row="4" Grid.Column="5"
+                    <TextBlock Grid.Row="5" Grid.Column="5"
                                Text="{resx:Localize CourseAppearanceDialog_label4_Text}"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
 
                     <!-- Control number style -->
-                    <TextBlock Grid.Row="5" Grid.Column="0"
+                    <TextBlock Grid.Row="6" Grid.Column="0"
                                Text="{resx:Localize CourseAppearanceDialog_labelControlNumberStyle_Text}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
                     <ComboBox x:Name="comboBoxControlNumberStyle"
-                              Grid.Row="5" Grid.Column="1" Grid.ColumnSpan="5"
+                              Grid.Row="6" Grid.Column="1" Grid.ColumnSpan="5"
                               HorizontalAlignment="Right"
                               SelectedIndex="{Binding ControlNumberStyleIndex, Mode=TwoWay}"
                               Margin="0,0,0,6">
@@ -175,47 +182,48 @@
                     </ComboBox>
 
                     <!-- White outline around numbers -->
-                    <TextBlock Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2"
+                    <TextBlock Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
                                Text="{resx:Localize CourseAppearanceDialog_labelOutlineWidth_Text}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
                     <NumericUpDown x:Name="upDownOutlineWidth"
-                                   Grid.Row="6" Grid.Column="3"
+                                   Grid.Row="7" Grid.Column="3"
                                    Width="70"
                                    Value="{Binding OutlineWidth, Mode=TwoWay}"
                                    Minimum="0" Maximum="50" Increment="0.01"
                                    FormatString="0.00" Margin="0,0,0,6"/>
-                    <TextBlock Grid.Row="6" Grid.Column="5"
+                    <TextBlock Grid.Row="7" Grid.Column="5"
                                Text="{resx:Localize CourseAppearanceDialog_label10_Text}"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
 
                     <!-- Automatic leg gap size -->
-                    <TextBlock Grid.Row="7" Grid.Column="0" Grid.ColumnSpan="2"
+                    <TextBlock Grid.Row="8" Grid.Column="0" Grid.ColumnSpan="2"
                                Text="{resx:Localize CourseAppearanceDialog_labelAutoGapSize_Text}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
                     <NumericUpDown x:Name="upDownLegGapSize"
-                                   Grid.Row="7" Grid.Column="3"
+                                   Grid.Row="8" Grid.Column="3"
                                    Value="{Binding LegGapSize, Mode=TwoWay}"
                                    Width="70"
                                    Minimum="0" Maximum="50" Increment="0.1"
                                    FormatString="0.00" Margin="0,0,0,6"/>
-                    <TextBlock Grid.Row="7" Grid.Column="5"
+                    <TextBlock Grid.Row="8" Grid.Column="5"
                                Text="{resx:Localize CourseAppearanceDialog_label12_Text}"
                                VerticalAlignment="Center" Margin="0,0,0,6"/>
 
                     <!-- Scale item sizes -->
-                    <TextBlock Grid.Row="8" Grid.Column="0"
+                    <TextBlock Grid.Row="9" Grid.Column="0"
                                Text="{resx:Localize CourseAppearanceDialog_label11_Text}"
                                TextWrapping="Wrap"
                                VerticalAlignment="Center"/>
                     <ComboBox x:Name="comboBoxScaleItemSizes"
-                              Grid.Row="8" Grid.Column="1" Grid.ColumnSpan="5"
+                              Grid.Row="9" Grid.Column="1" Grid.ColumnSpan="5"
                               HorizontalAlignment="Right"
+                              IsEnabled="{Binding ScaleItemSizesEnabled}"
                               SelectedIndex="{Binding ScaleItemSizesIndex, Mode=TwoWay}">
                         <ComboBoxItem Content="{resx:Localize CourseAppearanceDialog_comboBoxScaleItemSizes_Items}"/>
                         <ComboBoxItem Content="{resx:Localize CourseAppearanceDialog_comboBoxScaleItemSizes_Items1}"/>
-                        <ComboBoxItem Content="{resx:Localize CourseAppearanceDialog_comboBoxScaleItemSizes_Items2}"/>
+                        <ComboBoxItem Content="{resx:Localize CourseAppearanceDialog_comboBoxScaleItemSizes_Standard}"/>
                     </ComboBox>
                 </Grid>
             </HeaderedContentControl>

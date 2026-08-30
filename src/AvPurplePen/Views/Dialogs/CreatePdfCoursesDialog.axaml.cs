@@ -13,6 +13,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Text.Json;
+using System.Xml;
 using Avalonia.Controls;
 using Avalonia.Interactivity;
 using Avalonia.Platform.Storage;
@@ -76,7 +79,7 @@ namespace AvPurplePen.Views
         }
 
         /// <summary>
-        /// Imports a CSV start list exported from MeOS. The parser belongs in
+        /// Imports a CSV or IOF XML start list exported from MeOS. The parser belongs in
         /// PurplePenCore so the same matching contract can be reused by future
         /// print workflows; this code only obtains the user-selected file.
         /// </summary>
@@ -86,10 +89,11 @@ namespace AvPurplePen.Views
                 return;
 
             FilePickerOpenOptions options = new FilePickerOpenOptions {
-                Title = UIText.ResourceManager.GetString("CreatePdfCourses_importBacksideInfoDialog_Text") ?? "Import MeOS start list CSV",
+                Title = UIText.ResourceManager.GetString("CreatePdfCourses_importBacksideInfoDialog_Text") ?? "Import MeOS CSV or IOF XML start list",
                 AllowMultiple = false,
                 FileTypeFilter = new[] {
                     new FilePickerFileType("CSV") { Patterns = new[] { "*.csv", "*.txt" } },
+                    new FilePickerFileType("IOF XML 3.0") { Patterns = new[] { "*.xml" } },
                 },
             };
             IReadOnlyList<IStorageFile> files = await StorageProvider.OpenFilePickerAsync(options);
@@ -99,14 +103,16 @@ namespace AvPurplePen.Views
             try {
                 using (Stream stream = await files[0].OpenReadAsync())
                 using (StreamReader reader = new StreamReader(stream)) {
-                    vm.BacksideInfoRecords = BacksideInfoCsv.Import(reader);
+                    vm.BacksideInfoRecords = String.Equals(System.IO.Path.GetExtension(files[0].Path.LocalPath), ".xml", StringComparison.OrdinalIgnoreCase)
+                        ? BacksideInfoIofXml.Import(reader)
+                        : BacksideInfoCsv.Import(reader);
                     vm.BacksideInfoImportError = String.Empty;
                 }
             }
             catch (IOException) {
                 vm.BacksideInfoImportError = UIText.ResourceManager.GetString("CreatePdfCourses_backsideImportError_Text") ?? "Could not read the selected CSV file.";
             }
-            catch (FormatException) {
+            catch (Exception ex) when (ex is FormatException || ex is XmlException || ex is InvalidDataException) {
                 vm.BacksideInfoImportError = UIText.ResourceManager.GetString("CreatePdfCourses_backsideImportError_Text") ?? "Could not read the selected CSV file.";
             }
         }
@@ -134,7 +140,7 @@ namespace AvPurplePen.Views
             catch (IOException) {
                 vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileImportError_Text") ?? "Could not import the print profile.";
             }
-            catch (ArgumentException) {
+            catch (Exception ex) when (ex is ArgumentException || ex is JsonException || ex is FormatException || ex is InvalidDataException) {
                 vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileImportError_Text") ?? "Could not import the print profile.";
             }
         }
@@ -169,6 +175,56 @@ namespace AvPurplePen.Views
             }
             catch (UnauthorizedAccessException) {
                 vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileExportError_Text") ?? "Could not export the print profile.";
+            }
+        }
+
+        /// <summary>Creates a user-owned editable copy of the selected profile.</summary>
+        private async void EditPrintProfileButton_Click(object? sender, RoutedEventArgs e)
+        {
+            if (DataContext is not CreatePdfCoursesDialogViewModel vm)
+                return;
+
+            PrintProfile profile = PrintProfileCatalog.FindById(vm.PrintProfileId);
+            if (profile == null) {
+                vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_selectPrintProfile_Text") ?? "Select a print profile first.";
+                return;
+            }
+
+            PrintProfileEditorDialogViewModel editorVm = new PrintProfileEditorDialogViewModel();
+            editorVm.LoadProfiles(PrintProfileCatalog.CreateAll(), profile.Id, vm.CurrentMapColors.Count > 0);
+            if (vm.CurrentMapColors.Count > 0) {
+                editorVm.LoadCurrentMap(vm.CurrentMapColors);
+                editorVm.SelectedSourceProfileId = profile.Id;
+                editorVm.PreflightRunner = candidateProfile => {
+                    ColorPreflightReport report = ColorPreflightReport.Analyze(candidateProfile, vm.CurrentMapColors,
+                        PdfExportCapabilities.CreateCurrentImplementation());
+                    editorVm.PreflightFindings.Clear();
+                    foreach (ColorPreflightRuleResult result in report.RuleResults) {
+                        editorVm.PreflightFindings.Add(new PrintProfilePreflightItem {
+                            RuleName = result.Rule.Name,
+                            Status = result.MatchStatus.ToString(),
+                            Detail = String.Join("; ", report.Findings.Where(finding => finding.RuleId == result.Rule.Id).Select(finding => finding.Message)),
+                        });
+                    }
+                    return report.CanExport;
+                };
+            }
+            PrintProfileEditorDialog dialog = new PrintProfileEditorDialog { DataContext = editorVm };
+            if (await dialog.ShowDialog<bool>(this)) {
+                try {
+                    if (!editorVm.ValidateForSave())
+                        return;
+                    PrintProfile saved = editorVm.CreateProfile();
+                    PrintProfileCatalog.SaveUserProfile(saved);
+                    vm.RefreshPrintProfiles(saved.Id);
+                    vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileSaved_Text") ?? "Print profile saved.";
+                }
+                catch (ArgumentException) {
+                    vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileSaveError_Text") ?? "Could not save the print profile.";
+                }
+                catch (IOException) {
+                    vm.PrintProfileMessage = UIText.ResourceManager.GetString("CreatePdfCourses_printProfileSaveError_Text") ?? "Could not save the print profile.";
+                }
             }
         }
 

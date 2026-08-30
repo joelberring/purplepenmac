@@ -1,0 +1,72 @@
+<!-- Groups each exchange task so the selected file and result have one clear meaning. -->
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PurplePen.ViewModels" xmlns:resx="using:AvPurplePen" xmlns:local="using:AvPurplePen"
+        x:Class="AvPurplePen.Views.MeosIofCentralDialog" x:DataType="vm:MeosIofCentralDialogViewModel"
+        Title="{resx:Localize MeosIofCentral_Title}" Width="760" Height="560" MinWidth="620" MinHeight="460"
+        CanResize="True" WindowStartupLocation="CenterOwner">
+  <Design.DataContext><vm:MeosIofCentralDialogViewModel/></Design.DataContext>
+  <DockPanel Margin="14">
+    <Button DockPanel.Dock="Bottom" Content="{resx:Localize CloseButton}" Click="Close_Click"
+            HorizontalAlignment="Right" Width="100" Margin="0,12,0,0"/>
+    <Border DockPanel.Dock="Bottom" IsVisible="{Binding HasDiagnostics}" Margin="0,10,0,0"
+            Padding="8" Background="#FFF4CE" BorderBrush="#C88A00" BorderThickness="1">
+      <StackPanel>
+        <TextBlock Text="{resx:Localize MeosIofCentral_ErrorHeader}" FontWeight="SemiBold"/>
+        <ItemsControl ItemsSource="{Binding Diagnostics}"/>
+      </StackPanel>
+    </Border>
+    <StackPanel DockPanel.Dock="Top" Spacing="4" Margin="0,0,0,10">
+      <TextBlock Text="{resx:Localize MeosIofCentral_Intro}" TextWrapping="Wrap"/>
+      <TextBlock Text="{Binding FileName}" TextTrimming="CharacterEllipsis" Opacity="0.7" ToolTip.Tip="{Binding FileName}"/>
+    </StackPanel>
+    <TabControl>
+      <TabItem Header="{resx:Localize MeosIofCentral_StartListTab}">
+        <StackPanel Margin="12" Spacing="10">
+          <TextBlock Text="{resx:Localize MeosIofCentral_StartListHelp}" TextWrapping="Wrap"/>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <Button Content="{resx:Localize MeosIofCentral_Import}" Click="Import_Click"/>
+            <Button Content="{resx:Localize MeosIofCentral_Apply}" Click="Apply_Click" IsEnabled="{Binding HasSafeSuggestions}"/>
+          </StackPanel>
+          <TextBlock IsVisible="{Binding IsImported}" Text="{Binding ResultCount, Converter={x:Static local:MeosResultCountConverter.Instance}, ConverterParameter=Imported}"/>
+          <TextBlock IsVisible="{Binding IsApplied}" Text="{Binding ResultCount, Converter={x:Static local:MeosResultCountConverter.Instance}, ConverterParameter=Applied}"/>
+          <Border BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1" Padding="8">
+            <Grid RowDefinitions="Auto,*" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+              <TextBlock Text="{resx:Localize MeosIofCentral_ClassHeader}" FontWeight="SemiBold"/>
+              <TextBlock Grid.Column="1" Text="{resx:Localize MeosIofCentral_CountHeader}" FontWeight="SemiBold"/>
+              <TextBlock Grid.Column="2" Text="{resx:Localize MeosIofCentral_StatusHeader}" FontWeight="SemiBold"/>
+              <ListBox Grid.Row="1" Grid.ColumnSpan="3" ItemsSource="{Binding ClassSuggestions}" Height="220">
+                <ListBox.ItemTemplate><DataTemplate x:DataType="vm:MeosClassSuggestion">
+                  <Grid ColumnDefinitions="*,80,110" ColumnSpacing="10" Margin="4,3">
+                    <TextBlock Text="{Binding ClassName}"/>
+                    <TextBlock Grid.Column="1" Text="{Binding ImportedCount}" HorizontalAlignment="Right"/>
+                    <TextBlock Grid.Column="2" IsVisible="{Binding IsSafe}" Text="{resx:Localize MeosIofCentral_Matched}" Classes="SuccessText"/>
+                    <TextBlock Grid.Column="2" IsVisible="{Binding IsConflict}" Text="{resx:Localize MeosIofCentral_Conflict}" Classes="ErrorText"/>
+                  </Grid>
+                </DataTemplate></ListBox.ItemTemplate>
+              </ListBox>
+            </Grid>
+          </Border>
+        </StackPanel>
+      </TabItem>
+      <TabItem Header="{resx:Localize MeosIofCentral_CourseDataTab}">
+        <StackPanel Margin="12" Spacing="10">
+          <TextBlock Text="{resx:Localize MeosIofCentral_CourseDataHelp}" TextWrapping="Wrap"/>
+          <WrapPanel><Button Margin="0,0,8,0" Content="{resx:Localize MeosIofCentral_Export}" Click="Export_Click"/><Button Content="{resx:Localize MeosIofCentral_Compare}" Click="Compare_Click"/></WrapPanel>
+          <TextBlock IsVisible="{Binding IsNoEvent}" Text="{resx:Localize MeosIofCentral_ResultNoEvent}"/>
+          <TextBlock IsVisible="{Binding IsCompared}" Text="{resx:Localize MeosIofCentral_ResultCompared}"/>
+          <TextBlock IsVisible="{Binding IsNoDifferences}" Text="{resx:Localize MeosIofCentral_ResultNoDifferences}"/>
+          <TextBlock IsVisible="{Binding IsExportValid}" Text="{resx:Localize MeosIofCentral_ResultExportValid}"/>
+          <TextBlock IsVisible="{Binding IsExportInvalid}" Text="{resx:Localize MeosIofCentral_ResultExportInvalid}" Classes="ErrorText"/>
+          <ListBox ItemsSource="{Binding DiffItems}" Height="260"/>
+        </StackPanel>
+      </TabItem>
+      <TabItem Header="{resx:Localize MeosIofCentral_LiveloxTab}">
+        <StackPanel Margin="12" Spacing="10">
+          <TextBlock Text="{resx:Localize MeosIofCentral_LiveloxHelp}" TextWrapping="Wrap"/>
+          <Button Content="{resx:Localize MeosIofCentral_Livelox}" Click="Livelox_Click" HorizontalAlignment="Left"/>
+          <TextBlock IsVisible="{Binding IsLiveloxCreated}" Text="{resx:Localize MeosIofCentral_ResultLiveloxCreated}"/>
+        </StackPanel>
+      </TabItem>
+    </TabControl>
+  </DockPanel>
+</Window>

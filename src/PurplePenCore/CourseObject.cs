@@ -59,6 +59,8 @@ namespace PurplePen
         public Id<ControlPoint> controlId;                        // Id of associated control (control/start/finish/crossing)
         public Id<CourseControl> courseControlId;             // Id of associated course control (control/start/finish/crossing)
         public Id<Special> specialId;                                // Id of special (water/dangerous/etc)
+        /// <summary>Id of the training exercise represented by this object, or None for ordinary objects.</summary>
+        public Id<TrainingExercise> trainingExerciseId;
         public float courseObjRatio;                   // scale to display in (1.0 is normal scale).
         public CourseAppearance appearance;       // customize course appearance
 
@@ -2485,6 +2487,95 @@ namespace PurplePen
         }
     }
 
+    /// <summary>
+    /// A corridor-orienteering guide rendered as a dashed outline while retaining the
+    /// centre-line vertices as its editable handles.
+    /// </summary>
+    public sealed class TrainingCorridorCourseObj : LineSpecialCourseObj
+    {
+        private const float BoundaryLineWidth = 0.25F;
+        private const float BoundaryDashLength = 0.9F;
+        private const float BoundaryGapLength = 0.7F;
+        private PointF[] centreLine;
+        private readonly float corridorWidth;
+
+        public TrainingCorridorCourseObj(CourseAppearance appearance, PointF[] centreLine, float corridorWidth)
+            : base(Id<Special>.None, appearance, SpecialColor.UpperPurple, LineKind.Dashed,
+                   BoundaryLineWidth, BoundaryGapLength, BoundaryDashLength,
+                   CreateBoundaryPath(centreLine, corridorWidth))
+        {
+            this.centreLine = centreLine == null ? new PointF[0] : (PointF[])centreLine.Clone();
+            this.corridorWidth = corridorWidth;
+        }
+
+        public override PointF[] GetHandles()
+        {
+            return (PointF[])centreLine.Clone();
+        }
+
+        public override void MoveHandle(PointF oldHandle, PointF newHandle)
+        {
+            int index = Array.IndexOf(centreLine, oldHandle);
+            if (index < 0)
+                return;
+
+            centreLine[index] = newHandle;
+            path = CreateBoundaryPath(centreLine, corridorWidth);
+        }
+
+        public override void Offset(float dx, float dy)
+        {
+            for (int index = 0; index < centreLine.Length; ++index)
+                centreLine[index] = new PointF(centreLine[index].X + dx, centreLine[index].Y + dy);
+            path = CreateBoundaryPath(centreLine, corridorWidth);
+        }
+
+        public override object Clone()
+        {
+            TrainingCorridorCourseObj clone = (TrainingCorridorCourseObj)base.Clone();
+            clone.centreLine = (PointF[])centreLine.Clone();
+            return clone;
+        }
+
+        private static SymPath CreateBoundaryPath(PointF[] centreLine, float corridorWidth)
+        {
+            TrainingCorridorOutline outline = TrainingCorridorGeometry.CreateOutline(centreLine, corridorWidth);
+            PointF[] polygon = outline.Polygon.ToArray();
+            PointF[] closedPolygon = new PointF[polygon.Length + 1];
+            Array.Copy(polygon, closedPolygon, polygon.Length);
+            closedPolygon[closedPolygon.Length - 1] = polygon[0];
+            return new SymPath(closedPolygon);
+        }
+    }
+
+    /// <summary>Closed purple training polygon with one editable handle per persisted vertex.</summary>
+    public sealed class TrainingPolygonCourseObj : LineSpecialCourseObj
+    {
+        public TrainingPolygonCourseObj(CourseAppearance appearance, SymPath path)
+            : base(Id<Special>.None, appearance, SpecialColor.UpperPurple, LineKind.Single, 0.35F, 0, 0, path) { }
+
+        public override PointF[] GetHandles()
+        {
+            PointF[] points = path.Points;
+            int count = points.Length > 1 && points[0] == points[points.Length - 1] ? points.Length - 1 : points.Length;
+            PointF[] handles = new PointF[count];
+            Array.Copy(points, handles, count);
+            return handles;
+        }
+
+        public override void MoveHandle(PointF oldHandle, PointF newHandle)
+        {
+            PointF[] points = (PointF[])path.Points.Clone();
+            int index = Array.IndexOf(GetHandles(), oldHandle);
+            if (index < 0)
+                return;
+            points[index] = newHandle;
+            if (points.Length > 1 && points[0] == points[points.Length - 1])
+                points[points.Length - 1] = newHandle;
+            path = new SymPath(points, path.PointKinds);
+        }
+    }
+
     // An arbitrary rectangle, rounded rectangle, or ellipse.
     public class RectSpecialCourseObj : RectCourseObj
     {
@@ -2786,6 +2877,58 @@ namespace PurplePen
         }
 
         // Allow selection other objects above white-out.
+        public override int SelectionPriority()
+        {
+            return 0;
+        }
+    }
+
+    // An inverse white-out for a corridor-orienteering training exercise. The main path is the
+    // explicit print extent and the corridor itself is a transparent hole in that extent.
+    public class TrainingCorridorMaskCourseObj : AreaCourseObj
+    {
+        public TrainingCorridorMaskCourseObj(CourseAppearance appearance, RectangleF renderBounds, PointF[] corridorPolygon)
+            : base(Id<ControlPoint>.None, Id<CourseControl>.None, Id<Special>.None, 1.0F, appearance, RectanglePoints(renderBounds))
+        {
+            if (renderBounds.Width <= 0 || renderBounds.Height <= 0)
+                throw new ArgumentOutOfRangeException(nameof(renderBounds), "Training render bounds must have positive dimensions.");
+            if (corridorPolygon == null || corridorPolygon.Length < 3)
+                throw new ArgumentException("A corridor mask requires a closed corridor polygon.", nameof(corridorPolygon));
+
+            SymPath corridorPath = new SymPath(ClosePolygon(corridorPolygon));
+            path = new SymPathWithHoles(path.MainPath, new SymPath[] { corridorPath });
+        }
+
+        private static PointF[] RectanglePoints(RectangleF bounds)
+        {
+            return new PointF[] {
+                new PointF(bounds.Left, bounds.Top), new PointF(bounds.Right, bounds.Top),
+                new PointF(bounds.Right, bounds.Bottom), new PointF(bounds.Left, bounds.Bottom)
+            };
+        }
+
+        private static PointF[] ClosePolygon(PointF[] polygon)
+        {
+            if (polygon[0] == polygon[polygon.Length - 1])
+                return (PointF[])polygon.Clone();
+
+            PointF[] closed = new PointF[polygon.Length + 1];
+            Array.Copy(polygon, closed, polygon.Length);
+            closed[closed.Length - 1] = polygon[0];
+            return closed;
+        }
+
+        protected override SymDef CreateSymDef(Map map, SymColor symColor, SymColor lower_symColor)
+        {
+            Debug.Fail("Training corridor masks use the shared white-out symbol definition.");
+            return null;
+        }
+
+        public override void AddToMap(Map map, SymColor symColor, SymColor lower_symColor, CourseLayout.MapRenderOptions mapRenderOptions, Dictionary<object, SymDef> dict)
+        {
+            AddToMap(map, dict[CourseLayout.KeyWhiteOut]);
+        }
+
         public override int SelectionPriority()
         {
             return 0;

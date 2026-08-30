@@ -16,11 +16,12 @@ namespace PurplePen
         public Id<CourseControl> SelectedCourseControl2;
         public LegInsertionLoc LegInsertionLoc;
         public Id<Special> SelectedSpecial;
+        public Id<TrainingExercise> SelectedTrainingExercise;
         public Symbol SelectedKeySymbol;
         public DescriptionLine.TextLineKind SelectedTextLineKind;
     }
 
-    public enum SelectionKind { None, Control, Special, Leg, Title, SecondaryTitle, Header, TextLine, Key, MapExchangeOrFlipAtControl };
+    public enum SelectionKind { None, Control, Special, TrainingExercise, Leg, Title, SecondaryTitle, Header, TextLine, Key, MapExchangeOrFlipAtControl };
 
 
 }

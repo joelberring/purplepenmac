@@ -1,0 +1,47 @@
+<!-- Edits event classes and keeps start-list import as a separate supporting workflow. -->
+<Window xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PurplePen.ViewModels" xmlns:resx="using:AvPurplePen"
+        x:Class="AvPurplePen.Views.EventClassDialog" x:DataType="vm:EventClassDialogViewModel"
+        Title="{resx:Localize EventClassDialog_Title}" Width="1100" Height="650"
+        MinWidth="820" MinHeight="480" CanResize="True" WindowStartupLocation="CenterOwner">
+  <Design.DataContext><vm:EventClassDialogViewModel/></Design.DataContext>
+  <Grid Margin="14" RowDefinitions="Auto,Auto,*,Auto,Auto,Auto" RowSpacing="10">
+    <Grid ColumnDefinitions="*,Auto,Auto" ColumnSpacing="16">
+      <TextBlock Text="{resx:Localize EventClassDialog_Description}" TextWrapping="Wrap"/>
+      <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4"><TextBlock Text="{resx:Localize EventClassDialog_Participants}"/><TextBlock Text="{Binding TotalParticipants}" FontWeight="SemiBold"/></StackPanel>
+      <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4"><TextBlock Text="{resx:Localize EventClassDialog_RequiredMaps}"/><TextBlock Text="{Binding TotalRequiredMaps}" FontWeight="SemiBold"/></StackPanel>
+    </Grid>
+    <Grid Grid.Row="1" ColumnDefinitions="Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+      <Button Content="{resx:Localize EventClassDialog_Add}" Command="{Binding AddCommand}"/>
+      <Button Grid.Column="1" Content="{resx:Localize EventClassDialog_Remove}" Command="{Binding RemoveCommand}"/>
+      <Button Grid.Column="3" Content="{resx:Localize EventClassDialog_Import}" Click="Import_Click"/>
+      <Button Grid.Column="4" Content="{resx:Localize EventClassDialog_Apply}" Command="{Binding ApplySuggestionsCommand}"/>
+    </Grid>
+    <DataGrid Grid.Row="2" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow, Mode=TwoWay}"
+              AutoGenerateColumns="False" CanUserSortColumns="False" GridLinesVisibility="All" RowHeight="30">
+      <DataGrid.Columns>
+        <DataGridTextColumn Header="{resx:Localize EventClassDialog_Class}" Binding="{Binding Name, Mode=TwoWay}" Width="1.4*"/>
+        <DataGridTemplateColumn Header="{resx:Localize EventClassDialog_Course}" Width="1.4*"><DataGridTemplateColumn.CellTemplate><DataTemplate x:DataType="vm:EventClassRow"><ComboBox ItemsSource="{Binding Courses}" SelectedItem="{Binding Course, Mode=TwoWay}"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+        <DataGridTextColumn Header="{resx:Localize EventClassDialog_ParticipantsColumn}" Binding="{Binding ParticipantCount, Mode=TwoWay}" Width="*"/>
+        <DataGridTextColumn Header="{resx:Localize EventClassDialog_StartInterval}" Binding="{Binding StartInterval, Mode=TwoWay}" Width="*"/>
+        <DataGridTextColumn Header="{resx:Localize EventClassDialog_BibStart}" Binding="{Binding BibNumberStart, Mode=TwoWay}" Width="*"/>
+        <DataGridTextColumn Header="{resx:Localize EventClassDialog_BibEnd}" Binding="{Binding BibNumberEnd, Mode=TwoWay}" Width="*"/>
+        <DataGridTextColumn Header="{resx:Localize EventClassDialog_MapsPerParticipant}" Binding="{Binding MapCount, Mode=TwoWay}" Width="*"/>
+        <DataGridTextColumn Header="{resx:Localize EventClassDialog_Reserves}" Binding="{Binding ReserveCount, Mode=TwoWay}" Width="*"/>
+        <DataGridTextColumn Header="{resx:Localize EventClassDialog_RequiredMapsColumn}" Binding="{Binding RequiredMapCount}" IsReadOnly="True" Width="*"/>
+      </DataGrid.Columns>
+    </DataGrid>
+    <TextBlock Grid.Row="3" Text="{resx:Localize EventClassDialog_StartIntervalHelp}" Opacity="0.75" TextWrapping="Wrap"/>
+    <Border Grid.Row="4" IsVisible="{Binding HasImportedStartList}" BorderBrush="{DynamicResource ThemeBorderLowBrush}" BorderThickness="1" Padding="8">
+      <StackPanel Spacing="5">
+        <TextBlock Text="{resx:Localize EventClassDialog_Imported}" FontWeight="SemiBold"/>
+        <ItemsControl ItemsSource="{Binding Suggestions}"><ItemsControl.ItemTemplate><DataTemplate x:DataType="vm:EventClassSuggestion"><Grid ColumnDefinitions="*,Auto,140" ColumnSpacing="12"><TextBlock Text="{Binding ClassName}"/><TextBlock Grid.Column="1" Text="{Binding ImportedCount}"/><TextBlock Grid.Column="2" Text="{resx:Localize EventClassDialog_Conflict}" Foreground="IndianRed" IsVisible="{Binding IsConflict}"/><TextBlock Grid.Column="2" Text="{resx:Localize EventClassDialog_Matched}" IsVisible="{Binding IsSafe}"/></Grid></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="5" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="8">
+      <TextBlock Foreground="IndianRed" Text="{resx:Localize EventClassDialog_ErrorGeneric}" IsVisible="{Binding HasValidationError}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+      <Button Grid.Column="1" Content="{resx:Localize OKButton}" IsDefault="True" Click="Ok_Click" Width="100"/>
+      <Button Grid.Column="2" Content="{resx:Localize CancelButton}" IsCancel="True" Click="Cancel_Click" Width="100"/>
+    </Grid>
+  </Grid>
+</Window>

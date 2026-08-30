@@ -1219,6 +1219,7 @@ namespace PurplePen
         public float climb;             // Climb in meters, or negative for no climb.
         public float? overrideCourseLength;  // Course length, or null for automatic measurement.
         public int load;                 // Competitor load, or negative for no load set.
+        public string className;          // Optional competition class assigned to this course.
         public int firstControlOrdinal;  // Ordinal number of first control (usually 1 for a normal course.)
         public int scoreColumn;         // column for score, or -1 for none (must be -1 for a non-score course)
         public bool hideFromReports;    // true for "provisional" courses that should not be included in reports.
@@ -1356,6 +1357,8 @@ namespace PurplePen
                 return false;
             if (other.load != load)
                 return false;
+            if (other.className != className)
+                return false;
             if (other.printScale != printScale)
                 return false;
             if (other.descKind != descKind)
@@ -1448,6 +1451,7 @@ namespace PurplePen
                         printScale = xmlinput.GetAttributeFloat("print-scale");
                         climb = xmlinput.GetAttributeFloat("climb", -1F);
                         load = xmlinput.GetAttributeInt("load", -1);
+                        className = xmlinput.GetAttributeString("class-name", null);
                         if (kind == CourseKind.Score) 
                             scoreColumn = EventDBUtil.ReadScoreColumnAttribute(xmlinput);
                         descKind = EventDBUtil.ReadDescriptionKindAttribute(xmlinput);
@@ -1581,6 +1585,8 @@ namespace PurplePen
                 xmloutput.WriteAttributeString("climb", XmlConvert.ToString(climb));
             if (load >= 0)
                 xmloutput.WriteAttributeString("load", XmlConvert.ToString(load));
+            if (!string.IsNullOrEmpty(className))
+                xmloutput.WriteAttributeString("class-name", className);
             if (overrideCourseLength.HasValue)
                 xmloutput.WriteAttributeString("course-length", XmlConvert.ToString(overrideCourseLength.Value));
             xmloutput.WriteAttributeString("hide-from-reports", XmlConvert.ToString(hideFromReports));
@@ -2642,7 +2648,9 @@ namespace PurplePen
     // The type of map used.
     public enum MapType { None, OCAD, Bitmap, PDF };
 
-    // The type of item scaling
+    // The type of item scaling. RelativeTo15000 is the historical serialized name
+    // for scaling relative to the selected IOF standard's reference scale: 1:15000
+    // for ISOM and 1:4000 for ISSprOM.
     public enum ItemScaling { None, RelativeToMap, RelativeTo15000}
 
     // The type of blending for purple colors.
@@ -2681,6 +2689,73 @@ namespace PurplePen
                     return NormalCourseAppearance.controlOutsideDiameterSpr2019 * controlCircleSize;
                 else
                     return NormalCourseAppearance.controlOutsideDiameter2000 * controlCircleSize;
+            }
+        }
+
+        // Gets the reference scale at which the selected IOF map standard defines
+        // its course-planning symbol dimensions.
+        public float StandardReferenceScale {
+            get {
+                return mapStandard == "Spr2019" ? 4000F : 15000F;
+            }
+        }
+
+        // True when all object dimensions are the unmodified values from the
+        // selected IOF standard. This also identifies older files created by a
+        // UI that allowed standard dimensions and source-map scaling together.
+        public bool UsesIofStandardSizes {
+            get {
+                return controlCircleSize == 1.0F && lineWidth == 1.0F &&
+                       numberHeight == 1.0F && centerDotDiameter == 0.0F;
+            }
+        }
+
+        // Gets the effective scaling mode. Modern standard-sized courses always
+        // use their IOF reference scale, including when loading an older file that
+        // stored RelativeToMap.
+        public ItemScaling EffectiveItemScaling {
+            get {
+                if (UsesIofStandardSizes && (mapStandard == "2017" || mapStandard == "Spr2019"))
+                    return ItemScaling.RelativeTo15000;
+                return itemScaling;
+            }
+        }
+
+        // Gets the size of course objects in map coordinates. Combining this ratio
+        // with the map-to-print transformation keeps IOF sizes independent of the
+        // source map's original scale.
+        public float GetCourseObjectScaleRatio(float mapScale, float printScale)
+        {
+            switch (EffectiveItemScaling) {
+                case ItemScaling.None:
+                    float ratio = printScale / mapScale;
+                    if (ratio > 0.99999F && ratio < 1.00001F)
+                        return 1.0F;
+                    return ratio;
+                case ItemScaling.RelativeToMap:
+                    return 1.0F;
+                case ItemScaling.RelativeTo15000:
+                    return StandardReferenceScale / mapScale;
+                default:
+                    Debug.Fail("Unknown ItemScaling value");
+                    return printScale / mapScale;
+            }
+        }
+
+        // Gets the reference scale used to store control-circle gaps for the
+        // current object-scaling mode.
+        public float GetCircleGapScale(float mapScale, float printScale)
+        {
+            switch (EffectiveItemScaling) {
+                case ItemScaling.None:
+                    return printScale;
+                case ItemScaling.RelativeToMap:
+                    return mapScale;
+                case ItemScaling.RelativeTo15000:
+                    return StandardReferenceScale;
+                default:
+                    Debug.Fail("Unknown ItemScaling value");
+                    return printScale;
             }
         }
 
@@ -2783,6 +2858,8 @@ namespace PurplePen
         public int pageHeight; // page height in 1/100th of inch
         public int pageMargins; // page margins in 1/100th of inch
         public bool pageLandscape;  // page is landscape.
+        // Rotation of the map rectangle in degrees. Missing in older files means zero.
+        public float rotation;
 
         public PrintArea()
         { }
@@ -2806,6 +2883,7 @@ namespace PurplePen
             if (!autoPrintArea && printAreaRectangle != other.printAreaRectangle) return false;
             if (pageWidth != other.pageWidth) return false;
             if (pageHeight != other.pageHeight) return false;
+            if (Math.Abs(rotation - other.rotation) > 0.0001F) return false;
 
             return true;
         }
@@ -2838,6 +2916,8 @@ namespace PurplePen
                 xmloutput.WriteAttributeString("page-margins", XmlConvert.ToString(pageMargins));
                 xmloutput.WriteAttributeString("page-landscape", XmlConvert.ToString(pageLandscape));
             }
+            if (Math.Abs(rotation) > 0.0001F)
+                xmloutput.WriteAttributeString("rotation", XmlConvert.ToString(rotation));
 
             xmloutput.WriteEndElement();
         }
@@ -2863,6 +2943,7 @@ namespace PurplePen
             pageHeight = xmlinput.GetAttributeInt("page-height", -1);
             pageMargins = xmlinput.GetAttributeInt("page-margins", 0);
             pageLandscape = xmlinput.GetAttributeBool("page-landscape", false);
+            rotation = xmlinput.GetAttributeFloat("rotation", 0F);
 
             xmlinput.Skip();
         }
@@ -3401,6 +3482,9 @@ namespace PurplePen
         ObjectStore<Event> eventStore;
         ObjectStore<Leg> legStore;
         ObjectStore<Special> specialStore;
+        ObjectStore<TrainingExercise> trainingExerciseStore;
+        ObjectStore<RouteChoiceCandidate> routeChoiceCandidateStore;
+        ObjectStore<EventClass> eventClassStore;
 
         string pathName; // Path the event was last loaded to or saved from.
 
@@ -3417,6 +3501,9 @@ namespace PurplePen
             eventStore = new ObjectStore<Event>(undomgr);
             specialStore = new ObjectStore<Special>(undomgr);
             legStore = new ObjectStore<Leg>(undomgr);
+            trainingExerciseStore = new ObjectStore<TrainingExercise>(undomgr);
+            routeChoiceCandidateStore = new ObjectStore<RouteChoiceCandidate>(undomgr);
+            eventClassStore = new ObjectStore<EventClass>(undomgr);
 
             random = (long) (rand.NextDouble() * long.MaxValue / 2);
         }
@@ -3428,7 +3515,7 @@ namespace PurplePen
             get
             {
                 return random + controlPointStore.ChangeNum + courseStore.ChangeNum +
-                    courseControlStore.ChangeNum + eventStore.ChangeNum + specialStore.ChangeNum + legStore.ChangeNum;
+                    courseControlStore.ChangeNum + eventStore.ChangeNum + specialStore.ChangeNum + legStore.ChangeNum + trainingExerciseStore.ChangeNum + routeChoiceCandidateStore.ChangeNum + eventClassStore.ChangeNum;
             }
         }
 
@@ -3511,6 +3598,29 @@ namespace PurplePen
             get { return legStore.AllPairs; }
         }
 
+        public ICollection<TrainingExercise> AllTrainingExercises
+        {
+            get { return trainingExerciseStore.All; }
+        }
+
+        public ICollection<Id<TrainingExercise>> AllTrainingExerciseIds
+        {
+            get { return trainingExerciseStore.AllIds; }
+        }
+
+        public IEnumerable<KeyValuePair<Id<TrainingExercise>, TrainingExercise>> AllTrainingExercisePairs
+        {
+            get { return trainingExerciseStore.AllPairs; }
+        }
+
+        public ICollection<RouteChoiceCandidate> AllRouteChoiceCandidates { get { return routeChoiceCandidateStore.All; } }
+        public ICollection<Id<RouteChoiceCandidate>> AllRouteChoiceCandidateIds { get { return routeChoiceCandidateStore.AllIds; } }
+        public IEnumerable<KeyValuePair<Id<RouteChoiceCandidate>, RouteChoiceCandidate>> AllRouteChoiceCandidatePairs { get { return routeChoiceCandidateStore.AllPairs; } }
+
+        public ICollection<EventClass> AllEventClasses { get { return eventClassStore.All; } }
+        public ICollection<Id<EventClass>> AllEventClassIds { get { return eventClassStore.AllIds; } }
+        public IEnumerable<KeyValuePair<Id<EventClass>, EventClass>> AllEventClassPairs { get { return eventClassStore.AllPairs; } }
+
         // There is always only one Event object, and if not present, it
         // is created automatically with default options.
         public Event GetEvent()
@@ -3559,6 +3669,14 @@ namespace PurplePen
             return legStore.Add(leg);
         }
 
+        public Id<TrainingExercise> AddTrainingExercise(TrainingExercise trainingExercise)
+        {
+            return trainingExerciseStore.Add(trainingExercise);
+        }
+
+        public Id<RouteChoiceCandidate> AddRouteChoiceCandidate(RouteChoiceCandidate candidate) { return routeChoiceCandidateStore.Add(candidate); }
+        public Id<EventClass> AddEventClass(EventClass eventClass) { return eventClassStore.Add(eventClass); }
+
         public void RemoveControlPoint(Id<ControlPoint> id)
         {
             controlPointStore.Remove(id);
@@ -3583,6 +3701,14 @@ namespace PurplePen
         {
             legStore.Remove(id);
         }
+
+        public void RemoveTrainingExercise(Id<TrainingExercise> id)
+        {
+            trainingExerciseStore.Remove(id);
+        }
+
+        public void RemoveRouteChoiceCandidate(Id<RouteChoiceCandidate> id) { routeChoiceCandidateStore.Remove(id); }
+        public void RemoveEventClass(Id<EventClass> id) { eventClassStore.Remove(id); }
 
         public void ReplaceControlPoint(Id<ControlPoint> id, ControlPoint control)
         {
@@ -3609,6 +3735,14 @@ namespace PurplePen
             legStore.Replace(id, leg);
         }
 
+        public void ReplaceTrainingExercise(Id<TrainingExercise> id, TrainingExercise trainingExercise)
+        {
+            trainingExerciseStore.Replace(id, trainingExercise);
+        }
+
+        public void ReplaceRouteChoiceCandidate(Id<RouteChoiceCandidate> id, RouteChoiceCandidate candidate) { routeChoiceCandidateStore.Replace(id, candidate); }
+        public void ReplaceEventClass(Id<EventClass> id, EventClass eventClass) { eventClassStore.Replace(id, eventClass); }
+
         public ControlPoint GetControl(Id<ControlPoint> controlId)
         {
             return controlPointStore[controlId];
@@ -3633,6 +3767,14 @@ namespace PurplePen
         {
             return legStore[legId];
         }
+
+        public TrainingExercise GetTrainingExercise(Id<TrainingExercise> trainingExerciseId)
+        {
+            return trainingExerciseStore[trainingExerciseId];
+        }
+
+        public RouteChoiceCandidate GetRouteChoiceCandidate(Id<RouteChoiceCandidate> id) { return routeChoiceCandidateStore[id]; }
+        public EventClass GetEventClass(Id<EventClass> id) { return eventClassStore[id]; }
 
         public void CheckControlId(Id<ControlPoint> id)
         {
@@ -3659,6 +3801,13 @@ namespace PurplePen
             legStore.CheckPresent(id);
         }
 
+        public void CheckTrainingExerciseId(Id<TrainingExercise> id)
+        {
+            trainingExerciseStore.CheckPresent(id);
+        }
+
+        public void CheckRouteChoiceCandidateId(Id<RouteChoiceCandidate> id) { routeChoiceCandidateStore.CheckPresent(id); }
+
         public bool IsControlPresent(Id<ControlPoint> id)
         {
             return controlPointStore.IsPresent(id);
@@ -3683,6 +3832,13 @@ namespace PurplePen
         {
             return legStore.IsPresent(id);
         }
+
+        public bool IsTrainingExercisePresent(Id<TrainingExercise> id)
+        {
+            return trainingExerciseStore.IsPresent(id);
+        }
+
+        public bool IsRouteChoiceCandidatePresent(Id<RouteChoiceCandidate> id) { return routeChoiceCandidateStore.IsPresent(id); }
 
         // Older version of purple pen did not have the sort order on courses. If we load a file with any sort orders missing, we assign
         // sort orders by name.
@@ -3731,13 +3887,14 @@ namespace PurplePen
 
             // Fix 2:
             // Per-scale gap storage didn't take item scaling into account.
+            ItemScaling effectiveItemScaling = ev.courseAppearance.EffectiveItemScaling;
             if (ev.itemScalingAppliedToCircleGaps == false &&
-                (ev.courseAppearance.itemScaling == ItemScaling.RelativeTo15000 || ev.courseAppearance.itemScaling == ItemScaling.RelativeToMap)) {
+                (effectiveItemScaling == ItemScaling.RelativeTo15000 || effectiveItemScaling == ItemScaling.RelativeToMap)) {
                 // The old version incorrectly stored to the gap with the course print scale, even
                 // if item scaling was scaling things. So fix that up.
                 int scaleTo, scaleFrom;
-                if (ev.courseAppearance.itemScaling == ItemScaling.RelativeTo15000)
-                    scaleTo = 15000;
+                if (effectiveItemScaling == ItemScaling.RelativeTo15000)
+                    scaleTo = (int) Math.Round(ev.courseAppearance.StandardReferenceScale);
                 else
                     scaleTo = (int) Math.Round(ev.mapScale);
 
@@ -3798,6 +3955,27 @@ namespace PurplePen
                 GetSpecial(specialId).Validate(specialId, validateInfo);
             foreach (Id<Leg> legId in AllLegIds)
                 GetLeg(legId).Validate(legId, validateInfo);
+            foreach (Id<TrainingExercise> trainingExerciseId in AllTrainingExerciseIds)
+                GetTrainingExercise(trainingExerciseId).Validate(trainingExerciseId, validateInfo);
+            foreach (Id<RouteChoiceCandidate> candidateId in AllRouteChoiceCandidateIds)
+                GetRouteChoiceCandidate(candidateId).Validate(candidateId, validateInfo);
+            foreach (Id<EventClass> classId in AllEventClassIds)
+                GetEventClass(classId).Validate(classId, validateInfo);
+        }
+
+        private void MigrateLegacyCourseClasses()
+        {
+            foreach (Id<Course> courseId in AllCourseIds) {
+                Course course = GetCourse(courseId);
+                if (String.IsNullOrWhiteSpace(course.className))
+                    continue;
+                eventClassStore.AddDuringLoad(new EventClass {
+                    Name = course.className.Trim(),
+                    CourseId = courseId,
+                    ParticipantCount = course.load >= 0 ? course.load : 0,
+                    MapCount = 1
+                });
+            }
         }
         
 
@@ -3809,23 +3987,43 @@ namespace PurplePen
             using (XmlTextWriter xmloutput = new XmlTextWriter(filename, Encoding.UTF8)) {
                 xmloutput.Formatting = Formatting.Indented;
                 xmloutput.Namespaces = false;
-
-                xmloutput.WriteStartElement(rootElement);
-
-                eventStore.Save(xmloutput);
-                controlPointStore.Save(xmloutput);
-                courseStore.Save(xmloutput);
-                courseControlStore.Save(xmloutput);
-                legStore.Save(xmloutput);
-                specialStore.Save(xmloutput);
-
-                xmloutput.WriteEndElement();
+                Save(xmloutput);
             }
 
             if (pathName != filename) {
                 pathName = filename;
                 ++random;  // Update the change number.
             }
+        }
+
+        /// <summary>Serializes the complete event without changing its path or revision.</summary>
+        public string SaveToString()
+        {
+            StringBuilder builder = new StringBuilder();
+            using (StringWriter writer = new StringWriter(builder, CultureInfo.InvariantCulture))
+            using (XmlTextWriter xmloutput = new XmlTextWriter(writer)) {
+                xmloutput.Formatting = Formatting.Indented;
+                xmloutput.Namespaces = false;
+                Save(xmloutput);
+            }
+            return builder.ToString();
+        }
+
+        private void Save(XmlTextWriter xmloutput)
+        {
+            xmloutput.WriteStartElement(rootElement);
+            // Distinguish an intentionally empty event-class collection from legacy files that predate event classes.
+            xmloutput.WriteAttributeString("event-classes", XmlConvert.ToString(true));
+            eventStore.Save(xmloutput);
+            controlPointStore.Save(xmloutput);
+            courseStore.Save(xmloutput);
+            courseControlStore.Save(xmloutput);
+            legStore.Save(xmloutput);
+            specialStore.Save(xmloutput);
+            trainingExerciseStore.Save(xmloutput);
+            routeChoiceCandidateStore.Save(xmloutput);
+            eventClassStore.Save(xmloutput);
+            xmloutput.WriteEndElement();
         }
 
         /// <summary>
@@ -3835,6 +4033,7 @@ namespace PurplePen
         {
             using (XmlInput xmlinput = new XmlInput(filename)) {
                 xmlinput.CheckElement(rootElement);
+                bool hasEventClasses = xmlinput.GetAttributeBool("event-classes", false);
                 xmlinput.Read();
 
                 eventStore.Load(xmlinput);
@@ -3843,11 +4042,24 @@ namespace PurplePen
                 courseControlStore.Load(xmlinput);
                 legStore.Load(xmlinput);
                 specialStore.Load(xmlinput);
+                trainingExerciseStore.Load(xmlinput);
+                xmlinput.MoveToContent();
+                if (xmlinput.Name == "route-choice-candidate") {
+                    routeChoiceCandidateStore.Load(xmlinput);
+                }
+                xmlinput.MoveToContent();
+                if (xmlinput.Name == "event-class")
+                    eventClassStore.Load(xmlinput);
+                if (eventClassStore.All.Count == 0 && !hasEventClasses)
+                    MigrateLegacyCourseClasses();
 
                 // Fix backward compatibility issues.
                 FixCourseSortOrders();
                 FixControlPointGaps();
-                FixPrintAreas();
+                // Headless/core consumers may not register the rendering services;
+                // page-size repair is best-effort and must not prevent data loading.
+                if (Services.ServiceProvider != null)
+                    FixPrintAreas();
             }
 
             pathName = filename;

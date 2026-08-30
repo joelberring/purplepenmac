@@ -119,12 +119,27 @@ namespace PurplePen
         // Get all the class names associated with this course.
         protected string[] GetClassNames(EventDB eventDB, Id<Course> courseId)
         {
-            Course course = eventDB.GetCourse(courseId);
-            string secondaryTitle = course.secondaryTitle;
+            // Event classes are the authoritative class-to-course assignment. Do not mix
+            // the legacy course field in when a course has explicit class records: the
+            // legacy value is often a stale migration aid rather than an additional class.
+            EventClass[] eventClasses = eventDB.AllEventClasses.Where(eventClass => eventClass.CourseId == courseId).ToArray();
+            if (eventClasses.Length > 0) {
+                return eventClasses
+                .Where(eventClass => !String.IsNullOrWhiteSpace(eventClass.Name))
+                .Select(eventClass => eventClass.Name.Trim())
+                .Distinct(StringComparer.CurrentCultureIgnoreCase)
+                .OrderBy(name => name, StringComparer.CurrentCultureIgnoreCase)
+                .ToArray();
+            }
 
-            if (!string.IsNullOrEmpty(secondaryTitle)) {
+            // Files written before EventClass was introduced retain their assignments on
+            // Course. Only use those values when this course has no EventClass records.
+            Course course = eventDB.GetCourse(courseId);
+            string classNames = !string.IsNullOrEmpty(course.className) ? course.className : course.secondaryTitle;
+
+            if (!string.IsNullOrEmpty(classNames)) {
                 // Assumed that classes are separated with commas.
-                return (from s in secondaryTitle.Split(new char[] { ',', '|' }, StringSplitOptions.RemoveEmptyEntries) select s.Trim()).ToArray();
+                return (from s in classNames.Split(new char[] { ',', '|' }, StringSplitOptions.RemoveEmptyEntries) select s.Trim()).ToArray();
             }
             else {
                 return new string[0];

@@ -1,0 +1,114 @@
+<!--
+    PrintProfileEditorDialog.axaml
+    Edits a private print-profile copy, including its course-marking colour.
+-->
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PurplePen.ViewModels"
+        xmlns:resx="using:AvPurplePen"
+        xmlns:local="using:AvPurplePen"
+        x:Class="AvPurplePen.Views.PrintProfileEditorDialog"
+        x:DataType="vm:PrintProfileEditorDialogViewModel"
+        Title="{resx:Localize PrintProfileEditorDialog_Title}"
+        Width="760" Height="620" WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="14">
+    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,12,0,0">
+      <Button Content="{resx:Localize CancelButton}" Width="110" Click="CancelButton_Click"/>
+      <Button Content="{resx:Localize PrintProfileEditorDialog_Save}" Width="110" Click="SaveButton_Click"/>
+    </StackPanel>
+    <Grid RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,*,Auto,Auto" RowSpacing="8">
+      <TextBlock Text="{resx:Localize PrintProfileEditorDialog_Intro}" TextWrapping="Wrap"/>
+      <Grid Grid.Row="1" ColumnDefinitions="Auto,*" ColumnSpacing="8">
+        <TextBlock Text="{resx:Localize PrintProfileEditorDialog_SourceProfile}" VerticalAlignment="Center"/>
+        <ComboBox Grid.Column="1" ItemsSource="{Binding SourceProfiles}" SelectedValue="{Binding SelectedSourceProfileId, Mode=TwoWay}" SelectedValueBinding="{Binding Id}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:PrintProfileEditorSourceChoice">
+              <TextBlock Text="{Binding Name}"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </Grid>
+      <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto,*" ColumnSpacing="8">
+        <TextBlock Text="{resx:Localize PrintProfileEditorDialog_Name}" VerticalAlignment="Center"/>
+        <TextBox Grid.Column="1" Text="{Binding Name, Mode=TwoWay}" PlaceholderText="{resx:Localize PrintProfileEditor_NamePlaceholder}"/>
+        <TextBlock Grid.Column="2" Text="{resx:Localize PrintProfileEditorDialog_MapKind}" VerticalAlignment="Center"/>
+        <ComboBox Grid.Column="3" SelectedIndex="{Binding MapKindIndex, Mode=TwoWay}">
+          <ComboBoxItem Content="{resx:Localize PrintProfileEditorDialog_Forest}"/>
+          <ComboBoxItem Content="{resx:Localize PrintProfileEditorDialog_Sprint}"/>
+        </ComboBox>
+      </Grid>
+      <TextBlock Grid.Row="3" Text="{resx:Localize PrintProfileEditorDialog_ErrorNameRequired}"
+                 IsVisible="{Binding HasValidationError}" Foreground="IndianRed" TextWrapping="Wrap"/>
+      <Grid Grid.Row="4" ColumnDefinitions="Auto,180,Auto,*" ColumnSpacing="8">
+        <TextBlock Text="{resx:Localize PrintProfileEditorDialog_VersionDate}" VerticalAlignment="Center"/>
+        <TextBox Grid.Column="1" Text="{Binding VersionDate, Mode=TwoWay}" PlaceholderText="YYYY-MM-DD"/>
+        <TextBlock Grid.Column="2" Text="{resx:Localize PrintProfileEditorDialog_CourseColor}" VerticalAlignment="Center"/>
+        <ComboBox Grid.Column="3" ItemsSource="{Binding Rules}" SelectedIndex="{Binding CourseColorRuleIndex, Mode=TwoWay}">
+          <ComboBox.ItemTemplate>
+            <DataTemplate x:DataType="vm:PrintProfileRuleEditorItem">
+              <TextBlock Text="{Binding Name}"/>
+            </DataTemplate>
+          </ComboBox.ItemTemplate>
+        </ComboBox>
+      </Grid>
+      <Grid Grid.Row="5" ColumnDefinitions="Auto,*,Auto,*,Auto,*" ColumnSpacing="8">
+        <TextBlock Text="{resx:Localize PrintProfileEditorDialog_Printer}" VerticalAlignment="Center"/>
+        <TextBox Grid.Column="1" Text="{Binding PrinterName, Mode=TwoWay}"/>
+        <TextBlock Grid.Column="2" Text="{resx:Localize PrintProfileEditorDialog_Paper}" VerticalAlignment="Center"/>
+        <TextBox Grid.Column="3" Text="{Binding PaperSpecification, Mode=TwoWay}"/>
+        <TextBlock Grid.Column="4" Text="{resx:Localize PrintProfileEditorDialog_Icc}" VerticalAlignment="Center"/>
+        <TextBox Grid.Column="5" Text="{Binding IccProfile, Mode=TwoWay}"/>
+      </Grid>
+      <Grid Grid.Row="6" RowDefinitions="Auto,*" RowSpacing="3">
+        <Grid ColumnDefinitions="2*,2*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="6" Margin="8,0">
+          <TextBlock Text="{resx:Localize PrintProfileEditorDialog_RuleName}" FontWeight="SemiBold"/>
+          <TextBlock Grid.Column="1" Text="{resx:Localize PrintProfileEditorDialog_MapColorNames}" FontWeight="SemiBold"/>
+          <TextBlock Grid.Column="2" Text="C" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+          <TextBlock Grid.Column="3" Text="M" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+          <TextBlock Grid.Column="4" Text="Y" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+          <TextBlock Grid.Column="5" Text="K" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+          <TextBlock Grid.Column="6" Text="{resx:Localize PrintProfileMappingsDialog_overprint_Text}" FontWeight="SemiBold"/>
+        </Grid>
+        <ListBox Grid.Row="1" ItemsSource="{Binding Rules}" SelectedItem="{Binding SelectedRule, Mode=TwoWay}">
+          <ListBox.ItemTemplate>
+              <DataTemplate x:DataType="vm:PrintProfileRuleEditorItem">
+                <Grid ColumnDefinitions="2*,2*,Auto,Auto,Auto,Auto,Auto" ColumnSpacing="6" Margin="0,4">
+                  <TextBox Text="{Binding Name, Mode=TwoWay}" PlaceholderText="{resx:Localize PrintProfileEditorDialog_RuleName}"/>
+                  <TextBox Grid.Column="1" Text="{Binding MatchNames, Mode=TwoWay}" PlaceholderText="{resx:Localize PrintProfileEditorDialog_MapColorNames}"/>
+                  <NumericUpDown Grid.Column="2" Value="{Binding Cyan, Mode=TwoWay}" Minimum="0" Maximum="100"/>
+                  <NumericUpDown Grid.Column="3" Value="{Binding Magenta, Mode=TwoWay}" Minimum="0" Maximum="100"/>
+                  <NumericUpDown Grid.Column="4" Value="{Binding Yellow, Mode=TwoWay}" Minimum="0" Maximum="100"/>
+                  <NumericUpDown Grid.Column="5" Value="{Binding Black, Mode=TwoWay}" Minimum="0" Maximum="100"/>
+                  <CheckBox Grid.Column="6" IsChecked="{Binding UsesOverprint, Mode=TwoWay}"/>
+                </Grid>
+              </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+      </Grid>
+      <Grid Grid.Row="7" ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto" ColumnSpacing="8">
+        <Button Command="{Binding AddRuleCommand}" Content="{resx:Localize PrintProfileEditorDialog_AddRule}"/>
+        <Button Grid.Column="1" Command="{Binding RemoveSelectedRuleCommand}" Content="{resx:Localize PrintProfileEditorDialog_RemoveRule}"/>
+        <Button Grid.Column="2" Command="{Binding MoveRuleUpCommand}" Content="↑" ToolTip.Tip="{resx:Localize PrintProfileEditorDialog_MoveUp}"/>
+        <Button Grid.Column="3" Command="{Binding MoveRuleDownCommand}" Content="↓" ToolTip.Tip="{resx:Localize PrintProfileEditorDialog_MoveDown}"/>
+        <Button Grid.Column="5" Command="{Binding PairAgainstMapCommand}" Content="{resx:Localize PrintProfileEditorDialog_PairMapColors}"
+                IsEnabled="{Binding CanPairAgainstMap}"/>
+        <Button Grid.Column="6" Command="{Binding TestAgainstMapCommand}" Content="{resx:Localize PrintProfileEditorDialog_TestMap}"/>
+      </Grid>
+      <Grid Grid.Row="8" ColumnDefinitions="*,*" ColumnSpacing="12">
+        <StackPanel Spacing="3">
+          <TextBlock IsVisible="{Binding IsPreflightPassed}" Text="{resx:Localize PrintProfileEditor_PreflightPassed}" TextWrapping="Wrap"/>
+          <TextBlock IsVisible="{Binding IsPreflightReview}" Text="{resx:Localize PrintProfileEditor_PreflightReview}" TextWrapping="Wrap"/>
+          <ListBox ItemsSource="{Binding PreflightFindings}" Height="70">
+            <ListBox.ItemTemplate><DataTemplate x:DataType="vm:PrintProfilePreflightItem"><Grid ColumnDefinitions="*,Auto" ColumnSpacing="8"><TextBlock Text="{Binding RuleName}"/><TextBlock Grid.Column="1" Text="{Binding Status, Converter={x:Static local:PrintProfilePreflightStatusConverter.Instance}}"/></Grid></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Spacing="3">
+          <TextBlock Text="{resx:Localize PrintProfileEditorDialog_History}"/>
+          <ListBox ItemsSource="{Binding History}" Height="70">
+            <ListBox.ItemTemplate><DataTemplate><StackPanel><TextBlock Text="{Binding VersionDate}"/><TextBlock Text="{Binding Summary}" FontSize="11" TextTrimming="CharacterEllipsis"/></StackPanel></DataTemplate></ListBox.ItemTemplate>
+          </ListBox>
+        </StackPanel>
+      </Grid>
+    </Grid>
+  </DockPanel>
+</Window>

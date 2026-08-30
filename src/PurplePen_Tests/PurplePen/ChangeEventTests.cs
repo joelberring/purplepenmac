@@ -789,6 +789,22 @@ namespace PurplePen.Tests
         }
 
         [TestMethod]
+        public void ChangeCourseClassName()
+        {
+            Setup("changeevent\\sampleevent1.coursescribe");
+
+            undomgr.BeginCommand(954, "Change course class");
+            ChangeEvent.ChangeCourseClassName(eventDB, CourseId(1), "H21");
+            undomgr.EndCommand(954);
+
+            Assert.AreEqual("H21", eventDB.GetCourse(CourseId(1)).className);
+
+            undomgr.Undo();
+
+            Assert.IsNull(eventDB.GetCourse(CourseId(1)).className);
+        }
+
+        [TestMethod]
         public void ChangeCourseSortOrder()
         {
             Setup("changeevent\\marymoor4.coursescribe");
@@ -3737,6 +3753,47 @@ namespace PurplePen.Tests
             TestChangeAllObjectLocations(eventDB, new PointF(-5, 4), 312, 1.5F);
             TestChangeAllObjectLocations(eventDB, new PointF(6, 1), 0, 0.9F);
             TestChangeAllObjectLocations(eventDB, new PointF(-6, -99), -99, 4.5F);
+        }
+
+        [TestMethod]
+        public void ChangeAllObjectLocationsMovesTrainingAndRouteChoiceGeometry()
+        {
+            undomgr = new UndoMgr(20);
+            eventDB = new EventDB(undomgr);
+            PointF startLocation = new PointF(10, 20);
+            PointF endLocation = new PointF(30, 40);
+            undomgr.BeginCommand(8001, "Create transform test data");
+            Id<ControlPoint> startControlId = eventDB.AddControlPoint(new ControlPoint(ControlPointKind.Normal, "31", startLocation));
+            Id<ControlPoint> endControlId = eventDB.AddControlPoint(new ControlPoint(ControlPointKind.Normal, "32", endLocation));
+            Id<Course> courseId = eventDB.AddCourse(new Course(CourseKind.Normal, "Blue", 15000, 1));
+            Id<CourseControl> endCourseControlId = eventDB.AddCourseControl(new CourseControl(endControlId, Id<CourseControl>.None));
+            Id<CourseControl> startCourseControlId = eventDB.AddCourseControl(new CourseControl(startControlId, endCourseControlId));
+            Course course = (Course)eventDB.GetCourse(courseId).Clone();
+            course.firstCourseControl = startCourseControlId;
+            eventDB.ReplaceCourse(courseId, course);
+            Id<RouteChoiceCandidate> candidateId = ChangeEvent.AddRouteChoiceCandidate(eventDB, new CourseDesignator(courseId), startCourseControlId,
+                "Route", "Manual", new PointF[] { startLocation, new PointF(20, 30), endLocation }, "");
+            Id<TrainingExercise> exerciseId = ChangeEvent.AddTrainingExercise(eventDB, new CourseDesignator(courseId), TrainingExerciseKind.Corridor,
+                new PointF[] { new PointF(1, 2), new PointF(3, 4) }, 6, "Exercise");
+            undomgr.EndCommand(8001);
+
+            Matrix matrix = new Matrix();
+            matrix.Scale(2, 2);
+            undomgr.BeginCommand(8002, "Transform map");
+            ChangeEvent.ChangeAllObjectLocations(eventDB, matrix);
+            undomgr.EndCommand(8002);
+
+            RouteChoiceCandidate candidate = eventDB.GetRouteChoiceCandidate(candidateId);
+            TrainingExercise exercise = eventDB.GetTrainingExercise(exerciseId);
+            CollectionAssert.AreEqual(new PointF[] { new PointF(20, 40), new PointF(40, 60), new PointF(60, 80) }, candidate.locations);
+            CollectionAssert.AreEqual(new PointF[] { new PointF(2, 4), new PointF(6, 8) }, exercise.locations);
+            Assert.AreEqual(12F, exercise.width);
+            eventDB.Validate();
+
+            undomgr.Undo();
+            CollectionAssert.AreEqual(new PointF[] { startLocation, new PointF(20, 30), endLocation }, eventDB.GetRouteChoiceCandidate(candidateId).locations);
+            Assert.AreEqual(6F, eventDB.GetTrainingExercise(exerciseId).width);
+            eventDB.Validate();
         }
 
 

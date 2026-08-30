@@ -245,6 +245,87 @@ namespace PurplePen.Tests
             Assert.AreEqual(StatusBarText.DragObject, controller.StatusText);
         }
 
+        // Ctrl-clicking an existing course control while composing removes it but keeps the
+        // continuous compose mode active so the next click can continue the course.
+        [TestMethod]
+        public async Task ComposeCourseCtrlClickRemovesCourseControl()
+        {
+            controller.SelectTab(3);
+            Assert.AreEqual(CommandStatus.Enabled, controller.CanComposeCourse());
+            Assert.IsTrue(eventDB.IsCourseControlPresent(CourseControlId(306)));
+
+            controller.BeginComposeCourseMode();
+            Assert.IsTrue(controller.CanCancelMode());
+
+            bool removed = await controller.CtrlLeftButtonClick(Pane.Map, new PointF(0.9F, 30.5F), 0.3F);
+
+            Assert.IsTrue(removed);
+            Assert.IsFalse(eventDB.IsCourseControlPresent(CourseControlId(306)));
+            Assert.IsTrue(controller.CanCancelMode());
+        }
+
+        // Pressing Add control after selecting continuous placement must not silently return to
+        // the legacy one-shot mode. This mirrors the toolbar sequence used by course setters.
+        [TestMethod]
+        public async Task AddControlPreservesContinuousToolbarMode()
+        {
+            controller.SelectTab(3);
+            controller.BeginAddControlMode(ControlPointKind.Normal, MapExchangeType.None, true);
+            Assert.IsTrue(controller.IsContinuousAddControlMode);
+
+            controller.BeginAddControlMode(ControlPointKind.Normal, MapExchangeType.None);
+            Assert.IsTrue(controller.IsContinuousAddControlMode);
+
+            await controller.LeftButtonClick(Pane.Map, new PointF(29, 30), 0.1F);
+            Assert.IsTrue(controller.IsContinuousAddControlMode);
+            await controller.LeftButtonClick(Pane.Map, new PointF(32, 32), 0.1F);
+            Assert.IsTrue(controller.IsContinuousAddControlMode);
+            Assert.IsTrue(QueryEvent.IsCodeInUse(eventDB, "60"));
+            Assert.IsTrue(QueryEvent.IsCodeInUse(eventDB, "61"));
+        }
+
+        // The same Add control click must not replace the richer course-composition mode.
+        [TestMethod]
+        public void AddControlPreservesComposeCourseToolbarMode()
+        {
+            controller.SelectTab(3);
+            controller.BeginComposeCourseMode();
+            Assert.IsTrue(controller.IsComposeCourseMode);
+
+            controller.BeginAddControlMode(ControlPointKind.Normal, MapExchangeType.None);
+
+            Assert.IsTrue(controller.IsComposeCourseMode);
+        }
+
+        // A double-click converts the provisional normal control from the first click into
+        // a finish and ends compose mode. The complete conversion is one undoable command.
+        [TestMethod]
+        public async Task ComposeCourseDoubleClickFinishesAndIsUndoable()
+        {
+            controller.SelectTab(3);
+            controller.BeginComposeCourseMode();
+
+            await controller.LeftButtonClick(Pane.Map, new PointF(29, 30), 0.1F);
+            Id<ControlPoint> provisional = QueryEvent.FindCode(eventDB, "60");
+            Assert.IsTrue(provisional.IsNotNone);
+
+            bool consumed = await controller.DoubleClick(Pane.Map, new PointF(29, 30), 0.1F);
+            Assert.IsTrue(consumed);
+            Assert.IsFalse(controller.CanCancelMode());
+
+            Id<ControlPoint> finish = QueryEvent.FindControlOfKind(eventDB, CourseId(3), ControlPointKind.Finish);
+            Assert.IsTrue(finish.IsNotNone);
+            Assert.AreEqual(new PointF(29, 30), eventDB.GetControl(finish).location);
+            Assert.IsFalse(eventDB.IsControlPresent(provisional));
+
+            controller.Undo();
+            Assert.IsTrue(eventDB.IsControlPresent(provisional));
+            Assert.IsTrue(controller.GetUndoStatus().CanRedo);
+            controller.Redo();
+            Assert.IsFalse(eventDB.IsControlPresent(provisional));
+            Assert.AreEqual(new PointF(29, 30), eventDB.GetControl(QueryEvent.FindControlOfKind(eventDB, CourseId(3), ControlPointKind.Finish)).location);
+        }
+
         // Add a control to a course. Adds an existing control point.
         [TestMethod]
         public async Task AddControlCourse2()

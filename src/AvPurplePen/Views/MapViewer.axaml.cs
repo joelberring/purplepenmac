@@ -96,6 +96,7 @@ public partial class MapViewer : UserControl
         public bool CanDrag;          // Was dragging allowed by the MouseDown handler?
         public bool CanPan;           // Was delayed panning allowed by the MouseDown handler?
         public bool SuppressClick;    // Should a click event be suppressed on release?
+        public KeyModifiers KeyModifiers; // Keyboard modifiers held when the button was pressed.
         public Point DownPosition;    // World-coordinate position where the button went down.
         public Point DownPixelPosition; // Logical-pixel position where the button went down (for BeginPanning).
         public ulong DownTime;        // Timestamp (ms) when the button went down.
@@ -111,6 +112,8 @@ public partial class MapViewer : UserControl
     private const int ButtonCount = 2;
 
     private ButtonState[] buttonStates = new ButtonState[ButtonCount];
+    private ulong[] lastClickTimes = new ulong[ButtonCount];
+    private Point[] lastClickPositions = new Point[ButtonCount];
     private DispatcherTimer? hoverTimer;
     private Point lastHoverLocation = new Point(double.NaN, double.NaN);
     private Point lastMouseWorldLocation;
@@ -427,11 +430,12 @@ public partial class MapViewer : UserControl
 
     // Constructs a FancyMouseEventArgs, raises it, and returns it so the caller
     // can inspect response fields (e.g. MouseDownResult).
-    private FancyMouseEventArgs RaiseFancyMouseEvent(MouseButton button, FancyMouseAction action, Point worldLocation, Point worldDragStart = default)
+    private FancyMouseEventArgs RaiseFancyMouseEvent(MouseButton button, FancyMouseAction action, Point worldLocation, Point worldDragStart = default, KeyModifiers keyModifiers = KeyModifiers.None)
     {
         FancyMouseEventArgs args = new FancyMouseEventArgs(FancyMouseActivityEvent, this, button, action, worldLocation)
         {
             WorldDragStart = worldDragStart,
+            KeyModifiers = keyModifiers,
         };
         RaiseEvent(args);
         return args;
@@ -548,8 +552,9 @@ public partial class MapViewer : UserControl
         buttonStates[index].DownPosition = e.WorldLocation;
         buttonStates[index].DownPixelPosition = e.LogicalPixelLocation;
         buttonStates[index].DownTime = e.TimeStamp;
+        buttonStates[index].KeyModifiers = e.KeyModifiers;
 
-        FancyMouseEventArgs args = RaiseFancyMouseEvent(e.Button, FancyMouseAction.Down, e.WorldLocation, e.WorldLocation);
+        FancyMouseEventArgs args = RaiseFancyMouseEvent(e.Button, FancyMouseAction.Down, e.WorldLocation, e.WorldLocation, e.KeyModifiers);
 
         switch (args.MouseDownResult) {
         case MouseDownResult.ImmediateDrag:
@@ -586,7 +591,7 @@ public partial class MapViewer : UserControl
         lastMouseLogicalPixelLocation = e.LogicalPixelLocation;
         MouseLocation = Conv.ToPointF(e.WorldLocation);
 
-        RaiseFancyMouseEvent(e.Button, FancyMouseAction.Move, e.WorldLocation);
+        RaiseFancyMouseEvent(e.Button, FancyMouseAction.Move, e.WorldLocation, keyModifiers: e.KeyModifiers);
         ResetHoverTimer(e.WorldLocation);
 
         for (int i = 0; i < ButtonCount; i++) {
@@ -615,7 +620,7 @@ public partial class MapViewer : UserControl
 
             // Raise a Drag event for any button that is actively dragging.
             if (buttonStates[i].IsDown && buttonStates[i].IsDragging) {
-                RaiseFancyMouseEvent(ButtonForIndex(i), FancyMouseAction.Drag, e.WorldLocation, buttonStates[i].DownPosition);
+                RaiseFancyMouseEvent(ButtonForIndex(i), FancyMouseAction.Drag, e.WorldLocation, buttonStates[i].DownPosition, buttonStates[i].KeyModifiers);
                 DisableHoverTimer();
             }
         }
@@ -643,12 +648,25 @@ public partial class MapViewer : UserControl
         buttonStates[index].IsDragging = false;
         buttonStates[index].SuppressClick = false;
 
-        // Raise exactly one of DragEnd, Click, or Up.
+        // Raise exactly one of DragEnd, Click, DoubleClick, or Up. The controller
+        // can consume DoubleClick or fall back to dispatching the second click.
         if (wasDrag) {
-            RaiseFancyMouseEvent(e.Button, FancyMouseAction.DragEnd, e.WorldLocation, downPosition);
+            RaiseFancyMouseEvent(e.Button, FancyMouseAction.DragEnd, e.WorldLocation, downPosition, buttonStates[index].KeyModifiers);
         }
         else if (wasClick) {
-            RaiseFancyMouseEvent(e.Button, FancyMouseAction.Click, downPosition, downPosition);
+            bool isDoubleClick = lastClickTimes[index] != 0 &&
+                                 e.TimeStamp >= lastClickTimes[index] &&
+                                 e.TimeStamp - lastClickTimes[index] <= 500 &&
+                                 panAndZoom.WorldToPixelDistance(WorldDistance(downPosition, lastClickPositions[index])) <= MaxClickDistance;
+            lastClickPositions[index] = downPosition;
+            if (isDoubleClick) {
+                lastClickTimes[index] = 0;
+                RaiseFancyMouseEvent(e.Button, FancyMouseAction.DoubleClick, downPosition, downPosition, buttonStates[index].KeyModifiers);
+            }
+            else {
+                lastClickTimes[index] = e.TimeStamp;
+                RaiseFancyMouseEvent(e.Button, FancyMouseAction.Click, downPosition, downPosition, buttonStates[index].KeyModifiers);
+            }
         }
         else if (wasDown) {
             RaiseFancyMouseEvent(e.Button, FancyMouseAction.Up, e.WorldLocation, downPosition);
@@ -675,7 +693,7 @@ public partial class MapViewer : UserControl
             if (buttonStates[i].IsDragging) {
                 buttonStates[i].IsDown = false;
                 buttonStates[i].IsDragging = false;
-                RaiseFancyMouseEvent(ButtonForIndex(i), FancyMouseAction.DragCancel, buttonStates[i].DownPosition, buttonStates[i].DownPosition);
+                RaiseFancyMouseEvent(ButtonForIndex(i), FancyMouseAction.DragCancel, buttonStates[i].DownPosition, buttonStates[i].DownPosition, buttonStates[i].KeyModifiers);
             }
             else {
                 buttonStates[i].IsDown = false;
@@ -696,7 +714,8 @@ public partial class MapViewer : UserControl
         // When mouse button is released, exactly one of the follow three occurs.
         Up,        // mouse button released (dragging disabled) 
         DragEnd,   // mouse button released (if dragging enabled)
-        Click,     // mouse button release after no/little movement, and a short amount of time down. 
+        Click,     // mouse button release after no/little movement, and a short amount of time down.
+        DoubleClick, // second click in a short sequence; receiver may fall back to Click
 
         // If a drag is started, but the mouse is taken away before finishing, a DragCancel event occurs
         DragCancel,
@@ -735,6 +754,7 @@ public partial class MapViewer : UserControl
         public FancyMouseAction FancyAction;    // Fancy mouse action: includes, drags, clicks, hovers.
         public Point WorldLocation;             // location in world coordinates in the control.
         public Point WorldDragStart;            // For a drag event, where the dragging began
+        public KeyModifiers KeyModifiers;        // Keyboard modifiers held when the button was pressed.
         public MouseDownResult MouseDownResult; // For a mouse down, how the mouse down is handled.
     }
 }

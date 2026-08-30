@@ -1,8 +1,8 @@
 <!--
     CourseLoadDialog.axaml
 
-    Course Load dialog. Shows a two-column grid: each course's name
-    (read-only, twice as wide) and its editable competitor load. A blank load
+    Class and participant dialog. Shows a three-column grid: each course's name
+    (read-only), its optional class, and its editable competitor load. A blank load
     cell means "no load set". On OK each load is validated (blank or an
     integer) — invalid input keeps the dialog open with an error message.
 
@@ -106,7 +106,7 @@
                    TextWrapping="Wrap"
                    Margin="0,0,0,8"/>
 
-        <!-- Two-column grid: course name (twice as wide) + editable load. -->
+        <!-- Three-column grid: course name, class assignment, and editable load. -->
         <DataGrid x:Name="grid"
                   ItemsSource="{Binding Rows}"
                   AutoGenerateColumns="False"
@@ -124,17 +124,28 @@
                   ScrollViewer.VerticalScrollBarVisibility="Auto"
                   ScrollViewer.AllowAutoHide="False">
             <DataGrid.Columns>
-                <!-- Course Name: read-only, wider than the load column. -->
+                <!-- Course Name: read-only. -->
                 <DataGridTextColumn Header="{x:Static resx:UIText.CourseLoad_CourseName_HeaderText}"
                                     Binding="{Binding CourseName}"
                                     IsReadOnly="True"
-                                    Width="5*"/>
+                                    Width="*"/>
+
+                <DataGridTemplateColumn Header="{resx:Localize CourseLoad_ClassName_HeaderText}"
+                                        Width="*">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate x:DataType="vm:LoadRow">
+                            <TextBox Classes="loadCell"
+                                     Text="{Binding ClassName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                     VerticalAlignment="Center"/>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
 
                 <!-- Competitor Load: an always-editable TextBox so a single
                      click starts editing (mirrors the WinForms EditOnKeystroke
                      grid). -->
                 <DataGridTemplateColumn Header="{x:Static resx:UIText.CourseLoad_Load_HeaderText}"
-                                        Width="3*">
+                                        Width="*">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate x:DataType="vm:LoadRow">
                             <TextBox Classes="loadCell"

@@ -61,6 +61,7 @@ namespace PurplePen
         private RectangleF mapBounds;  // bounds of the map, in map coordinates.
         private string sourcePdfMapFileName;
         private int totalPages, currentPage;
+        private IDictionary<SymColor, MapColorOverride> printProfileMapColorOverrides;
 
         // mapDisplay is a MapDisplay that contains the correct map. All other features of the map display need to be customized.
         public CoursePdf(EventDB eventDB, SymbolDB symbolDB, Controller controller, MapDisplay mapDisplay, 
@@ -85,6 +86,8 @@ namespace PurplePen
                 // For PDF maps, we remove the PDF map from the MapDisplay and add it in separately.
                 sourcePdfMapFileName = mapDisplay.FileName;
             }
+
+            printProfileMapColorOverrides = CreatePrintProfileMapColorOverrides();
         }
 
         // Is the map a PDF map?
@@ -211,7 +214,8 @@ namespace PurplePen
                     mapDisplay.SetMapFile(MapType.None, null);
                     grTarget = pdfDocumentWriter.BeginPage(paperSize);
                 }
-                else if (IsPdfMap && coursePdfSettings.PageLayout == CoursePdfSettings.PdfPageLayout.OnePerPage) {
+                else if (IsPdfMap && coursePdfSettings.PageLayout == CoursePdfSettings.PdfPageLayout.OnePerPage &&
+                         Math.Abs(pageToDraw.mapRotation) < 0.0001F) {
                     // Import the base map from the PDF map file, so that it is vector, not raster.
 
                     // We need to re-obtain a PdfImporter every time, or else very strange bugs start to crop up.
@@ -225,8 +229,7 @@ namespace PurplePen
                     RectangleF cropRectangleInInches = new RectangleF(pageToDraw.printRectangle.Left / 100F, pageToDraw.printRectangle.Top / 100F,
                                                                     pageToDraw.printRectangle.Width / 100F, pageToDraw.printRectangle.Height / 100F);
 
-                    if (scaleRatio == 1.0 && Geometry.SimilarRectangles(cropRectangleInInches, new RectangleF(0, 0, paperSize.Width, paperSize.Height), 0.01F) &&
-                        Geometry.SimilarRectangles(pageToDraw.mapRectangle, mapBounds, 0.01F))
+                    if (CanCopyPdfMapPage(pageToDraw, scaleRatio, cropRectangleInInches, paperSize, mapBounds))
                     {
                         // If we're doing a PDF at scale 1, no cropping, and the print area is the same as the page size, we just copy the page directly.
                         grTarget = pdfDocumentWriter.BeginCopiedPage(sourcePdfMapFileName, 0);
@@ -239,6 +242,12 @@ namespace PurplePen
                     mapDisplay.SetMapFile(MapType.None, null);
                 }
                 else {
+                    // The copied-PDF path can crop and scale, but cannot rotate the imported
+                    // PDF content. Restore the normal PDF map display so a rotated page uses
+                    // the raster rendering path, which applies the same transform to map and
+                    // course graphics.
+                    if (IsPdfMap && mapDisplay.MapType != MapType.PDF)
+                        mapDisplay.SetMapFile(MapType.PDF, sourcePdfMapFileName);
                     grTarget = pdfDocumentWriter.BeginPage(paperSize);
                 }
 
@@ -277,9 +286,26 @@ namespace PurplePen
         List<CoursePage> LayoutPages(IEnumerable<CourseDesignator> courseDesignators)
         {
             CoursePageLayout pageLayout = new CoursePageLayout(eventDB, symbolDB, controller, appearance,
-                                                                coursePdfSettings.CropLargePrintArea);
+                                                               coursePdfSettings.CropLargePrintArea,
+                                                               coursePdfSettings.ScaleCalibrationFactor);
 
             return pageLayout.LayoutPages(courseDesignators);
+        }
+
+        /// <summary>Determines whether the PDF page-copy API can reproduce the requested map view.</summary>
+#if TEST
+        internal
+#else
+        private
+#endif
+        static bool CanCopyPdfMapPage(CoursePage page, float scaleRatio, RectangleF cropRectangleInInches,
+                                      SizeF paperSize, RectangleF mapBounds)
+        {
+            // BeginCopiedPage and BeginCopiedPartialPage can scale and crop, but have no
+            // rotation parameter. Rotated views must be rendered by MapDisplay instead.
+            return Math.Abs(page.mapRotation) < 0.0001F && scaleRatio == 1.0 &&
+                   Geometry.SimilarRectangles(cropRectangleInInches, new RectangleF(0, 0, paperSize.Width, paperSize.Height), 0.01F) &&
+                   Geometry.SimilarRectangles(page.mapRectangle, mapBounds, 0.01F);
         }
 
         // Creates a data-only overview of the pages this instance would export.
@@ -348,18 +374,15 @@ namespace PurplePen
 
             foreach (Id<Course> courseId in courseIds.Distinct()) {
                 Course course = eventDB.GetCourse(courseId);
-                if (String.IsNullOrWhiteSpace(course.secondaryTitle))
-                    continue;
-
-                string[] classNames = course.secondaryTitle.Split(new char[] { ',', '|' }, StringSplitOptions.RemoveEmptyEntries);
-                foreach (string rawClassName in classNames) {
-                    string className = rawClassName.Trim();
+                foreach (KeyValuePair<Id<EventClass>, EventClass> classPair in EventClassSupport.GetClasses(eventDB, courseId)) {
+                    string className = classPair.Value.Name == null ? String.Empty : classPair.Value.Name.Trim();
                     if (className.Length == 0)
                         continue;
-
                     int participants = startList.Count(record =>
-                        String.Equals(record.Course.Trim(), course.name, StringComparison.OrdinalIgnoreCase) &&
+                        (String.IsNullOrWhiteSpace(record.Course) || String.Equals(record.Course.Trim(), course.name, StringComparison.OrdinalIgnoreCase)) &&
                         String.Equals(record.ClassName.Trim(), className, StringComparison.OrdinalIgnoreCase));
+                    if (participants == 0)
+                        participants = classPair.Value.ParticipantCount;
                     summary.Classes.Add(new PdfProductionClassSummary(course.name, className, participants));
                 }
             }
@@ -395,6 +418,8 @@ namespace PurplePen
 
             CourseFormatterOptions formatterOptions = new CourseFormatterOptions();
             formatterOptions.showDescriptions = coursePdfSettings.RenderControlDescriptions;
+            formatterOptions.trainingExerciseRenderProfile = coursePdfSettings.TrainingExerciseRenderProfile;
+            formatterOptions.trainingRenderBounds = courseView.GetViewBounds();
             CourseFormatter.FormatCourseToLayout(symbolDB, courseView, appearance, layout, CourseLayer.MainCourse, formatterOptions);
 
             // Set the course layout into the map display
@@ -403,6 +428,12 @@ namespace PurplePen
 
             // Set the transform, and the clip.
             Matrix transform = Geometry.CreateInvertedRectangleTransform(page.mapRectangle, page.printRectangle);
+            if (Math.Abs(page.mapRotation) > 0.0001F) {
+                PointF center = Geometry.RectCenter(page.mapRectangle);
+                // Rotate source map coordinates around the utsnitt center before
+                // applying the normal map-to-page transform.
+                transform.RotateAt(page.mapRotation, center, MatrixOrder.Prepend);
+            }
             PushRectangleClip(graphicsTarget, page.printRectangle);
             graphicsTarget.PushTransform(transform);
             // Determine the resolution in map coordinates.
@@ -411,8 +442,14 @@ namespace PurplePen
             float minResolutionPage = 100F / 2400F;  // Assume 2400 DPI as the base resolution, to get very accurate print.
             float minResolutionMap = Geometry.TransformDistance(minResolutionPage, inverseTransform);
 
-            // And draw.
-            mapDisplay.Draw(graphicsTarget, page.mapRectangle, minResolutionMap, null);
+            // And draw. Profile colour replacements live only for this render call.
+            mapDisplay.MapColorOverrides = printProfileMapColorOverrides;
+            try {
+                mapDisplay.Draw(graphicsTarget, page.mapRectangle, minResolutionMap, null);
+            }
+            finally {
+                mapDisplay.MapColorOverrides = null;
+            }
 
             graphicsTarget.PopTransform();
             graphicsTarget.PopClip();
@@ -424,7 +461,9 @@ namespace PurplePen
         void DrawBacksideInfo(IGraphicsTarget graphicsTarget, CoursePage page)
         {
             CourseView courseView = CourseView.CreatePrintingCourseView(eventDB, page.courseDesignator);
-            List<string> lines = GetBacksideInfoLines(courseView);
+            List<string> lines = BacksideInfoFormatter.GetLines(eventDB, courseView,
+                                                               coursePdfSettings.BacksideText,
+                                                               coursePdfSettings.BacksideInfoRecords);
             if (lines.Count == 0)
                 return;
 
@@ -445,47 +484,6 @@ namespace PurplePen
                 object currentFont = index == 0 && !String.IsNullOrWhiteSpace(coursePdfSettings.BacksideText) ? headingFontKey : fontKey;
                 graphicsTarget.DrawText(lines[index], currentFont, brushKey, new PointF(left, top + index * lineHeight));
             }
-        }
-
-        // Create the default backside content from the data that is already bound
-        // to a Purple Pen course variation. External names and classes can later
-        // be matched to the same team/leg key without changing this pairing.
-        List<string> GetBacksideInfoLines(CourseView courseView)
-        {
-            List<string> lines = new List<string>();
-            if (!String.IsNullOrWhiteSpace(coursePdfSettings.BacksideText))
-                lines.Add(coursePdfSettings.BacksideText.Trim());
-
-            BacksideInfoRecord importedRecord = coursePdfSettings.BacksideInfoRecords == null
-                ? null
-                : coursePdfSettings.BacksideInfoRecords.FirstOrDefault(record => record.Matches(courseView));
-            if (importedRecord != null) {
-                if (!String.IsNullOrWhiteSpace(importedRecord.Name))
-                    lines.Add(string.Format("{0}: {1}", GetBacksideLabel("BacksideName", "Name"), importedRecord.Name));
-                if (!String.IsNullOrWhiteSpace(importedRecord.ClassName))
-                    lines.Add(string.Format("{0}: {1}", GetBacksideLabel("BacksideClass", "Class"), importedRecord.ClassName));
-                if (!String.IsNullOrWhiteSpace(importedRecord.TeamName))
-                    lines.Add(string.Format("{0}: {1}", GetBacksideLabel("BacksideTeamName", "Team name"), importedRecord.TeamName));
-            }
-
-            lines.Add(string.Format("{0}: {1}", GetBacksideLabel("BacksideCourse", "Course"), courseView.CourseNameAndPart));
-
-            if (courseView.RelayTeam.HasValue)
-                lines.Add(string.Format("{0}: {1}", GetBacksideLabel("BacksideTeam", "Team"), courseView.RelayTeam.Value));
-            if (courseView.RelayLeg.HasValue)
-                lines.Add(string.Format("{0}: {1}", GetBacksideLabel("BacksideLeg", "Leg"), courseView.RelayLeg.Value));
-            if (!String.IsNullOrEmpty(courseView.VariationName))
-                lines.Add(string.Format("{0}: {1}", GetBacksideLabel("BacksideVariationCode", "Variation code"), courseView.VariationName));
-
-            return lines;
-        }
-
-        // Look up a printable backside label while retaining English as a safe
-        // fallback for languages that have not yet received this new translation.
-        string GetBacksideLabel(string resourceKey, string fallback)
-        {
-            string text = MiscText.ResourceManager.GetString(resourceKey, CultureInfo.CurrentUICulture);
-            return String.IsNullOrEmpty(text) ? fallback : text;
         }
 
         /// <summary>
@@ -520,6 +518,48 @@ namespace PurplePen
             overprint = courseRule.OverprintIntent == PrintProfileOverprintIntent.Overprint;
             if (courseRule.Identifier.OcadIds.Count == 1)
                 ocadId = courseRule.Identifier.OcadIds[0];
+        }
+
+        /// <summary>Builds non-mutating base-map colour replacements from confirmed profile matches.</summary>
+        /// <returns>Overrides keyed by the open vector map's concrete colour objects.</returns>
+        private IDictionary<SymColor, MapColorOverride> CreatePrintProfileMapColorOverrides()
+        {
+            Dictionary<SymColor, MapColorOverride> overrides = new Dictionary<SymColor, MapColorOverride>();
+            if (mapDisplay.MapType != MapType.OCAD || String.IsNullOrEmpty(coursePdfSettings.PrintProfileId))
+                return overrides;
+
+            PrintProfile profile = PrintProfileCatalog.FindById(coursePdfSettings.PrintProfileId);
+            if (profile == null)
+                return overrides;
+
+            List<SymColor> mapColors = mapDisplay.GetMapColors();
+            List<SourceMapColor> sourceColors = new List<SourceMapColor>();
+            for (int index = 0; index < mapColors.Count; ++index)
+                sourceColors.Add(SourceMapColor.FromSymColor(mapColors[index], index));
+
+            ColorPreflightReport report = ColorPreflightReport.Analyze(profile, sourceColors,
+                PdfExportCapabilities.CreateCurrentImplementation(), coursePdfSettings.ConfirmedPrintProfileRuleIds,
+                coursePdfSettings.PrintProfileColorMappings);
+            foreach (ColorPreflightRuleResult result in report.RuleResults) {
+                if (!result.HasConfirmedMatch)
+                    continue;
+
+                SourceMapColor sourceColor = result.CandidateColors[0];
+                int mapColorIndex = sourceColors.FindIndex(candidate => candidate.OcadId == sourceColor.OcadId
+                    && candidate.DrawOrder == sourceColor.DrawOrder
+                    && String.Equals(candidate.Name, sourceColor.Name, StringComparison.Ordinal));
+                if (mapColorIndex < 0)
+                    continue;
+
+                PrintProfileCmyk replacement = result.Rule.EffectiveCmyk;
+                overrides[mapColors[mapColorIndex]] = new MapColorOverride {
+                    Color = CmykColor.FromCmyk(replacement.Cyan / 100F, replacement.Magenta / 100F,
+                        replacement.Yellow / 100F, replacement.Black / 100F),
+                    Overprint = result.Rule.OverprintIntent == PrintProfileOverprintIntent.Overprint,
+                };
+            }
+
+            return overrides;
         }
 
         private void PushRectangleClip(IGraphicsTarget graphicsTarget, RectangleF rect)

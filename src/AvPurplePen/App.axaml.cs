@@ -29,9 +29,9 @@ namespace AvPurplePen
         {
             AvaloniaXamlLoader.Load(this);
 
-#if DEBUG
-            this.AttachDeveloperTools();
-#endif
+            // Developer tools are supplied by a separate optional Avalonia package.
+            // Keep the debug build independent of that package so local builds and
+            // production UI verification do not fail when it is not installed.
             // Register our custom color scheme with the SemiTheme so its
             // ThemeDictionaries resolve our variant.
             //SemiTheme semiTheme = (SemiTheme)Styles[0];

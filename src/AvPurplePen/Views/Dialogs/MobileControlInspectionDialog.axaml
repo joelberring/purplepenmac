@@ -1,0 +1,78 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:PurplePen.ViewModels"
+        xmlns:resx="using:AvPurplePen"
+        xmlns:local="using:AvPurplePen"
+        x:Class="AvPurplePen.Views.MobileControlInspectionDialog"
+        x:DataType="vm:MobileControlInspectionDialogViewModel"
+        Title="{resx:Localize MobileControlInspectionDialog_Title}"
+        Width="700" Height="500" WindowStartupLocation="CenterOwner">
+  <DockPanel Margin="14">
+    <StackPanel DockPanel.Dock="Bottom" Spacing="8" Margin="0,12,0,0">
+      <TextBlock Text="{resx:Localize MobileControlInspectionDialog_ExchangeHint}" TextWrapping="Wrap"/>
+      <TextBox Text="{Binding ExportedJson, Mode=OneWay}" Height="70" AcceptsReturn="True" TextWrapping="Wrap"
+               IsReadOnly="True" PlaceholderText="{resx:Localize MobileControlInspectionDialog_JsonPlaceholder}"/>
+      <TextBox Text="{Binding ImportJsonText, Mode=TwoWay}" Height="55" AcceptsReturn="True" TextWrapping="Wrap"
+               PlaceholderText="{resx:Localize MobileControlInspectionDialog_ImportPlaceholder}"/>
+      <TextBlock Text="{Binding ImportError, Converter={x:Static local:MobileControlInspectionImportErrorLabelConverter.Instance}}"
+                 IsVisible="{Binding HasImportError}" Foreground="IndianRed" TextWrapping="Wrap"/>
+      <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8">
+        <Button Content="{resx:Localize MobileControlInspectionDialog_Export}" Command="{Binding PrepareExportCommand}"/>
+        <Button Content="{resx:Localize MobileControlInspectionDialog_Import}" Command="{Binding ImportJsonCommand}"/>
+        <Button Width="100" Content="{resx:Localize OKButton}" Click="CloseButton_Click"/>
+      </StackPanel>
+    </StackPanel>
+    <Grid RowDefinitions="Auto,*" RowSpacing="10">
+      <TextBlock Text="{resx:Localize MobileControlInspectionDialog_Intro}" TextWrapping="Wrap"/>
+      <DataGrid Grid.Row="1" ItemsSource="{Binding Controls}" AutoGenerateColumns="False" IsReadOnly="False">
+        <DataGrid.Columns>
+          <DataGridTextColumn Header="{resx:Localize MobileControlInspectionDialog_Sequence}" Binding="{Binding Sequence}" Width="70"/>
+          <DataGridTextColumn Header="{resx:Localize MobileControlInspectionDialog_Code}" Binding="{Binding Code}" Width="100" IsReadOnly="True"/>
+          <DataGridTemplateColumn Header="{resx:Localize MobileControlInspectionDialog_Kind}" Width="150">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MobileControlInspectionRowViewModel">
+                <TextBlock Text="{Binding Kind, Converter={x:Static local:ControlPointKindLabelConverter.Instance}}"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTextColumn Header="{resx:Localize MobileControlInspectionDialog_Location}" Binding="{Binding Location}" Width="*"/>
+          <DataGridTemplateColumn Header="{resx:Localize MobileControlInspectionDialog_ObservedCode}" Width="120">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MobileControlInspectionRowViewModel">
+                <TextBox Text="{Binding ObservedCode, Mode=TwoWay}" IsEnabled="{Binding HasCode}"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="{resx:Localize MobileControlInspectionDialog_Status}" Width="130">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MobileControlInspectionRowViewModel">
+                <ComboBox ItemsSource="{Binding $parent[Window].DataContext.StatusValues}"
+                          SelectedItem="{Binding Status, Mode=TwoWay}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding ., Converter={x:Static local:MobileControlInspectionStatusLabelConverter.Instance}}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="{resx:Localize MobileControlInspectionDialog_CodeValidation}" Width="125">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MobileControlInspectionRowViewModel">
+                <TextBlock Text="{Binding CodeValidationStatus, Converter={x:Static local:MobileControlCodeValidationStatusLabelConverter.Instance}}"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+          <DataGridTemplateColumn Header="{resx:Localize MobileControlInspectionDialog_Comment}" Width="220">
+            <DataGridTemplateColumn.CellTemplate>
+              <DataTemplate x:DataType="vm:MobileControlInspectionRowViewModel">
+                <TextBox Text="{Binding Comment, Mode=TwoWay}"/>
+              </DataTemplate>
+            </DataGridTemplateColumn.CellTemplate>
+          </DataGridTemplateColumn>
+        </DataGrid.Columns>
+      </DataGrid>
+    </Grid>
+  </DockPanel>
+</Window>

@@ -25,6 +25,8 @@ namespace PurplePen
     // All the information needed to print courses.
     public class CoursePrintSettings
     {
+        public float ScaleCalibrationFactor = 1.0F;
+        public TrainingExerciseRenderProfile TrainingExerciseRenderProfile = TrainingExerciseRenderProfile.None;
         public Id<Course>[] CourseIds;          // Courses to print, None is all controls.
         public bool AllCourses = true;          // If true, overrides the course ids in CourseIds except for "all controls".
 
@@ -41,6 +43,11 @@ namespace PurplePen
     // All the information needed to print courses.
     public class CoursePdfSettings
     {
+        // Printer calibration factor: measured length / nominal 100 mm. Values
+        // other than one adjust map layout scale while retaining the requested
+        // printed scale.
+        public float ScaleCalibrationFactor = 1.0F;
+        public TrainingExerciseRenderProfile TrainingExerciseRenderProfile = TrainingExerciseRenderProfile.None;
         public Id<Course>[] CourseIds;          // Courses to print, None is all controls.
         public bool AllCourses = true;          // If true, overrides CourseIds except for all controls.
 
@@ -92,6 +99,27 @@ namespace PurplePen
                 ? new List<BacksideInfoRecord>()
                 : BacksideInfoRecords.Select(record => record.Clone()).ToList();
             return n;
+        }
+    }
+
+    /// <summary>Named reusable paper/workshop configuration stored in user settings.</summary>
+    public class PrintWorkshopTemplate
+    {
+        public string Name { get; set; } = "";
+        public int PageWidth { get; set; }
+        public int PageHeight { get; set; }
+        public int PageMargins { get; set; }
+        public bool Landscape { get; set; }
+        public float Rotation { get; set; }
+        public bool FixSizeToPaper { get; set; }
+        public int PageLayout { get; set; } = 1;
+        public bool IncludeBackside { get; set; }
+        public string BacksideText { get; set; } = "";
+        public float ScaleCalibrationFactor { get; set; } = 1.0F;
+
+        public PrintWorkshopTemplate Clone()
+        {
+            return (PrintWorkshopTemplate)MemberwiseClone();
         }
     }
 

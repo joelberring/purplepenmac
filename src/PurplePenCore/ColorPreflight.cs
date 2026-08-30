@@ -45,6 +45,9 @@ namespace PurplePen
         /// <summary>Gets or sets the source drawing-order index, from lowest to highest.</summary>
         public int DrawOrder { get; set; }
 
+        /// <summary>Gets the map symbols that actually use this colour layer.</summary>
+        public List<SourceMapSymbol> Symbols { get; set; } = new List<SourceMapSymbol>();
+
         /// <summary>Gets a descriptive string suitable for a colour-mapping selector.</summary>
         public string DisplayName {
             get { return String.Format("{0} (OCAD {1}, order {2}, CMYK {3}/{4}/{5}/{6})", Name, OcadId, DrawOrder, Cmyk.Cyan, Cmyk.Magenta, Cmyk.Yellow, Cmyk.Black); }
@@ -78,6 +81,16 @@ namespace PurplePen
         {
             return (float)Math.Round(value * 100.0F, 3, MidpointRounding.AwayFromZero);
         }
+    }
+
+    /// <summary>Describes one source-map symbol, including its original toolbox icon.</summary>
+    public sealed class SourceMapSymbol
+    {
+        public string SymbolId { get; set; } = String.Empty;
+        public string Name { get; set; } = String.Empty;
+        public int[] IconArgb { get; set; } = Array.Empty<int>();
+        public int IconWidth { get; set; }
+        public int IconHeight { get; set; }
     }
 
     /// <summary>Describes the PDF-production features available to an export path.</summary>
@@ -179,7 +192,9 @@ namespace PurplePen
             List<SymColor> mapColors = mapDisplay.GetMapColors();
             List<SourceMapColor> sourceColors = new List<SourceMapColor>();
             for (int index = 0; index < mapColors.Count; ++index) {
-                sourceColors.Add(SourceMapColor.FromSymColor(mapColors[index], index));
+                SourceMapColor sourceColor = SourceMapColor.FromSymColor(mapColors[index], index);
+                sourceColor.Symbols = mapDisplay.GetSymbolsUsingMapColor(mapColors[index]);
+                sourceColors.Add(sourceColor);
             }
 
             return sourceColors;

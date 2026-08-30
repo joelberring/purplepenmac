@@ -62,6 +62,8 @@ namespace PurplePen
     public class CourseLayout: IEnumerable<CourseObj>
     {
         List<CourseObj> objects = new List<CourseObj>();
+        List<TrainingContourOnlyOverlay> contourOnlyOverlays = new List<TrainingContourOnlyOverlay>();
+        List<TrainingCorridorMaskOverlay> corridorMaskOverlays = new List<TrainingCorridorMaskOverlay>();
 
         public const int LAYERCOUNT = (int) CourseLayer.Count;
         public const int EXTRACOURSECOUNT = 10;
@@ -127,6 +129,18 @@ namespace PurplePen
             get { return objects.Count; }
         }
 
+        /// <summary>Gets the runner-only contour filters that must be applied to the base vector map.</summary>
+        public IReadOnlyList<TrainingContourOnlyOverlay> ContourOnlyOverlays
+        {
+            get { return contourOnlyOverlays; }
+        }
+
+        /// <summary>Gets the runner-only corridor masks rendered directly over the base map.</summary>
+        public IReadOnlyList<TrainingCorridorMaskOverlay> CorridorMaskOverlays
+        {
+            get { return corridorMaskOverlays; }
+        }
+
         // Enumerate the objects in the course.
         public IEnumerator<CourseObj> GetEnumerator()
         {
@@ -142,6 +156,22 @@ namespace PurplePen
         public void AddCourseObject(CourseObj newObject)
         {
             objects.Add(newObject);
+        }
+
+        /// <summary>Adds an immutable contour-only instruction for the base-map rendering pass.</summary>
+        public void AddContourOnlyOverlay(TrainingContourOnlyOverlay overlay)
+        {
+            if (overlay == null)
+                throw new ArgumentNullException(nameof(overlay));
+            contourOnlyOverlays.Add(overlay);
+        }
+
+        /// <summary>Adds an immutable runner corridor mask for backend-independent map rendering.</summary>
+        public void AddCorridorMaskOverlay(TrainingCorridorMaskOverlay overlay)
+        {
+            if (overlay == null)
+                throw new ArgumentNullException(nameof(overlay));
+            corridorMaskOverlays.Add(overlay);
         }
 
         // Render a course onto a map.
@@ -328,6 +358,13 @@ namespace PurplePen
 
             for (int i = 0; i < objects.Count; ++i) {
                 if (!(objects[i].Equals(otherList[i])))
+                    return false;
+            }
+
+            if (other.contourOnlyOverlays.Count != contourOnlyOverlays.Count)
+                return false;
+            for (int i = 0; i < contourOnlyOverlays.Count; ++i) {
+                if (!contourOnlyOverlays[i].Equals(other.contourOnlyOverlays[i]))
                     return false;
             }
 

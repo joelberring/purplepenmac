@@ -929,6 +929,27 @@ ControlNumber:  control:5  course-control:5  scale:1  text:4  top-left:(66.58,57
         }
 
         [TestMethod]
+        public void SuggestControlNumberPlacement()
+        {
+            PointF controlLocation = new PointF(20, 30);
+            FontDesc font = NormalCourseAppearance.controlNumberFontArial;
+
+            ControlNumberPlacementSuggestion first = CourseFormatter.SuggestControlNumberPlacement(controlLocation, 5, "12", font, 1, null);
+            ControlNumberPlacementSuggestion repeated = CourseFormatter.SuggestControlNumberPlacement(controlLocation, 5, "12", font, 1, new CourseObj[0]);
+
+            Assert.AreEqual(first.Center, repeated.Center);
+            Assert.AreEqual(first.AngleRadians, repeated.AngleRadians);
+            Assert.AreEqual(0, first.Clearance);
+
+            CourseObj blockingNumber = new ControlNumberCourseObj(ControlId(2), CourseControlId(2), 1, defaultCourseAppearance, "99", first.Center);
+            ControlNumberPlacementSuggestion moved = CourseFormatter.SuggestControlNumberPlacement(controlLocation, 5, "12", font, 1, new CourseObj[] { blockingNumber });
+
+            Assert.AreNotEqual(first.Center, moved.Center);
+            Assert.AreNotEqual(first.AngleRadians, moved.AngleRadians);
+            Assert.IsTrue(moved.Clearance > 0);
+        }
+
+        [TestMethod]
         public void GetTextSize()
         {
             FontDesc myFont = new FontDesc("Arial", false, false, 5);

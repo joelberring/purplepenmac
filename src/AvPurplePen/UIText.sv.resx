@@ -517,6 +517,9 @@
   <data name="CourseLoad_CourseName_HeaderText" xml:space="preserve">
     <value>Banans namn</value>
   </data>
+  <data name="CourseLoad_ClassName_HeaderText" xml:space="preserve">
+    <value>Klass</value>
+  </data>
   <data name="SelectionDescriptionText_SpecialName_CourseName" xml:space="preserve">
     <value>Banans namn</value>
   </data>
@@ -722,10 +725,16 @@
     <value>Lägg till kontroll</value>
   </data>
   <data name="MainFrame_keepAddingControlsToggleButton_Text" xml:space="preserve">
-    <value>Fortsätt</value>
+    <value>Flera kontroller</value>
   </data>
   <data name="MainFrame_keepAddingControlsToggleButton_ToolTipText" xml:space="preserve">
-    <value>Fortsätt lägga till kontroller tills du trycker Esc eller väljer ett annat verktyg</value>
+    <value>Aktivera och klicka sedan på kartan för varje kontroll. Läget fortsätter tills du trycker Esc eller väljer ett annat verktyg.</value>
+  </data>
+  <data name="MainFrame_composeCourseToolStripButton_Text" xml:space="preserve">
+    <value>Bygg bana stegvis</value>
+  </data>
+  <data name="MainFrame_composeCourseToolStripButton_ToolTipText" xml:space="preserve">
+    <value>Klicka på kartan för start och kontroller i ordning. Dubbelklicka på den sista punkten för att skapa mål.</value>
   </data>
   <data name="CommandNameText_AddStart" xml:space="preserve">
     <value>Lägg till start</value>
@@ -907,6 +916,9 @@
   <data name="CourseAppearanceDialog_comboBoxScaleItemSizes_Items2" xml:space="preserve">
     <value>Relativt 1:15000</value>
   </data>
+  <data name="CourseAppearanceDialog_comboBoxScaleItemSizes_Standard" xml:space="preserve">
+    <value>Enligt vald IOF-standard</value>
+  </data>
   <data name="CourseAppearanceDialog_label11_Text" xml:space="preserve">
     <value>Skala objekts storlek:</value>
   </data>
@@ -941,10 +953,13 @@
     <value>Linjebredd:</value>
   </data>
   <data name="CourseAppearanceDialog_labelControlCircle_Text" xml:space="preserve">
-    <value>Kontrollringens diameter:</value>
+    <value>Kontrollringens ytterdiameter:</value>
   </data>
   <data name="CourseAppearanceDialog_checkBoxStandardSizes_Text" xml:space="preserve">
     <value>Använd IOF-normens storlek</value>
+  </data>
+  <data name="CourseAppearanceDialog_standardSizesHelp_Text" xml:space="preserve">
+    <value>Värdena visas vid normens referensskala (ISOM 1:15 000; ISSprOM 1:4 000). Banpåtrycket skalas efter varje banas utskriftsskala, oberoende av kartfilens originalskala.</value>
   </data>
   <data name="CourseAppearanceDialog_groupBoxSizes_Text" xml:space="preserve">
     <value>Objektstorlek</value>
@@ -995,10 +1010,10 @@
     <value>Antal löpare</value>
   </data>
   <data name="CourseLoad_courseLoadLabel_Text" xml:space="preserve">
-    <value>Ange antalet löpare på varje bana genom att klicka i andra kolumnen och mata in antalet löpare.</value>
+    <value>Valfritt: ange klass för varje bana och ange sedan antalet löpare.</value>
   </data>
   <data name="CourseLoad_Text" xml:space="preserve">
-    <value>Antal löpare</value>
+    <value>Klasser och löparantal</value>
   </data>
   <data name="CoursePartBanner_variationsLabel_Text" xml:space="preserve">
     <value>Gafflingsalternativ: </value>
@@ -1349,10 +1364,10 @@
     <value>Färgläge:</value>
   </data>
   <data name="CreatePdfCourses_labelPrintProfile_Text" xml:space="preserve">
-    <value>Tryckprofil (förkontroll + bana):</value>
+    <value>Tryckprofil (karta + bana):</value>
   </data>
   <data name="CreatePdfCourses_printProfileHelp_Text" xml:space="preserve">
-    <value>En tryckprofil ändrar aldrig originalkartan. Före export jämförs kartans färger med vald standard; om flera kartfärger kan passa får du välja uttryckligen.</value>
+    <value>För vektorkartor ersätter profilen parade kartfärger och banfärgen endast i den exporterade PDF-filen. Originalkartan ändras aldrig. Använd Para kartfärger när namn eller OCAD-id skiljer sig.</value>
   </data>
   <data name="CreatePdfCourses_comboBoxPrintProfile_None" xml:space="preserve">
     <value>Ingen (vanlig CMYK-export)</value>
@@ -1367,8 +1382,14 @@
     <value>Mappa tryckprofilens färger</value>
   </data>
   <data name="PrintProfileMappingsDialog_instructions_Text" xml:space="preserve">
-    <value>Kartan har flera möjliga träffar. Koppla varje profilfärg till vänster till dess kartfärg till höger. Färgrutorna är bara skärmrepresentationer; använd CMYK-värden och utmatningsbeteende när du väljer.</value>
+    <value>Utgå från lagren som faktiskt finns i kartan. Granska färgen och de numrerade kartsymbolerna som använder den, och välj sedan en målfärg i den färdiga tryckprofilen. Välj Behåll originalfärg för lager som inte ska konverteras.</value>
   </data>
+  <data name="PrintProfileMappingsDialog_sourceLayerHeader_Text" xml:space="preserve"><value>Lager i originalkartan</value></data>
+  <data name="PrintProfileMappingsDialog_targetHandlingHeader_Text" xml:space="preserve"><value>Hantering i den färdiga profilen</value></data>
+  <data name="PrintProfileMappingsDialog_keepOriginal_Text" xml:space="preserve"><value>Behåll originalfärg</value></data>
+  <data name="PrintProfileMappingsDialog_chooseHandling_Text" xml:space="preserve"><value>Välj profilfärg eller behåll original</value></data>
+  <data name="PrintProfileMappingsDialog_unpairedHelp_Text" xml:space="preserve"><value>Oparade lager måste uttryckligen behålla originalfärgen eller paras med en profilfärg.</value></data>
+  <data name="PrintProfileMappingsDialog_noSymbols_Text" xml:space="preserve"><value>Inga använda kartsymboler använder detta färglager.</value></data>
   <data name="PrintProfileMappingsDialog_stepsHeader_Text" xml:space="preserve">
     <value>Tre snabba steg</value>
   </data>
@@ -1442,7 +1463,7 @@
     <value>Valfri gemensam text på varje baksida</value>
   </data>
   <data name="CreatePdfCourses_importBacksideInfoButton_Text" xml:space="preserve">
-    <value>Importera MeOS-startlista (CSV)...</value>
+    <value>Importera MeOS-CSV eller IOF-XML...</value>
   </data>
   <data name="CreatePdfCourses_backsideImportStatus_Text" xml:space="preserve">
     <value>Importerade deltagarposter:</value>
@@ -1451,7 +1472,7 @@
     <value>Matchar lag och sträcka. Valfria kolumner: namn, klass, lagnamn, bana.</value>
   </data>
   <data name="CreatePdfCourses_importBacksideInfoDialog_Text" xml:space="preserve">
-    <value>Importera MeOS-startlista i CSV-format</value>
+    <value>Importera MeOS-CSV eller IOF-XML-startlista</value>
   </data>
   <data name="CreatePdfCourses_backsideImportError_Text" xml:space="preserve">
     <value>Det gick inte att importera CSV-filen. Den måste ha kolumner för lag och sträcka.</value>
@@ -1819,6 +1840,9 @@
   <data name="MainFrame_addStartMenu_Text" xml:space="preserve">
     <value>_Start</value>
   </data>
+  <data name="MainFrame_composeCourseMenu_Text" xml:space="preserve">
+    <value>_Komponera bana</value>
+  </data>
   <data name="MainFrame_addControlMenu_Text" xml:space="preserve">
     <value>_Kontroll</value>
   </data>
@@ -1936,6 +1960,30 @@
   <data name="MainFrame_whiteOutMenu_Text" xml:space="preserve">
     <value>Blankt område</value>
   </data>
+  <data name="CreatePdfCourses_calibrationTitle_Text" xml:space="preserve"><value>Kalibrering för 100 mm utskrift</value></data>
+  <data name="CreatePdfCourses_calibrationMeasured_Text" xml:space="preserve"><value>Uppmätt</value></data>
+  <data name="CreatePdfCourses_calibrationApply_Text" xml:space="preserve"><value>Tillämpa</value></data>
+  <data name="CreatePdfCourses_calibrationFactor_Text" xml:space="preserve"><value>Skalfaktor:</value></data>
+  <data name="CreatePdfCourses_calibrationReset_Text" xml:space="preserve"><value>Återställ</value></data>
+  <data name="CreatePdfCourses_templateApply_Text" xml:space="preserve"><value>Tillämpa mall</value></data>
+  <data name="CreatePdfCourses_templateDelete_Text" xml:space="preserve"><value>Ta bort mall</value></data>
+  <data name="CreatePdfCourses_templateSave_Text" xml:space="preserve"><value>Spara mall</value></data>
+  <data name="CreatePdfCourses_templateName_Text" xml:space="preserve"><value>Nytt mallnamn</value></data>
+  <data name="MainFrame_contourOnlyTrainingAreaMenu_Text" xml:space="preserve">
+    <value>Träningsområde – endast höjdkurvor</value>
+  </data>
+  <data name="MainFrame_trainingCorridorMenu_Text" xml:space="preserve"><value>Träningskorridor</value></data>
+  <data name="MainFrame_trainingAttackPointMenu_Text" xml:space="preserve"><value>Träningsattackpunkt</value></data>
+  <data name="MainFrame_trainingLineMenu_Text" xml:space="preserve"><value>Träningslinje</value></data>
+  <data name="MainFrame_trainingExercisesMenu_Text" xml:space="preserve">
+    <value>Träningsmoment...</value>
+  </data>
+  <data name="MainFrame_trainingProfileMenu_Text" xml:space="preserve">
+    <value>Träningsvisning</value>
+  </data>
+  <data name="MainFrame_trainingProfileNoneMenu_Text" xml:space="preserve">
+    <value>Normal karta</value>
+  </data>
   <data name="MainFrame_whiteOutToolStripMenuItem_Text" xml:space="preserve">
     <value>Blankt område</value>
   </data>
@@ -1978,6 +2026,7 @@
   <data name="MainFrame_addMenu_Text" xml:space="preserve">
     <value>_Lägg till</value>
   </data>
+  <data name="MainFrame_editPrintProfileMenu_Text" xml:space="preserve"><value>Redigera tryckprofil…</value></data>
   <data name="MainFrame_changeMapFileMenu_Text" xml:space="preserve">
     <value>_Kartfil...</value>
   </data>
@@ -3137,6 +3186,18 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="ReportForm_printButton_Text" xml:space="preserve">
     <value>Skriv ut...</value>
   </data>
+  <data name="ReportForm_exportPdfButton_Text" xml:space="preserve">
+    <value>Exportera PDF</value>
+  </data>
+  <data name="ReportForm_exportPdfDialog_Text" xml:space="preserve">
+    <value>Exportera rapport som PDF</value>
+  </data>
+  <data name="ReportForm_pdfFileType_Text" xml:space="preserve">
+    <value>PDF-dokument</value>
+  </data>
+  <data name="ReportForm_exportPdfError_Text" xml:space="preserve">
+    <value>Rapporten kunde inte exporteras som PDF.</value>
+  </data>
   <data name="TeamVariationsForm_buttonPrint_Text" xml:space="preserve">
     <value>Skriv ut...</value>
   </data>
@@ -3575,6 +3636,16 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="SetPrintAreaDialog_checkBoxFixSizeToPaper_Text" xml:space="preserve">
     <value>Lås storleken på utskriftsområdet till pappersstorleken</value>
   </data>
+  <data name="SetPrintAreaDialog_lowMarginWarning_Text" xml:space="preserve">
+    <value>Marginalen är mindre än 6 mm. Vissa skrivare kan klippa kartan nära papperskanten.</value>
+  </data>
+  <data name="SetPrintAreaDialog_rotation_Text" xml:space="preserve"><value>Kartrotation</value></data>
+  <data name="SetPrintAreaDialog_rotationHelp_Text" xml:space="preserve"><value>grader; förhandsvisning</value></data>
+  <data name="SetPrintAreaDialog_templates_Text" xml:space="preserve"><value>Utskriftsmallar</value></data>
+  <data name="SetPrintAreaDialog_applyTemplate_Text" xml:space="preserve"><value>Tillämpa</value></data>
+  <data name="SetPrintAreaDialog_deleteTemplate_Text" xml:space="preserve"><value>Ta bort</value></data>
+  <data name="SetPrintAreaDialog_templateName_Text" xml:space="preserve"><value>Nytt mallnamn</value></data>
+  <data name="SetPrintAreaDialog_saveTemplate_Text" xml:space="preserve"><value>Spara mall</value></data>
   <data name="SetUILanguage_introLabel_Text" xml:space="preserve">
     <value>Välj det språk du vill använda i Purple Pen (menyer, fönster, etc.)</value>
   </data>
@@ -3765,7 +3836,7 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
     <value>Klass- och upplageplan</value>
   </data>
   <data name="PdfProductionReviewDialog_classPlanHelp_Text" xml:space="preserve">
-    <value>Klasser hämtas från banans undertitel. Sista kolumnen räknar matchande rader i en importerad MeOS-startlista.</value>
+    <value>Klasser hämtas från banans angivna klass, med undertiteln som reserv för äldre tävlingar. Sista kolumnen räknar matchande rader i en importerad MeOS-startlista.</value>
   </data>
   <data name="PdfProductionReviewDialog_landscape_Text" xml:space="preserve">
     <value>liggande</value>
@@ -3812,7 +3883,45 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="CourseControlOverviewDialog_Control" xml:space="preserve"><value>Kontroll</value></data>
   <data name="CourseControlOverviewDialog_Length" xml:space="preserve"><value>Längd</value></data>
   <data name="CourseControlOverviewDialog_Climb" xml:space="preserve"><value>Stigning</value></data>
+  <data name="CourseControlOverviewDialog_SearchCourses" xml:space="preserve"><value>Sök banor</value></data>
+  <data name="CourseControlOverviewDialog_SearchControls" xml:space="preserve"><value>Sök kontroll eller bana</value></data>
+  <data name="CourseControlOverviewDialog_ShowAll" xml:space="preserve"><value>Visa alla</value></data>
+  <data name="CourseControlOverviewDialog_ShowSelectedCourse" xml:space="preserve"><value>Visa vald bana</value></data>
+  <data name="CourseControlOverviewDialog_ShowSelectedControl" xml:space="preserve"><value>Visa vald kontroll</value></data>
+  <data name="CourseControlOverviewDialog_SaveEdits" xml:space="preserve"><value>Spara ändringar</value></data>
+  <data name="CourseControlOverviewDialog_Class" xml:space="preserve"><value>Klass</value></data>
+  <data name="CourseControlOverviewDialog_Load" xml:space="preserve"><value>Belastning</value></data>
+  <data name="CourseControlOverviewDialog_Code" xml:space="preserve"><value>Kod</value></data>
+  <data name="CourseControlOverviewDialog_SortLoad" xml:space="preserve"><value>Belastning ↓</value></data>
+  <data name="CourseControlOverviewDialog_SortName" xml:space="preserve"><value>Namn ↑</value></data>
+  <data name="CourseControlOverviewDialog_SortCode" xml:space="preserve"><value>Kod ↑</value></data>
+  <data name="CourseControlOverviewDialog_Compare" xml:space="preserve"><value>Jämför</value></data>
+  <data name="CourseControlOverviewDialog_CompareIntro" xml:space="preserve"><value>Visa två banor samtidigt på kartan. Den aktiva banan och jämförelsebanan får olika kartlager; gemensamma kontroller och sträckor överlappar synligt.</value></data>
+  <data name="CourseControlOverviewDialog_ShowComparison" xml:space="preserve"><value>Visa på karta</value></data>
   <data name="CreatePdfCourses_importPrintProfile_Text" xml:space="preserve"><value>Importera…</value></data>
+  <data name="CreatePdfCourses_editPrintProfile_Text" xml:space="preserve"><value>Redigera kopia…</value></data>
+  <data name="CreatePdfCourses_printProfileSaved_Text" xml:space="preserve"><value>Tryckprofilen är sparad.</value></data>
+  <data name="CreatePdfCourses_printProfileSaveError_Text" xml:space="preserve"><value>Det gick inte att spara tryckprofilen.</value></data>
+  <data name="PrintProfileEditorDialog_Title" xml:space="preserve"><value>Redigera kopia av tryckprofil</value></data>
+  <data name="PrintProfileEditorDialog_Intro" xml:space="preserve"><value>Ändra CMYK-värden i en egen kopia. Originalprofilen och kartan ändras inte.</value></data>
+  <data name="PrintProfileEditorDialog_SourceProfile" xml:space="preserve"><value>Källprofil:</value></data>
+  <data name="PrintProfileEditorDialog_Save" xml:space="preserve"><value>Spara kopia</value></data>
+  <data name="PrintProfileEditorDialog_Name" xml:space="preserve"><value>Namn:</value></data>
+  <data name="PrintProfileEditorDialog_MapKind" xml:space="preserve"><value>Karta:</value></data>
+  <data name="PrintProfileEditorDialog_VersionDate" xml:space="preserve"><value>Versionsdatum:</value></data>
+  <data name="PrintProfileEditorDialog_CourseColor" xml:space="preserve"><value>Banpåtryck:</value></data>
+  <data name="PrintProfileEditorDialog_Forest" xml:space="preserve"><value>Skog</value></data>
+  <data name="PrintProfileEditorDialog_Sprint" xml:space="preserve"><value>Sprint</value></data>
+  <data name="PrintProfileEditorDialog_AddRule" xml:space="preserve"><value>Lägg till regel</value></data>
+  <data name="PrintProfileEditorDialog_RemoveRule" xml:space="preserve"><value>Ta bort vald regel</value></data>
+  <data name="PrintProfileEditorDialog_RuleName" xml:space="preserve"><value>Profilens färgnamn</value></data>
+  <data name="PrintProfileEditorDialog_MapColorNames" xml:space="preserve"><value>Kartans färgnamn (separera med ;)</value></data>
+  <data name="PrintProfileEditorDialog_Printer" xml:space="preserve"><value>Skrivare:</value></data>
+  <data name="PrintProfileEditorDialog_Paper" xml:space="preserve"><value>Papper:</value></data>
+  <data name="PrintProfileEditorDialog_Icc" xml:space="preserve"><value>ICC:</value></data>
+  <data name="PrintProfileEditorDialog_TestMap" xml:space="preserve"><value>Testa mot karta</value></data>
+  <data name="PrintProfileEditorDialog_PairMapColors" xml:space="preserve"><value>Para kartfärger…</value></data>
+  <data name="PrintProfileEditorDialog_History" xml:space="preserve"><value>Tidigare versioner</value></data>
   <data name="CreatePdfCourses_exportPrintProfile_Text" xml:space="preserve"><value>Exportera…</value></data>
   <data name="CreatePdfCourses_importPrintProfileDialog_Text" xml:space="preserve"><value>Importera tryckprofil</value></data>
   <data name="CreatePdfCourses_exportPrintProfileDialog_Text" xml:space="preserve"><value>Exportera tryckprofil</value></data>
@@ -3821,4 +3930,230 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="CreatePdfCourses_printProfileImportError_Text" xml:space="preserve"><value>Det gick inte att importera den valda tryckprofilen.</value></data>
   <data name="CreatePdfCourses_printProfileExportError_Text" xml:space="preserve"><value>Det gick inte att exportera tryckprofilen.</value></data>
   <data name="CreatePdfCourses_selectPrintProfile_Text" xml:space="preserve"><value>Välj först en tryckprofil.</value></data>
+  <data name="CreatePdfCourses_printProfilePreview_Text" xml:space="preserve"><value>Förhandsgranskning av profilens färger</value></data>
+  <data name="CreatePdfCourses_printProfileMapKind_Text" xml:space="preserve"><value>Karta:</value></data>
+  <data name="CreatePdfCourses_printProfileMapKindForest_Text" xml:space="preserve"><value>Skog</value></data>
+  <data name="CreatePdfCourses_printProfileMapKindSprint_Text" xml:space="preserve"><value>Sprint</value></data>
+  <data name="CreatePdfCourses_printProfileVersion_Text" xml:space="preserve"><value>Version:</value></data>
+  <data name="MainFrame_eventReadinessMenu_Text" xml:space="preserve"><value>Tävlingskontroll</value></data>
+  <data name="TrainingExercisesDialog_Title" xml:space="preserve"><value>Träningsmoment</value></data>
+  <data name="TrainingExercisesDialog_Intro" xml:space="preserve"><value>Redigera träningsöverlägg. Geometrin redigeras på kartan.</value></data>
+  <data name="TrainingExercisesDialog_Save" xml:space="preserve"><value>Spara</value></data>
+  <data name="TrainingExercisesDialog_Add" xml:space="preserve"><value>Lägg till moment</value></data>
+  <data name="TrainingExercisesDialog_Remove" xml:space="preserve"><value>Ta bort moment</value></data>
+  <data name="TrainingExercisesDialog_Instruction" xml:space="preserve"><value>Instruktion</value></data>
+  <data name="TrainingExercisesDialog_Width" xml:space="preserve"><value>Korridorbredd (mm på kartan)</value></data>
+  <data name="TrainingExercisesDialog_AttackPointSize" xml:space="preserve"><value>Attackpunktsdiameter (mm på kartan)</value></data>
+  <data name="TrainingExercisesDialog_Masking" xml:space="preserve"><value>Maskning</value></data>
+  <data name="TrainingExercisesDialog_AreaMasking" xml:space="preserve"><value>Maskning av område</value></data>
+  <data name="TrainingExercisesDialog_AllowedSymbols" xml:space="preserve"><value>Höjdkurvornas symbol-id (valfritt)</value></data>
+  <data name="TrainingExercisesDialog_VisibleMapLayers" xml:space="preserve"><value>Kartlager som ska visas</value></data>
+  <data name="TrainingExercisesDialog_VisibleMapLayersHelp" xml:space="preserve"><value>Kryssa i de kartsymboler som ska vara synliga inom området. Färgprov, symbolnummer och kartans namn visas tillsammans.</value></data>
+  <data name="TrainingExercisesDialog_AllowedSymbolsHint" xml:space="preserve"><value>Valfria OCAD/OpenMapper-symbol-id:n, separerade med semikolon. Tomt använder kurvorna 101, 102 och 103.</value></data>
+  <data name="TrainingExercisesDialog_MaskingPreviewNote" xml:space="preserve"><value>Maskningen förhandsvisas och skrivs för närvarande ut ogenomskinligt; vald procent sparas för transparensrendering.</value></data>
+  <data name="TrainingExercisesDialog_Runner" xml:space="preserve"><value>Löpare</value></data>
+  <data name="TrainingExercisesDialog_Coach" xml:space="preserve"><value>Tränare</value></data>
+  <data name="TrainingExercisesDialog_Answer" xml:space="preserve"><value>Facit</value></data>
+  <data name="TrainingExercisesDialog_Details" xml:space="preserve"><value>Momentdetaljer</value></data>
+  <data name="TrainingExercisesDialog_Type" xml:space="preserve"><value>Typ</value></data>
+  <data name="TrainingExercisesDialog_Corridor" xml:space="preserve"><value>Korridor</value></data>
+  <data name="TrainingExercisesDialog_AttackPoint" xml:space="preserve"><value>Sista säkra</value></data>
+  <data name="TrainingExercisesDialog_Line" xml:space="preserve"><value>Linje</value></data>
+  <data name="TrainingExercisesDialog_ContourOnly" xml:space="preserve"><value>Område med endast höjdkurvor</value></data>
+  <data name="TrainingExercisesDialog_VisibleIn" xml:space="preserve"><value>Visa i</value></data>
+  <data name="TrainingExercisesDialog_GeometryNote" xml:space="preserve"><value>Använd träningsverktygen på kartan för att skapa eller ersätta geometri. Här ändras endast momentets inställningar.</value></data>
+  <data name="TrainingExercisesDialog_ContourSupportNote" xml:space="preserve"><value>Den visuella lagerlistan finns för OCAD- och OpenMapper-vektorkartor. Standardlagren för höjdkurvor är valda från början.</value></data>
+  <data name="TrainingExercisesDialog_Invalid" xml:space="preserve"><value>Fyll i geometrin och välj minst en visningsprofil innan du sparar.</value></data>
+  <data name="TrainingExercisesDialog_CorridorHelp" xml:space="preserve"><value>Kartan syns inne i den streckade korridoren. Ett valbart vitt band skiljer korridoren från kartan runtomkring.</value></data>
+  <data name="TrainingExercisesDialog_AttackPointHelp" xml:space="preserve"><value>Markerar den sista säkra punkten före kontrollen. Storleken utgår från kontrollringens storlek.</value></data>
+  <data name="TrainingExercisesDialog_LineHelp" xml:space="preserve"><value>Ett linjemoment där löparen följer geometrin som ritats på kartan.</value></data>
+  <data name="TrainingExercisesDialog_ContourOnlyHelp" xml:space="preserve"><value>Inom det markerade området visas endast höjdkurvor från vektorkartan.</value></data>
+  <data name="TrainingExercisesDialog_TypeLockedHint" xml:space="preserve"><value>Momenttypen väljs med träningsverktyget på kartan. Skapa ett nytt moment för att byta typ.</value></data>
+  <data name="TrainingExercisesDialog_InstructionPlaceholder" xml:space="preserve"><value>Valfri instruktion som visas tillsammans med momentet</value></data>
+  <data name="TrainingExercisesDialog_InstructionHelp" xml:space="preserve"><value>Texten ändrar inte geometrin på kartan.</value></data>
+  <data name="TrainingExercisesDialog_WidthHelp" xml:space="preserve"><value>Korridorens totala bredd i kartans millimeter.</value></data>
+  <data name="TrainingExercisesDialog_WhiteMargin" xml:space="preserve"><value>Vitt utrymme runt korridoren</value></data>
+  <data name="TrainingExercisesDialog_WhiteMarginHelp" xml:space="preserve"><value>Bredden på det vita bandet utanför vardera streckade kanten, i kartans millimeter.</value></data>
+  <data name="TrainingExercisesDialog_AttackPointSizeHelp" xml:space="preserve"><value>Attackpunktens diameter i kartans millimeter.</value></data>
+  <data name="TrainingExercisesDialog_CorridorMasking" xml:space="preserve"><value>Styrka på det vita bandet</value></data>
+  <data name="TrainingExercisesDialog_CorridorMaskingHelp" xml:space="preserve"><value>100 % ger helt vitt. Lägre värden låter kartan synas genom bandet.</value></data>
+  <data name="TrainingExercisesDialog_ContourMasking" xml:space="preserve"><value>Vit mask inom området</value></data>
+  <data name="TrainingExercisesDialog_ContourMaskingHelp" xml:space="preserve"><value>Styr hur kraftigt övriga kartdetaljer döljs inom det markerade området.</value></data>
+  <data name="TrainingExercisesDialog_VisibleInHelp" xml:space="preserve"><value>Välj i vilka exporterade träningsversioner momentet ska finnas med.</value></data>
+  <data name="TrainingExercisesDialog_MoveUp" xml:space="preserve"><value>Flytta upp</value></data>
+  <data name="TrainingExercisesDialog_MoveDown" xml:space="preserve"><value>Flytta ned</value></data>
+  <data name="TrainingExercisesDialog_Duplicate" xml:space="preserve"><value>Duplicera</value></data>
+  <data name="TrainingExercisesDialog_Menu" xml:space="preserve"><value>Träning</value></data>
+  <data name="TrainingExercisesDialog_Tools" xml:space="preserve"><value>Träningsverktyg</value></data>
+  <data name="MobileControlInspectionDialog_Kind_None" xml:space="preserve"><value>Ingen</value></data>
+  <data name="MobileControlInspectionDialog_Kind_MapIssue" xml:space="preserve"><value>Problempunkt på karta</value></data>
+  <data name="MobileControlInspectionDialog_Kind_Start" xml:space="preserve"><value>Start</value></data>
+  <data name="MobileControlInspectionDialog_Kind_MapExchange" xml:space="preserve"><value>Byte av karta</value></data>
+  <data name="MobileControlInspectionDialog_Kind_Normal" xml:space="preserve"><value>Kontroll</value></data>
+  <data name="MobileControlInspectionDialog_Kind_Finish" xml:space="preserve"><value>Mål</value></data>
+  <data name="MobileControlInspectionDialog_Kind_CrossingPoint" xml:space="preserve"><value>Övergångspunkt</value></data>
+  <data name="MobileControlInspectionDialog_Status_Ready" xml:space="preserve"><value>Klar</value></data>
+  <data name="MobileControlInspectionDialog_Status_NoCode" xml:space="preserve"><value>Saknar kod</value></data>
+  <data name="MobileControlInspectionDialog_Title" xml:space="preserve"><value>Kontrollinspektion</value></data>
+  <data name="MobileControlInspectionDialog_Intro" xml:space="preserve"><value>Kontrollera den aktiva banan före fältarbete.</value></data>
+  <data name="MobileControlInspectionDialog_Sequence" xml:space="preserve"><value>Ordning</value></data>
+  <data name="MobileControlInspectionDialog_Code" xml:space="preserve"><value>Kod</value></data>
+  <data name="MobileControlInspectionDialog_Kind" xml:space="preserve"><value>Typ</value></data>
+  <data name="MobileControlInspectionDialog_Location" xml:space="preserve"><value>Plats</value></data>
+  <data name="MobileControlInspectionDialog_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="MobileControlInspectionDialog_ObservedCode" xml:space="preserve"><value>Observerad kod</value></data>
+  <data name="MobileControlInspectionDialog_Comment" xml:space="preserve"><value>Kommentar</value></data>
+  <data name="MobileControlInspectionDialog_Export" xml:space="preserve"><value>Förbered export</value></data>
+  <data name="MobileControlInspectionDialog_Import" xml:space="preserve"><value>Importera</value></data>
+  <data name="MobileControlInspectionDialog_ExchangeHint" xml:space="preserve"><value>Export skapar portabel JSON. En värd kan skicka importerad JSON till vy-modellen.</value></data>
+  <data name="MobileControlInspectionDialog_JsonPlaceholder" xml:space="preserve"><value>Exporterad inspektions-JSON</value></data>
+  <data name="MobileControlInspectionDialog_ImportPlaceholder" xml:space="preserve"><value>Klistra in inspektions-JSON för import</value></data>
+  <data name="MobileControlInspectionDialog_ImportError_None" xml:space="preserve"><value></value></data>
+  <data name="MobileControlInspectionDialog_ImportError_InvalidPackage" xml:space="preserve"><value>Kunde inte importera inspektions-JSON. Kontrollera att paketet är giltigt och komplett.</value></data>
+  <data name="MobileControlInspectionDialog_ImportError_CourseMismatch" xml:space="preserve"><value>Inspektionspaketet gäller en annan bana eller bandel.</value></data>
+  <data name="HistoryReviewDialog_Saved" xml:space="preserve"><value>Sparad</value></data>
+  <data name="HistoryReviewDialog_Unsaved" xml:space="preserve"><value>Osparade ändringar</value></data>
+  <data name="HistoryReviewDialog_Idle" xml:space="preserve"><value>Inaktiv</value></data>
+  <data name="HistoryReviewDialog_InProgress" xml:space="preserve"><value>Kommando pågår</value></data>
+  <data name="HistoryReviewDialog_NothingToUndo" xml:space="preserve"><value>Inget att ångra</value></data>
+  <data name="HistoryReviewDialog_NothingToRedo" xml:space="preserve"><value>Inget att göra om</value></data>
+  <data name="HistoryReviewDialog_Controls" xml:space="preserve"><value>Kontroller</value></data>
+  <data name="HistoryReviewDialog_Courses" xml:space="preserve"><value>Banor</value></data>
+  <data name="HistoryReviewDialog_CourseControls" xml:space="preserve"><value>Ban­kontroller</value></data>
+  <data name="HistoryReviewDialog_Legs" xml:space="preserve"><value>Sträckor</value></data>
+  <data name="HistoryReviewDialog_Specials" xml:space="preserve"><value>Specialobjekt</value></data>
+  <data name="HistoryReviewDialog_TrainingExercises" xml:space="preserve"><value>Träningsmoment</value></data>
+  <data name="HistoryReviewDialog_Snapshots" xml:space="preserve"><value>Ögonblicksbilder</value></data>
+  <data name="HistoryReviewDialog_SnapshotNamePlaceholder" xml:space="preserve"><value>Namn</value></data>
+  <data name="HistoryReviewDialog_SnapshotCommentPlaceholder" xml:space="preserve"><value>Kommentar</value></data>
+  <data name="HistoryReviewDialog_CreateSnapshot" xml:space="preserve"><value>Skapa ögonblicksbild</value></data>
+  <data name="HistoryReviewDialog_RenameSnapshot" xml:space="preserve"><value>Byt namn</value></data>
+  <data name="HistoryReviewDialog_AddComment" xml:space="preserve"><value>Lägg till kommentar</value></data>
+  <data name="HistoryReviewDialog_JsonReport" xml:space="preserve"><value>JSON-rapport</value></data>
+  <data name="HistoryReviewDialog_CompareWith" xml:space="preserve"><value>Jämför med:</value></data>
+  <data name="HistoryReviewDialog_CompareSnapshots" xml:space="preserve"><value>Jämför ögonblicksbilder</value></data>
+  <data name="HistoryReviewDialog_Total" xml:space="preserve"><value>Totalt</value></data>
+  <data name="RouteChoiceAnalysisDialog_Title" xml:space="preserve"><value>Ruttvalsanalys</value></data>
+  <data name="RouteChoiceAnalysisDialog_Explanation" xml:space="preserve"><value>Mätvärdena använder den ruttgeometri som sparats för varje sträcka. Alternativa rutter skapas inte automatiskt.</value></data>
+  <data name="RouteChoiceAnalysisDialog_Leg" xml:space="preserve"><value>Sträcka</value></data>
+  <data name="RouteChoiceAnalysisDialog_From" xml:space="preserve"><value>Från</value></data>
+  <data name="RouteChoiceAnalysisDialog_To" xml:space="preserve"><value>Till</value></data>
+  <data name="RouteChoiceAnalysisDialog_Length" xml:space="preserve"><value>Längd</value></data>
+  <data name="RouteChoiceAnalysisDialog_Turns" xml:space="preserve"><value>Svängar</value></data>
+  <data name="RouteChoiceAnalysisDialog_TotalTurn" xml:space="preserve"><value>Total sväng</value></data>
+  <data name="RouteChoiceAnalysisDialog_MaxTurn" xml:space="preserve"><value>Största sväng</value></data>
+  <data name="RouteChoiceAnalysisDialog_DrawCandidate" xml:space="preserve"><value>Rita alternativ</value></data>
+  <data name="RouteChoiceAnalysisDialog_DeleteCandidate" xml:space="preserve"><value>Ta bort alternativ</value></data>
+  <data name="RouteChoiceAnalysisDialog_Candidates" xml:space="preserve"><value>Alternativ</value></data>
+  <data name="RouteChoiceAnalysisDialog_Name" xml:space="preserve"><value>Namn</value></data>
+  <data name="RouteChoiceAnalysisDialog_LengthDelta" xml:space="preserve"><value>Δ längd</value></data>
+  <data name="RouteChoiceAnalysisDialog_TurnDelta" xml:space="preserve"><value>Δ svängar</value></data>
+  <data name="RouteChoiceAnalysisDialog_Notes" xml:space="preserve"><value>Anteckningar</value></data>
+  <data name="RouteChoiceAnalysisDialog_CandidateDetails" xml:space="preserve"><value>Alternativdetaljer</value></data>
+  <data name="RouteChoiceAnalysisDialog_Source" xml:space="preserve"><value>Källa</value></data>
+  <data name="RouteChoiceAnalysisDialog_SaveCandidate" xml:space="preserve"><value>Spara alternativ</value></data>
+  <data name="CreatePdfCourses_labelTrainingProfile_Text" xml:space="preserve"><value>Träningsvy</value></data>
+  <data name="CreatePdfCourses_trainingProfile_None" xml:space="preserve"><value>Ingen</value></data>
+  <data name="CreatePdfCourses_trainingProfile_Runner" xml:space="preserve"><value>Löpare</value></data>
+  <data name="CreatePdfCourses_trainingProfile_Coach" xml:space="preserve"><value>Tränare</value></data>
+  <data name="CreatePdfCourses_trainingProfile_Answer" xml:space="preserve"><value>Facit</value></data>
+  <data name="CreatePdfCourses_trainingProfile_VectorWarning" xml:space="preserve"><value>Konturområden tas bara med för OCAD/OpenMapper-vektorkartor.</value></data>
+  <data name="EventClassDialog_Title" xml:space="preserve"><value>Tävlingsklasser</value></data>
+  <data name="EventClassDialog_Description" xml:space="preserve"><value>En rad per klass och bana</value></data>
+  <data name="EventClassDialog_Participants" xml:space="preserve"><value>Deltagare:</value></data>
+  <data name="EventClassDialog_RequiredMaps" xml:space="preserve"><value>Behövliga kartor:</value></data>
+  <data name="EventClassDialog_Add" xml:space="preserve"><value>Lägg till klass</value></data>
+  <data name="EventClassDialog_Remove" xml:space="preserve"><value>Ta bort klass</value></data>
+  <data name="EventClassDialog_Import" xml:space="preserve"><value>Importera startlista</value></data>
+  <data name="EventClassDialog_Apply" xml:space="preserve"><value>Tillämpa förslag</value></data>
+  <data name="EventClassDialog_Imported" xml:space="preserve"><value>Importerade klassförslag</value></data>
+  <data name="EventClassDialog_Class" xml:space="preserve"><value>Klass</value></data>
+  <data name="EventClassDialog_Course" xml:space="preserve"><value>Bana</value></data>
+  <data name="EventClassDialog_ParticipantsColumn" xml:space="preserve"><value>Deltagare</value></data>
+  <data name="EventClassDialog_StartInterval" xml:space="preserve"><value>Startintervall</value></data>
+  <data name="EventClassDialog_BibStart" xml:space="preserve"><value>Nummer från</value></data>
+  <data name="EventClassDialog_BibEnd" xml:space="preserve"><value>Nummer till</value></data>
+  <data name="EventClassDialog_MapsPerParticipant" xml:space="preserve"><value>Kartor/person</value></data>
+  <data name="EventClassDialog_Reserves" xml:space="preserve"><value>Reserver</value></data>
+  <data name="EventClassDialog_RequiredMapsColumn" xml:space="preserve"><value>Behövliga kartor</value></data>
+  <data name="EventClassDialog_Conflict" xml:space="preserve"><value>Konflikt / ej matchad</value></data>
+  <data name="EventClassDialog_Matched" xml:space="preserve"><value>Matchad</value></data>
+  <data name="EventClassDialog_ImportTitle" xml:space="preserve"><value>Importera startlista</value></data>
+  <data name="EventClassDialog_FileType" xml:space="preserve"><value>CSV eller IOF XML</value></data>
+  <data name="EventClassDialog_ErrorImport" xml:space="preserve"><value>Startlistan kunde inte importeras.</value></data>
+  <data name="EventClassDialog_ErrorName" xml:space="preserve"><value>Varje klass måste ha ett namn.</value></data>
+  <data name="EventClassDialog_ErrorDuplicate" xml:space="preserve"><value>Klassnamnen måste vara unika.</value></data>
+  <data name="EventClassDialog_ErrorCourse" xml:space="preserve"><value>Varje klass måste ha en bana.</value></data>
+  <data name="EventClassDialog_ErrorNegative" xml:space="preserve"><value>Antal och intervall får inte vara negativa.</value></data>
+  <data name="EventClassDialog_ErrorBibRange" xml:space="preserve"><value>Slutnumret måste vara minst lika stort som startnumret.</value></data>
+  <data name="EventClassDialog_ErrorGeneric" xml:space="preserve"><value>Korrigera klassuppgifterna.</value></data>
+  <data name="MeosIofCentral_Menu" xml:space="preserve"><value>MeOS / IOF-central</value></data>
+  <data name="MeosIofCentral_Title" xml:space="preserve"><value>MeOS / IOF-central</value></data>
+  <data name="MeosIofCentral_Intro" xml:space="preserve"><value>Importera startlistor, exportera och jämför IOF CourseData eller skapa ett Livelox-paket.</value></data>
+  <data name="MeosIofCentral_File" xml:space="preserve"><value>Sökväg till fil</value></data>
+  <data name="MeosIofCentral_Import" xml:space="preserve"><value>Importera startlista</value></data>
+  <data name="MeosIofCentral_Export" xml:space="preserve"><value>Exportera CourseData 3.0</value></data>
+  <data name="MeosIofCentral_Compare" xml:space="preserve"><value>Jämför CourseData</value></data>
+  <data name="MeosIofCentral_Livelox" xml:space="preserve"><value>Skapa Livelox-paket</value></data>
+  <data name="MeosIofCentral_Apply" xml:space="preserve"><value>Tillämpa säkra matchningar</value></data>
+  <data name="CreatePdfCourses_workshopPreview_Text" xml:space="preserve"><value>Förhandsvisning av pappersverkstad (fram / baksida)</value></data>
+  <data name="CreatePdfCourses_previewSheet_Text" xml:space="preserve"><value>Ark</value></data>
+  <data name="CreatePdfCourses_previewFront_Text" xml:space="preserve"><value>Framsida</value></data>
+  <data name="CreatePdfCourses_previewBack_Text" xml:space="preserve"><value>Baksida</value></data>
+  <data name="CreatePdfCourses_previewSlots_Text" xml:space="preserve"><value>Platser</value></data>
+  <data name="MeosIofCentral_ResultImported" xml:space="preserve"><value>Startlista importerad ({0} poster).</value></data>
+  <data name="MeosIofCentral_ResultApplied" xml:space="preserve"><value>Säkra klassmatchningar tillämpade ({0}).</value></data>
+  <data name="MeosIofCentral_ResultNoEvent" xml:space="preserve"><value>Inget arrangemang är öppet för jämförelse.</value></data>
+  <data name="MeosIofCentral_ResultCompared" xml:space="preserve"><value>CourseData jämförd utan att ändra arrangemanget.</value></data>
+  <data name="MeosIofCentral_ResultNoDifferences" xml:space="preserve"><value>Inga skillnader hittades.</value></data>
+  <data name="MeosIofCentral_ResultExportValid" xml:space="preserve"><value>CourseData 3.0 är giltig.</value></data>
+  <data name="MeosIofCentral_ResultExportInvalid" xml:space="preserve"><value>CourseData 3.0-valideringen misslyckades.</value></data>
+  <data name="MeosIofCentral_ResultLiveloxCreated" xml:space="preserve"><value>Livelox-paket skapat.</value></data>
+  <data name="MeosIofCentral_Matched" xml:space="preserve"><value>Matchad</value></data>
+  <data name="MeosIofCentral_Conflict" xml:space="preserve"><value>Konflikt</value></data>
+  <data name="PrintProfileEditor_NamePlaceholder" xml:space="preserve"><value>Profilnamn</value></data>
+  <data name="PrintProfileEditor_PreflightPassed" xml:space="preserve"><value>Förkontrollen godkänd.</value></data>
+  <data name="PrintProfileEditor_PreflightReview" xml:space="preserve"><value>Några färger behöver paras manuellt. Klicka på ”Para kartfärger”.</value></data>
+  <data name="CourseControlOverviewDialog_InvalidLoad" xml:space="preserve"><value>Belastningen måste vara ett heltal som är noll eller större, eller tomt för att lämnas osatt.</value></data>
+  <data name="PrintProfileEditorDialog_ErrorNameRequired" xml:space="preserve"><value>Ange ett namn innan profilen sparas.</value></data>
+  <data name="MobileControlInspectionDialog_InspectionStatus_Uninspected" xml:space="preserve"><value>Ej inspekterad</value></data>
+  <data name="MobileControlInspectionDialog_InspectionStatus_Ready" xml:space="preserve"><value>Klar</value></data>
+  <data name="MobileControlInspectionDialog_InspectionStatus_NeedsAttention" xml:space="preserve"><value>Kräver åtgärd</value></data>
+  <data name="MobileControlInspectionDialog_InspectionStatus_Missing" xml:space="preserve"><value>Saknas</value></data>
+  <data name="MobileControlInspectionDialog_CodeValidation" xml:space="preserve"><value>Kodkontroll</value></data>
+  <data name="MobileControlInspectionDialog_CodeValidation_Correct" xml:space="preserve"><value>Rätt</value></data>
+  <data name="MobileControlInspectionDialog_CodeValidation_Missing" xml:space="preserve"><value>Saknas</value></data>
+  <data name="MobileControlInspectionDialog_CodeValidation_Unexpected" xml:space="preserve"><value>Oväntad</value></data>
+  <data name="MobileControlInspectionDialog_CodeValidation_Duplicate" xml:space="preserve"><value>Dublett</value></data>
+  <data name="MobileControlInspectionDialog_CodeValidation_OutOfOrder" xml:space="preserve"><value>Fel ordning</value></data>
+  <data name="PrintProfileEditorDialog_MoveUp" xml:space="preserve"><value>Flytta den valda regeln uppåt</value></data>
+  <data name="PrintProfileEditorDialog_MoveDown" xml:space="preserve"><value>Flytta den valda regeln nedåt</value></data>
+  <data name="MeosIofCentral_StartListTab" xml:space="preserve"><value>Startlista</value></data>
+  <data name="MeosIofCentral_CourseDataTab" xml:space="preserve"><value>Banor (CourseData)</value></data>
+  <data name="MeosIofCentral_LiveloxTab" xml:space="preserve"><value>Livelox</value></data>
+  <data name="MeosIofCentral_StartListHelp" xml:space="preserve"><value>Importera deltagare från MeOS eller en IOF-startlista. Endast entydigt matchade klasser kan tillämpas.</value></data>
+  <data name="MeosIofCentral_CourseDataHelp" xml:space="preserve"><value>Exportera arrangemangets banor eller jämför dem med en befintlig IOF CourseData-fil. Jämförelsen ändrar ingenting.</value></data>
+  <data name="MeosIofCentral_LiveloxHelp" xml:space="preserve"><value>Skapa en CourseData-fil för Livelox. När filen har skapats öppnas Livelox webbplats.</value></data>
+  <data name="MeosIofCentral_ClassHeader" xml:space="preserve"><value>Klass</value></data>
+  <data name="MeosIofCentral_CountHeader" xml:space="preserve"><value>Deltagare</value></data>
+  <data name="MeosIofCentral_StatusHeader" xml:space="preserve"><value>Matchning</value></data>
+  <data name="MeosIofCentral_ErrorHeader" xml:space="preserve"><value>Åtgärden kunde inte slutföras</value></data>
+  <data name="EventClassDialog_StartIntervalHelp" xml:space="preserve"><value>Startintervall anges i minuter. Kartor/person multipliceras med deltagarantalet och reserver läggs till.</value></data>
+  <data name="HistoryReviewDialog_Intro" xml:space="preserve"><value>Spara namngivna kontrollpunkter när du vill kunna jämföra hur arrangemanget har förändrats.</value></data>
+  <data name="HistoryReviewDialog_ReportPlaceholder" xml:space="preserve"><value>Välj två olika kontrollpunkter och klicka på Jämför.</value></data>
+  <data name="HistoryReviewDialog_Advanced" xml:space="preserve"><value>Teknisk information</value></data>
+  <data name="CourseControlOverviewDialog_FirstCourse" xml:space="preserve"><value>Första banan</value></data>
+  <data name="CourseControlOverviewDialog_SecondCourse" xml:space="preserve"><value>Jämför med</value></data>
+  <data name="SetPrintAreaDialog_templatesHelp_Text" xml:space="preserve"><value>Mallar sparar pappersstorlek, marginal och rotation för återanvändning.</value></data>
+  <data name="SetPrintAreaDialog_automaticHelp_Text" xml:space="preserve"><value>Låter programmet välja ett område som rymmer hela banan.</value></data>
+  <data name="SetPrintAreaDialog_fixSizeHelp_Text" xml:space="preserve"><value>Behåller papprets proportioner när du drar området på kartan.</value></data>
+  <data name="PdfProductionReviewDialog_courseColumn_Text" xml:space="preserve"><value>Bana</value></data>
+  <data name="PdfProductionReviewDialog_mapViewsColumn_Text" xml:space="preserve"><value>Kartbilder</value></data>
+  <data name="PdfProductionReviewDialog_paperColumn_Text" xml:space="preserve"><value>Papper</value></data>
+  <data name="PdfProductionReviewDialog_orientationColumn_Text" xml:space="preserve"><value>Orientering</value></data>
+  <data name="PdfProductionReviewDialog_sheetsColumn_Text" xml:space="preserve"><value>Ark</value></data>
+  <data name="PrintProfileEditor_PreflightStatus_Matched" xml:space="preserve"><value>Matchad</value></data>
+  <data name="PrintProfileEditor_PreflightStatus_NotPresent" xml:space="preserve"><value>Saknas i kartan</value></data>
+  <data name="PrintProfileEditor_PreflightStatus_NeedsConfirmation" xml:space="preserve"><value>Behöver bekräftas</value></data>
+  <data name="PrintProfileEditor_PreflightStatus_Ambiguous" xml:space="preserve"><value>Flera möjliga färger</value></data>
 </root>

@@ -300,6 +300,9 @@
   <data name="RelayVariation_BranchWarning" xml:space="preserve">
     <value>Varning: P.g.a. antalet sträckor som angetts så kommer gafflingen vid kontroll {0} inte att bli jämt utnyttjad. {1} sträcka/or kommer att använda gaffling(ar) {2} medan {3} sträcka/or kommer att använda gaffling(ar) {4}. </value>
   </data>
+  <data name="RelayVariation_ForkKey" xml:space="preserve">
+    <value>Gafflingsnyckel</value>
+  </data>
   <data name="RelayVariation_LegHeader" xml:space="preserve">
     <value>Sträcka {0}</value>
   </data>
@@ -312,4 +315,66 @@
   <data name="RelayVariation_Title" xml:space="preserve">
     <value>Gafflingstilldelning för {0}</value>
   </data>
+  <data name="EventReadiness_Title" xml:space="preserve"><value>Tävlingskontroll: {0}</value></data>
+  <data name="EventReadiness_NoBlockers" xml:space="preserve"><value>Inga blockerande fel i banstrukturen hittades.</value></data>
+  <data name="EventReadiness_BlockerSummary" xml:space="preserve"><value>{0} blockerande fel i banstrukturen behöver åtgärdas.</value></data>
+  <data name="EventReadiness_NoWarnings" xml:space="preserve"><value>Inga varningar för kontrollsäkerhet eller kontrolldata hittades.</value></data>
+  <data name="EventReadiness_WarningSummary" xml:space="preserve"><value>{0} varning(ar) bör granskas före publicering.</value></data>
+  <data name="EventReadiness_Checks" xml:space="preserve"><value>Kontroller</value></data>
+  <data name="EventReadiness_GeometryDetails" xml:space="preserve"><value>Geometrivarningar att granska</value></data>
+  <data name="EventReadiness_GeometryType" xml:space="preserve"><value>Varning</value></data>
+  <data name="EventReadiness_GeometryMeasure" xml:space="preserve"><value>Mått</value></data>
+  <data name="EventReadiness_ShortLeg" xml:space="preserve"><value>Kort sträcka</value></data>
+  <data name="EventReadiness_SharpTurn" xml:space="preserve"><value>Spetsig vinkel</value></data>
+  <data name="EventReadiness_Status" xml:space="preserve"><value>Status</value></data>
+  <data name="EventReadiness_Area" xml:space="preserve"><value>Område</value></data>
+  <data name="EventReadiness_Count" xml:space="preserve"><value>Fel</value></data>
+  <data name="EventReadiness_Action" xml:space="preserve"><value>Nästa steg</value></data>
+  <data name="EventReadiness_Ready" xml:space="preserve"><value>Klar</value></data>
+  <data name="EventReadiness_Blocker" xml:space="preserve"><value>Blockerar</value></data>
+  <data name="EventReadiness_Warning" xml:space="preserve"><value>Granska</value></data>
+  <data name="EventReadiness_CourseStructure" xml:space="preserve"><value>Banstruktur</value></data>
+  <data name="EventReadiness_ControlSafety" xml:space="preserve"><value>Kontrollsäkerhet</value></data>
+  <data name="EventReadiness_ShortLegs" xml:space="preserve"><value>Korta sträckor (under 100 m)</value></data>
+  <data name="EventReadiness_SharpTurns" xml:space="preserve"><value>Spetsiga vinklar (under 45°)</value></data>
+  <data name="EventReadiness_LegCrossings" xml:space="preserve"><value>Korsande sträckor</value></data>
+  <data name="EventReadiness_ControlData" xml:space="preserve"><value>Kontrolldata</value></data>
+  <data name="EventReadiness_Relay" xml:space="preserve"><value>Stafettens gafflingsbalans</value></data>
+  <data name="EventReadiness_CourseAction" xml:space="preserve"><value>Öppna Event Audit och rätta start, mål, upprepade kontroller och poäng.</value></data>
+  <data name="EventReadiness_ControlAction" xml:space="preserve"><value>Granska närliggande kontroller och sträckor som används i båda riktningarna.</value></data>
+  <data name="EventReadiness_ShortLegsAction" xml:space="preserve"><value>Granska sträckor kortare än 100 m med avseende på läsbarhet och lämpligt kontrollavstånd.</value></data>
+  <data name="EventReadiness_SharpTurnsAction" xml:space="preserve"><value>Granska spetsiga vinklar och hundben så att kontrollringar är läsbara och löparflödet säkert.</value></data>
+  <data name="EventReadiness_LegCrossingsAction" xml:space="preserve"><value>Granska korsande sträckor och dra om sträckor där kartan blir svårläst.</value></data>
+  <data name="EventReadiness_DataAction" xml:space="preserve"><value>Granska oanvända kontroller, beskrivningar och stämplingsmönster.</value></data>
+  <data name="EventReadiness_RelayAction" xml:space="preserve"><value>Granska stafettens gafflingstilldelning och balans mellan grenar.</value></data>
+  <data name="EventReadiness_NoAction" xml:space="preserve"><value>Ingen åtgärd behövs.</value></data>
+  <data name="EventReadiness_Details" xml:space="preserve"><value>Använd Rapporter → Event Audit för den fullständiga listan punkt för punkt.</value></data>
+  <data name="EventReadiness_LegCrossing" xml:space="preserve"><value>Sträckkorsning</value></data>
+  <data name="EventReadiness_Numbering" xml:space="preserve"><value>Kontrollnummer på kartan</value></data>
+  <data name="EventReadiness_Print" xml:space="preserve"><value>Skala och utskriftsområde</value></data>
+  <data name="EventReadiness_Classes" xml:space="preserve"><value>Klass–ban-koppling</value></data>
+  <data name="EventReadiness_Backside" xml:space="preserve"><value>Baksidesberedskap</value></data>
+  <data name="EventReadiness_NumberingAction" xml:space="preserve"><value>Kontrollera överlappande kontrollnummer; anpassade placeringar rapporteras men ändras inte automatiskt.</value></data>
+  <data name="EventReadiness_PrintAction" xml:space="preserve"><value>Kontrollera varje banas skala, pappersstorlek, marginaler och utskriftsrektangel.</value></data>
+  <data name="EventReadiness_ClassesAction" xml:space="preserve"><value>Ge varje publicerad bana ett entydigt klassnamn.</value></data>
+  <data name="EventReadiness_BacksideAction" xml:space="preserve"><value>Kontrollera PDF:ens baksidesinställningar och importerade deltagarposter.</value></data>
+  <data name="EventReadiness_NumberingDetails" xml:space="preserve"><value>Kontrollpunkter för kontrollnummer</value></data>
+  <data name="EventReadiness_NumberPair" xml:space="preserve"><value>Nummer</value></data>
+  <data name="EventReadiness_NumberPlacement" xml:space="preserve"><value>Placering</value></data>
+  <data name="EventReadiness_CustomPlacement" xml:space="preserve"><value>Anpassad/låslik placering</value></data>
+  <data name="EventReadiness_AutomaticPlacement" xml:space="preserve"><value>Automatisk placering</value></data>
+  <data name="EventReadiness_PrintDetails" xml:space="preserve"><value>Detaljer om skala och utskrift</value></data>
+  <data name="EventReadiness_Reason" xml:space="preserve"><value>Orsak</value></data>
+  <data name="EventReadiness_InvalidScale" xml:space="preserve"><value>Skalan ligger utanför tävlingsintervallet (1:100–1:100000) eller är inte numerisk.</value></data>
+  <data name="EventReadiness_MissingPrintArea" xml:space="preserve"><value>Utskriftsområde saknas.</value></data>
+  <data name="EventReadiness_InvalidPaper" xml:space="preserve"><value>Papperets bredd eller höjd saknas eller är ogiltig.</value></data>
+  <data name="EventReadiness_InvalidMargins" xml:space="preserve"><value>Marginalerna är negativa eller upptar hela papperet.</value></data>
+  <data name="EventReadiness_InvalidPrintArea" xml:space="preserve"><value>Den manuella utskriftsrektangeln är tom eller har ogiltiga mått.</value></data>
+  <data name="EventReadiness_ClassDetails" xml:space="preserve"><value>Klass–ban-kopplingar att granska</value></data>
+  <data name="EventReadiness_Class" xml:space="preserve"><value>Klass</value></data>
+  <data name="EventReadiness_MissingClass" xml:space="preserve"><value>Inget klassnamn är tilldelat.</value></data>
+  <data name="EventReadiness_DuplicateClass" xml:space="preserve"><value>Klassnamnet är tilldelat flera banor.</value></data>
+  <data name="EventReadiness_BacksideDetails" xml:space="preserve"><value>Detaljer om baksida</value></data>
+  <data name="EventReadiness_BacksideNoRecords" xml:space="preserve"><value>Baksidesinformation är aktiverad, men inga deltagarposter har importerats.</value></data>
+  <data name="EventReadiness_BacksideMissingClass" xml:space="preserve"><value>Banan saknar klassnamn, så deltagarmatchning kan inte verifieras.</value></data>
 </root>

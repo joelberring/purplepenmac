@@ -64,6 +64,8 @@
 
                 <TextBlock Text="{resx:Localize PdfProductionReviewDialog_coursesHeader_Text}" FontWeight="SemiBold" Margin="0,6,0,0"/>
                 <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" Padding="8">
+                  <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto"><TextBlock Text="{resx:Localize PdfProductionReviewDialog_courseColumn_Text}" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{resx:Localize PdfProductionReviewDialog_mapViewsColumn_Text}" FontWeight="SemiBold" Margin="12,0,0,0"/></Grid>
                     <ItemsControl ItemsSource="{Binding Courses}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="core:PdfProductionCourseSummary">
@@ -74,10 +76,13 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                  </StackPanel>
                 </Border>
 
                 <TextBlock Text="{resx:Localize PdfProductionReviewDialog_paperHeader_Text}" FontWeight="SemiBold" Margin="0,6,0,0"/>
                 <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" Padding="8">
+                  <StackPanel Spacing="4">
+                    <Grid ColumnDefinitions="*,Auto,Auto"><TextBlock Text="{resx:Localize PdfProductionReviewDialog_paperColumn_Text}" FontWeight="SemiBold"/><TextBlock Grid.Column="1" Text="{resx:Localize PdfProductionReviewDialog_orientationColumn_Text}" FontWeight="SemiBold" Margin="12,0,0,0"/><TextBlock Grid.Column="2" Text="{resx:Localize PdfProductionReviewDialog_sheetsColumn_Text}" FontWeight="SemiBold" Margin="12,0,0,0"/></Grid>
                     <ItemsControl ItemsSource="{Binding Papers}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate x:DataType="core:PdfProductionPaperSummary">
@@ -90,6 +95,7 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                  </StackPanel>
                 </Border>
 
                 <StackPanel IsVisible="{Binding HasClassPlan}" Spacing="4" Margin="0,6,0,0">

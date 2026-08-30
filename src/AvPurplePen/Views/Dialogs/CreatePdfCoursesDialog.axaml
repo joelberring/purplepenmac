@@ -23,8 +23,9 @@
         x:DataType="vm:CreatePdfCoursesDialogViewModel"
         Title="{resx:Localize CreatePdfCourses_Text}"
         Icon="/Assets/transparent.ico"
-        d:DesignWidth="640" d:DesignHeight="600"
-        Width="640" Height="600"
+        d:DesignWidth="920" d:DesignHeight="700"
+        Width="920" Height="700"
+        MinWidth="760" MinHeight="560"
         CanResize="True"
         CanMinimize="False"
         CanMaximize="False"
@@ -58,7 +59,7 @@
         </StackPanel>
 
         <!-- Two columns. Left = courses, right = appearance + files + folder. -->
-        <Grid ColumnDefinitions="*,12,*">
+        <Grid ColumnDefinitions="300,12,*">
 
             <!-- === Left column: Courses group === -->
             <HeaderedContentControl Grid.Column="0"
@@ -72,7 +73,10 @@
             </HeaderedContentControl>
 
             <!-- === Right column: Appearance, Files, Folder === -->
-            <DockPanel Grid.Column="2">
+            <ScrollViewer Grid.Column="2"
+                          VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled">
+              <StackPanel>
 
                 <!-- Appearance group -->
                 <HeaderedContentControl DockPanel.Dock="Top"
@@ -91,6 +95,18 @@
                             <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxMultiPage_Items1}"/>
                         </ComboBox>
 
+                        <TextBlock Text="{resx:Localize CreatePdfCourses_labelTrainingProfile_Text}"
+                                   Margin="0,4,0,0"/>
+                        <ComboBox x:Name="comboBoxTrainingProfile"
+                                  SelectedIndex="{Binding TrainingExerciseRenderProfileIndex, Mode=TwoWay}">
+                            <ComboBoxItem Content="{resx:Localize CreatePdfCourses_trainingProfile_None}"/>
+                            <ComboBoxItem Content="{resx:Localize CreatePdfCourses_trainingProfile_Runner}"/>
+                            <ComboBoxItem Content="{resx:Localize CreatePdfCourses_trainingProfile_Coach}"/>
+                            <ComboBoxItem Content="{resx:Localize CreatePdfCourses_trainingProfile_Answer}"/>
+                        </ComboBox>
+                        <TextBlock Text="{resx:Localize CreatePdfCourses_trainingProfile_VectorWarning}"
+                                   TextWrapping="Wrap" FontSize="11" Opacity="0.75"/>
+
                         <TextBlock Text="{resx:Localize CreatePdfCourses_labelPageLayout_Text}"
                                    TextWrapping="Wrap"
                                    Margin="0,4,0,0"/>
@@ -101,6 +117,63 @@
                             <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxPageLayout_Items1}"/>
                             <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxPageLayout_Items2}"/>
                         </ComboBox>
+
+                        <TextBlock Text="{resx:Localize CreatePdfCourses_calibrationTitle_Text}"
+                                   Margin="0,4,0,0"/>
+                        <Grid ColumnDefinitions="Auto,90,Auto,Auto" ColumnSpacing="6">
+                            <TextBlock VerticalAlignment="Center" Text="{resx:Localize CreatePdfCourses_calibrationMeasured_Text}"/>
+                            <NumericUpDown Grid.Column="1" Minimum="1" Maximum="1000" Increment="0.1"
+                                           FormatString="0.##" Value="{Binding MeasuredCalibrationMm, Mode=TwoWay}"/>
+                            <TextBlock Grid.Column="2" VerticalAlignment="Center" Text="mm"/>
+                            <Button Grid.Column="3" Content="{resx:Localize CreatePdfCourses_calibrationApply_Text}"
+                                    Command="{Binding ApplyCalibrationCommand}" Classes="Small"/>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{resx:Localize CreatePdfCourses_calibrationFactor_Text}"/>
+                            <TextBlock Text="{Binding ScaleCalibrationFactor, StringFormat=0.0000}"/>
+                            <Button Content="{resx:Localize CreatePdfCourses_calibrationReset_Text}"
+                                    Command="{Binding ResetCalibrationCommand}" Classes="Small"/>
+                        </StackPanel>
+
+                        <Grid ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6" Margin="0,4,0,0">
+                            <ComboBox ItemsSource="{Binding PrintTemplates}"
+                                      SelectedItem="{Binding SelectedPrintTemplate, Mode=TwoWay}"
+                                      DisplayMemberBinding="{Binding Name}"/>
+                            <Button Grid.Column="1" Content="{resx:Localize CreatePdfCourses_templateApply_Text}"
+                                    Command="{Binding ApplyPrintTemplateCommand}" Classes="Small"/>
+                            <Button Grid.Column="2" Content="{resx:Localize CreatePdfCourses_templateDelete_Text}"
+                                    Command="{Binding DeletePrintTemplateCommand}" Classes="Small"/>
+                            <Button Grid.Column="3" Content="{resx:Localize CreatePdfCourses_templateSave_Text}"
+                                    Command="{Binding SavePrintTemplateCommand}" Classes="Small"/>
+                        </Grid>
+                        <TextBox PlaceholderText="{resx:Localize CreatePdfCourses_templateName_Text}"
+                                 Text="{Binding PrintTemplateName, Mode=TwoWay}"/>
+
+                        <Expander Header="{resx:Localize CreatePdfCourses_workshopPreview_Text}"
+                                  IsExpanded="True" Margin="0,6,0,0">
+                            <ScrollViewer MaxHeight="190" HorizontalScrollBarVisibility="Disabled">
+                                <ItemsControl ItemsSource="{Binding WorkshopPreview}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate x:DataType="vm:PrintWorkshopPreviewItem">
+                                            <Border BorderBrush="{DynamicResource ThemeBorderLowBrush}"
+                                                    BorderThickness="0,0,0,1" Padding="3,2">
+                                                <Grid ColumnDefinitions="Auto,Auto,Auto,*,*" ColumnSpacing="6">
+                                                    <TextBlock Text="{resx:Localize CreatePdfCourses_previewSheet_Text}"/>
+                                                    <TextBlock Grid.Column="1" Text="{Binding SheetNumber}" FontWeight="SemiBold"/>
+                                                    <TextBlock Grid.Column="2" Text="{resx:Localize CreatePdfCourses_previewFront_Text}"
+                                                               IsVisible="{Binding IsFront}"/>
+                                                    <TextBlock Grid.Column="2" Text="{resx:Localize CreatePdfCourses_previewBack_Text}"
+                                                               IsVisible="{Binding IsBack}"/>
+                                                    <TextBlock Grid.Column="3" Text="{resx:Localize CreatePdfCourses_previewSlots_Text}"/>
+                                                    <TextBlock Grid.Column="4" Text="{Binding SlotSummary}"
+                                                               TextWrapping="Wrap"/>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                        </Expander>
 
                         <!-- Include (base map or just course) / Color model. -->
                         <Grid ColumnDefinitions="Auto,8,*"
@@ -131,9 +204,8 @@
                             <TextBlock Grid.Row="4" Grid.Column="0"
                                        Text="{resx:Localize CreatePdfCourses_labelPrintProfile_Text}"
                                        VerticalAlignment="Center"/>
-                            <StackPanel Grid.Row="4" Grid.Column="2" Orientation="Horizontal" Spacing="6">
+                            <Grid Grid.Row="4" Grid.Column="2" ColumnDefinitions="*,Auto,Auto,Auto" ColumnSpacing="6">
                                 <ComboBox x:Name="comboBoxPrintProfile"
-                                          Width="220"
                                           SelectedIndex="{Binding PrintProfileIndex, Mode=TwoWay}"
                                           ItemsSource="{Binding PrintProfiles}">
                                     <ComboBox.ItemTemplate>
@@ -145,11 +217,13 @@
                                         </DataTemplate>
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
-                                <Button Content="{resx:Localize CreatePdfCourses_importPrintProfile_Text}"
+                                <Button Grid.Column="1" Classes="Small" Content="{resx:Localize CreatePdfCourses_importPrintProfile_Text}"
                                         Click="ImportPrintProfileButton_Click"/>
-                                <Button Content="{resx:Localize CreatePdfCourses_exportPrintProfile_Text}"
+                                <Button Grid.Column="2" Classes="Small" Content="{resx:Localize CreatePdfCourses_exportPrintProfile_Text}"
                                         Click="ExportPrintProfileButton_Click"/>
-                            </StackPanel>
+                                <Button Grid.Column="3" Classes="Small" Content="{resx:Localize CreatePdfCourses_editPrintProfile_Text}"
+                                        Click="EditPrintProfileButton_Click"/>
+                            </Grid>
                             <TextBlock Grid.Row="6" Grid.ColumnSpan="3"
                                        Text="{resx:Localize CreatePdfCourses_printProfileHelp_Text}"
                                        TextWrapping="Wrap"
@@ -157,6 +231,45 @@
                             <TextBlock Grid.Row="7" Grid.ColumnSpan="3" Text="{Binding PrintProfileMessage}"
                                        TextWrapping="Wrap"/>
                         </Grid>
+
+                        <Expander Header="{resx:Localize CreatePdfCourses_printProfilePreview_Text}"
+                                  IsVisible="{Binding HasSelectedPrintProfile}"
+                                  Margin="0,4,0,0">
+                            <StackPanel Spacing="4" Margin="0,6,0,0">
+                                <StackPanel Orientation="Horizontal" Spacing="4">
+                                    <TextBlock Text="{resx:Localize CreatePdfCourses_printProfileMapKind_Text}"/>
+                                    <TextBlock IsVisible="{Binding SelectedPrintProfileIsForest}"
+                                               Text="{resx:Localize CreatePdfCourses_printProfileMapKindForest_Text}"/>
+                                    <TextBlock IsVisible="{Binding SelectedPrintProfileIsSprint}"
+                                               Text="{resx:Localize CreatePdfCourses_printProfileMapKindSprint_Text}"/>
+                                    <TextBlock Text="·"/>
+                                    <TextBlock Text="{resx:Localize CreatePdfCourses_printProfileVersion_Text}"/>
+                                    <TextBlock Text="{Binding SelectedPrintProfileVersionDate}"/>
+                                </StackPanel>
+                                <ScrollViewer MaxHeight="130" HorizontalScrollBarVisibility="Disabled"
+                                              VerticalScrollBarVisibility="Auto">
+                                    <ItemsControl ItemsSource="{Binding SelectedPrintProfileRules}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate x:DataType="vm:PrintProfileRulePreview">
+                                                <Grid ColumnDefinitions="24,*,Auto" ColumnSpacing="6" Margin="0,2">
+                                                    <Border Width="20" Height="20" Background="{Binding PreviewColor}"
+                                                            BorderBrush="Black" BorderThickness="1" CornerRadius="2"/>
+                                                    <StackPanel Grid.Column="1">
+                                                        <TextBlock Text="{Binding Name}"/>
+                                                        <TextBlock Text="{Binding Cmyk}" FontSize="11" Opacity="0.8"/>
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                                                        <TextBlock IsVisible="{Binding UsesOverprint}" Text="{resx:Localize PrintProfileMappingsDialog_overprint_Text}" FontSize="11"/>
+                                                        <TextBlock IsVisible="{Binding UsesKnockout}"
+                                                                   Text="{resx:Localize PrintProfileMappingsDialog_knockout_Text}" FontSize="11"/>
+                                                    </StackPanel>
+                                                </Grid>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </ScrollViewer>
+                            </StackPanel>
+                        </Expander>
 
                         <!-- "Print Map Exchanges on Same Map" — only shown when
                              the event has at least one multi-part course. -->
@@ -271,7 +384,8 @@
                                 Click="SelectOtherDirectoryButton_Click"/>
                     </StackPanel>
                 </HeaderedContentControl>
-            </DockPanel>
+              </StackPanel>
+            </ScrollViewer>
 
         </Grid>
 

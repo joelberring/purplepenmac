@@ -51,6 +51,7 @@ namespace PurplePen
         public string description;           // description of course
         public RectangleF mapRectangle;      // rectangle to print in map coordinates
         public RectangleF printRectangle;     // rectangle to print to on page, in hundredth of inch.
+        public float mapRotation;             // rotation of map rectangle in degrees.
         public bool landscape;                       // true if page should be printed in landscape orientation
         public PrintingPaperSize paperSize;            // the paper size for that page.
         public bool lastPageOfCourseOrPart;    // true if last page of a course or part of course (used for pausing printing)
@@ -67,6 +68,27 @@ namespace PurplePen
     // Arranges independently laid-out course pages on physical output pages.
     public static class CoursePageSheetLayout
     {
+        /// <summary>Returns the physical slot counts for a logical page set.</summary>
+        /// <remarks>This lightweight planner is shared by the paper workshop
+        /// preview so its sheet boundaries stay aligned with PDF production.</remarks>
+        public static List<int> GetSheetSlotCounts(int logicalPageCount, CoursePdfSettings.PdfPageLayout pageLayout, int copies)
+        {
+            int pagesPerSheet = (int)pageLayout;
+            if (pagesPerSheet != 1 && pagesPerSheet != 2 && pagesPerSheet != 4)
+                throw new ArgumentOutOfRangeException(nameof(pageLayout));
+            if (logicalPageCount < 0)
+                throw new ArgumentOutOfRangeException(nameof(logicalPageCount));
+            if (copies < 1)
+                throw new ArgumentOutOfRangeException(nameof(copies));
+
+            List<int> result = new List<int>();
+            for (int copy = 0; copy < copies; ++copy) {
+                for (int offset = 0; offset < logicalPageCount; offset += pagesPerSheet)
+                    result.Add(Math.Min(pagesPerSheet, logicalPageCount - offset));
+            }
+            return result;
+        }
+
         // Arrange pages in one-up, two-up, or four-up sheets while retaining
         // the configured map scale. Multi-up layouts crop map extents instead
         // of reducing the map artwork.
@@ -85,10 +107,12 @@ namespace PurplePen
                 throw new ArgumentOutOfRangeException(nameof(copies));
 
             List<CoursePageSheet> sheets = new List<CoursePageSheet>();
-            CoursePageSheet currentSheet = null;
             List<CoursePage> logicalPages = new List<CoursePage>(pages);
 
             for (int copy = 0; copy < copies; ++copy) {
+                // A copy is a complete logical page set. Do not let a partial
+                // sheet from its predecessor absorb pages from this copy.
+                CoursePageSheet currentSheet = null;
                 foreach (CoursePage page in logicalPages) {
                     if (currentSheet == null || currentSheet.pages.Count == pagesPerSheet || !SamePaper(currentSheet, page)) {
                         currentSheet = new CoursePageSheet {
@@ -141,6 +165,7 @@ namespace PurplePen
                 row * sheetHeight * verticalScale + page.printRectangle.Top * verticalScale,
                 page.printRectangle.Width * horizontalScale,
                 page.printRectangle.Height * verticalScale);
+            sheetPage.mapRotation = page.mapRotation;
             return sheetPage;
         }
 
@@ -209,16 +234,25 @@ namespace PurplePen
         private Controller controller;
         private CourseAppearance appearance;
         private bool cropLargePrintArea;
+        private float scaleCalibrationFactor;
 
         // mapDisplay is a MapDisplay that contains the correct map. All other features of the map display need to be customized.
         public CoursePageLayout(EventDB eventDB, SymbolDB symbolDB, Controller controller,  
                                 CourseAppearance appearance, bool cropLargePrintArea)
+            : this(eventDB, symbolDB, controller, appearance, cropLargePrintArea, 1.0F)
+        {
+        }
+
+        /// <summary>Creates a layout with an optional printer calibration factor.</summary>
+        public CoursePageLayout(EventDB eventDB, SymbolDB symbolDB, Controller controller,
+                                CourseAppearance appearance, bool cropLargePrintArea, float scaleCalibrationFactor)
         {
             this.eventDB = eventDB;
             this.symbolDB = symbolDB;
             this.controller = controller;
             this.appearance = appearance;
             this.cropLargePrintArea = cropLargePrintArea;
+            this.scaleCalibrationFactor = scaleCalibrationFactor > 0 ? scaleCalibrationFactor : 1.0F;
         }
 
         // Layout all the pages, return the total number of pages.
@@ -264,7 +298,8 @@ namespace PurplePen
             PrintingPaperSize paperSize;
             string description;
             int margins;
-            RectangleF mapArea = GetPrintAreaForCourse(courseDesignator, out landscape, out paperSize, out margins, out scaleRatio, out description);
+            float mapRotation;
+            RectangleF mapArea = GetPrintAreaForCourse(courseDesignator, out landscape, out paperSize, out margins, out scaleRatio, out description, out mapRotation);
 
             // Get the available page size on the page.
             RectangleF printableArea = GetPrintablePageArea(landscape, paperSize, margins);
@@ -280,6 +315,7 @@ namespace PurplePen
                     page.paperSize = paperSize;
                     page.mapRectangle = new RectangleF(horizontalLayout.startMap, verticalLayout.startMap, horizontalLayout.lengthMap, verticalLayout.lengthMap);
                     page.printRectangle = new RectangleF(horizontalLayout.startPage, verticalLayout.startPage, horizontalLayout.lengthPage, verticalLayout.lengthPage);
+                    page.mapRotation = mapRotation;
                     pageList.Add(page);
                 }
 
@@ -337,11 +373,12 @@ namespace PurplePen
         // Get the area of the map we want to print, in map coordinates, and the print scale.
         // if the courseId is None, do all controls.
         // If asked for, crop to a single page size.
-        RectangleF GetPrintAreaForCourse(CourseDesignator courseDesignator, out bool landscape, out PrintingPaperSize paperSize, out int margins, out float scaleRatio, out string description)
+        RectangleF GetPrintAreaForCourse(CourseDesignator courseDesignator, out bool landscape, out PrintingPaperSize paperSize, out int margins, out float scaleRatio, out string description, out float mapRotation)
         {
             // Get the course view to get the scale ratio.
             CourseView courseView = CourseView.CreatePositioningCourseView(eventDB, courseDesignator);
             scaleRatio = courseView.ScaleRatio;
+            scaleRatio *= scaleCalibrationFactor;
             description = courseView.CourseFullName;
 
             RectangleF printRectangle = controller.GetCurrentPrintAreaRectangle(courseDesignator);
@@ -349,6 +386,7 @@ namespace PurplePen
             landscape = printArea.pageLandscape;
             paperSize = new PrintingPaperSize("Custom", printArea.pageWidth, printArea.pageHeight);
             margins = printArea.pageMargins;
+            mapRotation = printArea.rotation;
 
             if (cropLargePrintArea) {
                 // Crop the print area to a single page, portrait or landscape.
