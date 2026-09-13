@@ -378,7 +378,11 @@ namespace PurplePen
                 ? QueryEvent.SortedCourseIds(eventDB, false)
                 : coursePdfSettings.CourseIds ?? Array.Empty<Id<Course>>();
 
-            foreach (Id<Course> courseId in courseIds.Distinct()) {
+            // Id<Course>.None represents the pseudo-course "All controls". It
+            // can be exported like a course view, but it has no Course record
+            // or class production plan. Also ignore stale saved identifiers so
+            // the read-only production summary cannot crash before export.
+            foreach (Id<Course> courseId in courseIds.Where(id => id.IsNotNone && eventDB.IsCoursePresent(id)).Distinct()) {
                 Course course = eventDB.GetCourse(courseId);
                 foreach (KeyValuePair<Id<EventClass>, EventClass> classPair in EventClassSupport.GetClasses(eventDB, courseId)) {
                     string className = classPair.Value.Name == null ? String.Empty : classPair.Value.Name.Trim();

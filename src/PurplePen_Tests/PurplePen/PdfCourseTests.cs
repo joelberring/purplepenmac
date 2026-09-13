@@ -256,6 +256,34 @@ namespace PurplePen.Tests
             CollectionAssert.AreEqual(new CourseDesignator[] { Designator(1), Designator(6) }, filesToCreate[0].Second.ToList());
         }
 
+        /// <summary>The All controls pseudo-course has no Course record and must not be used for class planning.</summary>
+        [TestMethod]
+        public async Task ProductionSummary_AllControlsDoesNotRequireCourseRecord()
+        {
+            EventDB eventDB = controller.GetEventDB();
+            SymbolDB symbolDB = ui.symbolDB;
+
+            CoursePdfSettings settings = new CoursePdfSettings();
+            settings.mapDirectory = settings.fileDirectory = false;
+            settings.outputDirectory = TestUtil.GetTestFile("controller\\pdf_create1");
+            settings.CourseIds = new Id<Course>[] { Id<Course>.None };
+            settings.AllCourses = false;
+            settings.ColorModel = ColorModel.CMYK;
+            settings.CropLargePrintArea = true;
+            settings.FileCreation = CoursePdfSettings.PdfFileCreation.SingleFile;
+            settings.PageLayout = CoursePdfSettings.PdfPageLayout.OnePerPage;
+            settings.PrintMapExchangesOnOneMap = true;
+
+            bool success = await controller.LoadInitialFile(TestUtil.GetTestFile("controller\\mapexchange1.ppen"), true);
+            Assert.IsTrue(success);
+
+            CoursePdf coursePdf = new CoursePdf(eventDB, symbolDB, controller, controller.MapDisplay, settings, new CourseAppearance());
+            PdfProductionSummary summary = coursePdf.GetProductionSummary();
+
+            Assert.AreEqual(1, summary.MapViews);
+            Assert.AreEqual(0, summary.Classes.Count);
+        }
+
         [TestMethod]
         public async Task Files_Relay_OnePerCoursePart()
         {
