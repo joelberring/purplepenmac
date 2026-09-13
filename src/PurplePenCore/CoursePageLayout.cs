@@ -114,16 +114,14 @@ namespace PurplePen
                 // sheet from its predecessor absorb pages from this copy.
                 CoursePageSheet currentSheet = null;
                 foreach (CoursePage page in logicalPages) {
-                    if (currentSheet == null || currentSheet.pages.Count == pagesPerSheet || !SamePaper(currentSheet, page)) {
-                        currentSheet = new CoursePageSheet {
-                            landscape = page.landscape,
-                            paperSize = page.paperSize,
-                        };
+                    CoursePageSheet requiredSheet = CreateEmptySheet(page, pageLayout);
+                    if (currentSheet == null || currentSheet.pages.Count == pagesPerSheet || !SamePaper(currentSheet, requiredSheet)) {
+                        currentSheet = requiredSheet;
                         sheets.Add(currentSheet);
                     }
 
                     int slotIndex = currentSheet.pages.Count;
-                    currentSheet.pages.Add(CreateSheetPage(page, pageLayout, slotIndex));
+                    currentSheet.pages.Add(CreateSheetPage(page, currentSheet, pageLayout, slotIndex));
                 }
             }
 
@@ -131,62 +129,120 @@ namespace PurplePen
         }
 
         // Test whether a page can share a physical sheet with existing pages.
-        static bool SamePaper(CoursePageSheet sheet, CoursePage page)
+        static bool SamePaper(CoursePageSheet first, CoursePageSheet second)
         {
-            return sheet.landscape == page.landscape &&
-                   sheet.paperSize.SizeInHundreths.Width == page.paperSize.SizeInHundreths.Width &&
-                   sheet.paperSize.SizeInHundreths.Height == page.paperSize.SizeInHundreths.Height;
+            return first.landscape == second.landscape &&
+                   first.paperSize.SizeInHundreths.Width == second.paperSize.SizeInHundreths.Width &&
+                   first.paperSize.SizeInHundreths.Height == second.paperSize.SizeInHundreths.Height;
         }
 
-        // Copy a logical page into the requested sheet slot. The print area and
-        // corresponding map area are reduced by the same amount, preserving the
-        // map scale while automatically centering the cropped map view.
-        static CoursePage CreateSheetPage(CoursePage page, CoursePdfSettings.PdfPageLayout pageLayout, int slotIndex)
+        // Creates the physical sheet required for a logical map page. Multi-up
+        // selections always produce A4: two A5 slots or four A6 slots.
+        static CoursePageSheet CreateEmptySheet(CoursePage page, CoursePdfSettings.PdfPageLayout pageLayout)
         {
-            SizeF pageSize = page.paperSize.SizeInHundreths;
-            float sheetWidth = page.landscape ? pageSize.Height : pageSize.Width;
-            float sheetHeight = page.landscape ? pageSize.Width : pageSize.Height;
+            if (pageLayout == CoursePdfSettings.PdfPageLayout.OnePerPage) {
+                return new CoursePageSheet {
+                    landscape = page.landscape,
+                    paperSize = page.paperSize,
+                };
+            }
+
             int columns, rows;
-            GetGridDimensions(pageLayout, out columns, out rows);
+            bool sheetLandscape;
+            GetGridDimensions(pageLayout, page.landscape, out columns, out rows, out sheetLandscape);
+
+            PrintingPaperSize a4Paper = null;
+            foreach (PrintingPaperSize paperSize in PrintingStandards.StandardPaperSizes) {
+                if (paperSize.Name == "A4") {
+                    a4Paper = paperSize;
+                    break;
+                }
+            }
+            if (a4Paper == null)
+                throw new InvalidOperationException("The standard A4 paper size is unavailable.");
+
+            return new CoursePageSheet {
+                landscape = sheetLandscape,
+                paperSize = a4Paper,
+            };
+        }
+
+        // Copy a logical page into the requested sheet slot without changing its
+        // physical map scale. A view larger than the slot is cropped around the
+        // paper centre; a smaller view is centred with white space around it.
+        static CoursePage CreateSheetPage(CoursePage page, CoursePageSheet sheet, CoursePdfSettings.PdfPageLayout pageLayout, int slotIndex)
+        {
+            if (pageLayout == CoursePdfSettings.PdfPageLayout.OnePerPage)
+                return CopyPage(page, page.paperSize, page.landscape, page.mapRectangle, page.printRectangle);
+
+            SizeF sheetPaperSize = sheet.paperSize.SizeInHundreths;
+            float sheetWidth = sheet.landscape ? sheetPaperSize.Height : sheetPaperSize.Width;
+            float sheetHeight = sheet.landscape ? sheetPaperSize.Width : sheetPaperSize.Height;
+            int columns, rows;
+            bool ignoredLandscape;
+            GetGridDimensions(pageLayout, page.landscape, out columns, out rows, out ignoredLandscape);
             int column = slotIndex % columns;
             int row = slotIndex / columns;
-            float horizontalScale = 1F / columns;
-            float verticalScale = 1F / rows;
+            float slotWidth = sheetWidth / columns;
+            float slotHeight = sheetHeight / rows;
+            RectangleF slotRectangle = new RectangleF(column * slotWidth, row * slotHeight, slotWidth, slotHeight);
 
+            SizeF sourcePaperSize = page.paperSize.SizeInHundreths;
+            float sourceWidth = page.landscape ? sourcePaperSize.Height : sourcePaperSize.Width;
+            float sourceHeight = page.landscape ? sourcePaperSize.Width : sourcePaperSize.Height;
+            float offsetX = slotRectangle.Left + (slotRectangle.Width - sourceWidth) / 2F;
+            float offsetY = slotRectangle.Top + (slotRectangle.Height - sourceHeight) / 2F;
+            RectangleF translatedPrintRectangle = new RectangleF(
+                page.printRectangle.Left + offsetX,
+                page.printRectangle.Top + offsetY,
+                page.printRectangle.Width,
+                page.printRectangle.Height);
+            RectangleF clippedPrintRectangle = RectangleF.Intersect(translatedPrintRectangle, slotRectangle);
+            if (clippedPrintRectangle.Width <= 0 || clippedPrintRectangle.Height <= 0)
+                throw new InvalidOperationException("The logical map page does not intersect its A4 sheet slot.");
+
+            RectangleF clippedMapRectangle = CropMapRectangle(page.mapRectangle, translatedPrintRectangle, clippedPrintRectangle);
+            return CopyPage(page, sheet.paperSize, sheet.landscape, clippedMapRectangle, clippedPrintRectangle);
+        }
+
+        // Copies the common page metadata while replacing sheet-specific geometry.
+        static CoursePage CopyPage(CoursePage page, PrintingPaperSize paperSize, bool landscape,
+                                   RectangleF mapRectangle, RectangleF printRectangle)
+        {
             CoursePage sheetPage = new CoursePage();
             sheetPage.courseDesignator = page.courseDesignator;
             sheetPage.description = page.description;
-            sheetPage.mapRectangle = CropMapRectangle(page.mapRectangle, horizontalScale, verticalScale);
-            sheetPage.landscape = page.landscape;
-            sheetPage.paperSize = page.paperSize;
+            sheetPage.mapRectangle = mapRectangle;
+            sheetPage.landscape = landscape;
+            sheetPage.paperSize = paperSize;
             sheetPage.lastPageOfCourseOrPart = page.lastPageOfCourseOrPart;
-            sheetPage.printRectangle = new RectangleF(
-                column * sheetWidth * horizontalScale + page.printRectangle.Left * horizontalScale,
-                row * sheetHeight * verticalScale + page.printRectangle.Top * verticalScale,
-                page.printRectangle.Width * horizontalScale,
-                page.printRectangle.Height * verticalScale);
+            sheetPage.printRectangle = printRectangle;
             sheetPage.mapRotation = page.mapRotation;
             return sheetPage;
         }
 
-        // Gets the grid used by a requested multi-up layout. Two views occupy
-        // the top and bottom halves of an A4 sheet (two A5 portrait fields).
-        static void GetGridDimensions(CoursePdfSettings.PdfPageLayout pageLayout, out int columns, out int rows)
+        // Gets the A4 grid and orientation used by the requested layout. Two
+        // portrait A5 pages sit side-by-side; two landscape A5 pages stack.
+        static void GetGridDimensions(CoursePdfSettings.PdfPageLayout pageLayout, bool logicalPageLandscape,
+                                      out int columns, out int rows, out bool sheetLandscape)
         {
             switch (pageLayout) {
                 case CoursePdfSettings.PdfPageLayout.OnePerPage:
                     columns = 1;
                     rows = 1;
+                    sheetLandscape = logicalPageLandscape;
                     break;
 
                 case CoursePdfSettings.PdfPageLayout.TwoPerPage:
-                    columns = 1;
-                    rows = 2;
+                    columns = logicalPageLandscape ? 1 : 2;
+                    rows = logicalPageLandscape ? 2 : 1;
+                    sheetLandscape = !logicalPageLandscape;
                     break;
 
                 case CoursePdfSettings.PdfPageLayout.FourPerPage:
                     columns = 2;
                     rows = 2;
+                    sheetLandscape = logicalPageLandscape;
                     break;
 
                 default:
@@ -194,15 +250,22 @@ namespace PurplePen
             }
         }
 
-        // Crops a map rectangle around its centre by the supplied proportions.
-        static RectangleF CropMapRectangle(RectangleF mapRectangle, float horizontalScale, float verticalScale)
+        // Crops the map rectangle by the same edges removed from its print
+        // rectangle. The vertical fractions are reversed because map Y points
+        // upward while PDF page Y points downward.
+        static RectangleF CropMapRectangle(RectangleF mapRectangle, RectangleF originalPrintRectangle,
+                                           RectangleF clippedPrintRectangle)
         {
-            float width = mapRectangle.Width * horizontalScale;
-            float height = mapRectangle.Height * verticalScale;
-            return new RectangleF(mapRectangle.Left + (mapRectangle.Width - width) / 2F,
-                                  mapRectangle.Top + (mapRectangle.Height - height) / 2F,
-                                  width,
-                                  height);
+            float leftFraction = (clippedPrintRectangle.Left - originalPrintRectangle.Left) / originalPrintRectangle.Width;
+            float rightFraction = (originalPrintRectangle.Right - clippedPrintRectangle.Right) / originalPrintRectangle.Width;
+            float topFraction = (clippedPrintRectangle.Top - originalPrintRectangle.Top) / originalPrintRectangle.Height;
+            float bottomFraction = (originalPrintRectangle.Bottom - clippedPrintRectangle.Bottom) / originalPrintRectangle.Height;
+
+            float left = mapRectangle.Left + mapRectangle.Width * leftFraction;
+            float top = mapRectangle.Top + mapRectangle.Height * bottomFraction;
+            float width = mapRectangle.Width * (1F - leftFraction - rightFraction);
+            float height = mapRectangle.Height * (1F - topFraction - bottomFraction);
+            return new RectangleF(left, top, width, height);
         }
     }
 

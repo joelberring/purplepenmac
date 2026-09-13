@@ -147,8 +147,14 @@ namespace PurplePen
         List<Pair<string, IEnumerable<CourseDesignator>>> GetFilesToCreate()
         {
             List<Pair<string, IEnumerable<CourseDesignator>>> fileList = new List<Pair<string, IEnumerable<CourseDesignator>>>();
+            // Different courses can only share an A4 sheet when they are sent
+            // to the same PDF document. Enforce the invariant here as well as
+            // in the dialog so programmatic and restored settings stay safe.
+            CoursePdfSettings.PdfFileCreation fileCreation = coursePdfSettings.PageLayout == CoursePdfSettings.PdfPageLayout.OnePerPage
+                ? coursePdfSettings.FileCreation
+                : CoursePdfSettings.PdfFileCreation.SingleFile;
 
-            switch (coursePdfSettings.FileCreation) {
+            switch (fileCreation) {
                 case CoursePdfSettings.PdfFileCreation.SingleFile:
                     // All pages go into a single file.
                     fileList.Add(new Pair<string, IEnumerable<CourseDesignator>>(CreateOutputFileName(null),

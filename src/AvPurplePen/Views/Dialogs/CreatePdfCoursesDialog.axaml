@@ -320,14 +320,21 @@
                         <TextBlock Grid.Row="0" Grid.Column="0"
                                    Text="{resx:Localize CreatePdfCourses_filesLabel_Text}"
                                    VerticalAlignment="Center"/>
-                        <ComboBox x:Name="comboBoxFileFormat"
-                                  Grid.Row="0" Grid.Column="2"
-                                  HorizontalAlignment="Stretch"
-                                  SelectedIndex="{Binding FileFormatIndex, Mode=TwoWay}">
-                            <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxFileFormat_Items}"/>
-                            <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxFileFormat_Items1}"/>
-                            <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxFileFormat_Items2}"/>
-                        </ComboBox>
+                        <StackPanel Grid.Row="0" Grid.Column="2" Spacing="3">
+                            <ComboBox x:Name="comboBoxFileFormat"
+                                      HorizontalAlignment="Stretch"
+                                      IsEnabled="{Binding IsFileFormatEnabled}"
+                                      SelectedIndex="{Binding FileFormatIndex, Mode=TwoWay}">
+                                <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxFileFormat_Items}"/>
+                                <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxFileFormat_Items1}"/>
+                                <ComboBoxItem Content="{resx:Localize CreatePdfCourses_comboBoxFileFormat_Items2}"/>
+                            </ComboBox>
+                            <TextBlock IsVisible="{Binding IsMultiUpLayout}"
+                                       Text="{resx:Localize CreatePdfCourses_multiUpSingleFileHelp_Text}"
+                                       TextWrapping="Wrap"
+                                       FontSize="11"
+                                       Opacity="0.75"/>
+                        </StackPanel>
 
                         <!-- "File name prefix:" -->
                         <TextBlock Grid.Row="2" Grid.Column="0"

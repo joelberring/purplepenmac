@@ -228,6 +228,34 @@ namespace PurplePen.Tests
                                       filesToCreate[0].Second.ToList());
         }
 
+        /// <summary>Multi-up output defensively combines maps even if restored settings request separate files.</summary>
+        [TestMethod]
+        public async Task Files_MultiUpCombinesCoursesIntoSingleFile()
+        {
+            EventDB eventDB = controller.GetEventDB();
+            SymbolDB symbolDB = ui.symbolDB;
+
+            CoursePdfSettings settings = new CoursePdfSettings();
+            settings.mapDirectory = settings.fileDirectory = false;
+            settings.outputDirectory = TestUtil.GetTestFile("controller\\pdf_create1");
+            settings.CourseIds = new Id<Course>[] { CourseId(1), CourseId(6) };
+            settings.ColorModel = ColorModel.CMYK;
+            settings.CropLargePrintArea = true;
+            settings.FileCreation = CoursePdfSettings.PdfFileCreation.FilePerCourse;
+            settings.PageLayout = CoursePdfSettings.PdfPageLayout.FourPerPage;
+            settings.PrintMapExchangesOnOneMap = true;
+
+            bool success = await controller.LoadInitialFile(TestUtil.GetTestFile("controller\\mapexchange1.ppen"), true);
+            Assert.IsTrue(success);
+
+            CoursePdf coursePdf = new CoursePdf(eventDB, symbolDB, controller, controller.MapDisplay, settings, new CourseAppearance());
+            List<Pair<string, IEnumerable<CourseDesignator>>> filesToCreate = coursePdf.GetFilesToCreate();
+
+            Assert.AreEqual(1, filesToCreate.Count);
+            Assert.AreEqual(TestUtil.GetTestFile("controller\\pdf_create1\\Marymoor WIOL 2.pdf"), filesToCreate[0].First);
+            CollectionAssert.AreEqual(new CourseDesignator[] { Designator(1), Designator(6) }, filesToCreate[0].Second.ToList());
+        }
+
         [TestMethod]
         public async Task Files_Relay_OnePerCoursePart()
         {

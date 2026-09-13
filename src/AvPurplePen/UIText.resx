@@ -1539,6 +1539,9 @@
   <data name="CreatePdfCourses_comboBoxFileFormat_Items2" xml:space="preserve">
     <value>One per course part/variation</value>
   </data>
+  <data name="CreatePdfCourses_multiUpSingleFileHelp_Text" xml:space="preserve">
+    <value>Multi-up layouts require one shared PDF. All selected maps will be placed together on A4 sheets.</value>
+  </data>
   <data name="CreatePdfCourses_copiesLabel_Text" xml:space="preserve">
     <value>Copies of each selected course/variation:</value>
   </data>

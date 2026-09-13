@@ -1441,6 +1441,9 @@
   <data name="CreatePdfCourses_comboBoxFileFormat_Items2" xml:space="preserve">
     <value>En per bandel/gaffling</value>
   </data>
+  <data name="CreatePdfCourses_multiUpSingleFileHelp_Text" xml:space="preserve">
+    <value>Flera kartor per ark kräver en gemensam PDF. Alla valda kartor placeras tillsammans på A4-ark.</value>
+  </data>
   <data name="CreatePdfCourses_copiesLabel_Text" xml:space="preserve">
     <value>Kopior av varje vald bana/gaffling:</value>
   </data>

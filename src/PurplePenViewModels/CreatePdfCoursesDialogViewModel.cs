@@ -138,7 +138,15 @@ namespace PurplePen.ViewModels
         /// Bound to the PDF page-layout combo's SelectedIndex.
         /// </summary>
         [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsFileFormatEnabled))]
+        [NotifyPropertyChangedFor(nameof(IsMultiUpLayout))]
         private int pageLayoutIndex;
+
+        /// <summary>Whether separate output files are compatible with the selected page layout.</summary>
+        public bool IsFileFormatEnabled => PageLayoutIndex == 0;
+
+        /// <summary>Whether multiple logical maps will be assembled on each A4 sheet.</summary>
+        public bool IsMultiUpLayout => PageLayoutIndex != 0;
 
         /// <summary>
         /// Number of complete selected course/variation sets to create in the PDF.
@@ -332,7 +340,14 @@ namespace PurplePen.ViewModels
             RefreshWorkshopPreview();
         }
 
-        partial void OnPageLayoutIndexChanged(int value) => RefreshWorkshopPreview();
+        partial void OnPageLayoutIndexChanged(int value)
+        {
+            // Maps can only share a physical sheet when they are written to the
+            // same PDF. Make the compatible choice explicit in the output UI.
+            if (value != 0)
+                FileFormatIndex = (int)CoursePdfSettings.PdfFileCreation.SingleFile;
+            RefreshWorkshopPreview();
+        }
         partial void OnCopiesChanged(decimal value) => RefreshWorkshopPreview();
         partial void OnIncludeBacksideInfoChanged(bool value) => RefreshWorkshopPreview();
         partial void OnBacksideTextChanged(string value) => RefreshWorkshopPreview();
@@ -564,7 +579,9 @@ namespace PurplePen.ViewModels
                     TrainingExerciseRenderProfile = (TrainingExerciseRenderProfile)TrainingExerciseRenderProfileIndex,
                     ConfirmedPrintProfileRuleIds = new List<string>(ConfirmedPrintProfileRuleIds),
                     PrintProfileColorMappings = new List<PrintProfileColorMapping>(PrintProfileColorMappings),
-                    FileCreation = (CoursePdfSettings.PdfFileCreation)FileFormatIndex,
+                    FileCreation = PageLayoutIndex == 0
+                        ? (CoursePdfSettings.PdfFileCreation)FileFormatIndex
+                        : CoursePdfSettings.PdfFileCreation.SingleFile,
                     RenderControlDescriptions = RenderControlDescriptions,
                     ShowProgressDialog = ShowProgressDialog,
                     mapDirectory = UseMapDirectory,

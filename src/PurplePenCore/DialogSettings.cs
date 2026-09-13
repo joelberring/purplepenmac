@@ -57,7 +57,8 @@ namespace PurplePen
         // Number of complete selected course/variation sets to include in the PDF export.
         public int Copies = 1;
         // Number of independent course/map views to place on each physical PDF page.
-        // All views on a page are reduced proportionally; their map extents are not merged.
+        // Multi-up output uses A4 sheets with A5 or A6 slots. Map scale is
+        // preserved; a logical page larger than its slot is cropped, not reduced.
         public PdfPageLayout PageLayout = PdfPageLayout.OnePerPage;
         // Add a second, information-only PDF page after every map page. Information is
         // placed in the same slots as the corresponding maps, ready for duplex printing.
