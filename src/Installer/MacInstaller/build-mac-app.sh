@@ -416,6 +416,7 @@ publish_app() {
         --framework "$TARGET_FRAMEWORK" \
         --runtime "$RUNTIME_IDENTIFIER" \
         --self-contained "$SELF_CONTAINED" \
+        -p:RuntimeFrameworkVersion="$RUNTIME_FRAMEWORK_VERSION" \
         -p:PublishReadyToRun="$PUBLISH_READYTORUN" \
         -p:UseAppHost=true \
         -p:DebugType=none \
@@ -522,6 +523,7 @@ stage_pdf_converter() {
         --framework "$TARGET_FRAMEWORK" \
         --runtime "$RUNTIME_IDENTIFIER" \
         --self-contained true \
+        -p:RuntimeFrameworkVersion="$RUNTIME_FRAMEWORK_VERSION" \
         -p:PublishReadyToRun="$PUBLISH_READYTORUN" \
         -p:UseAppHost=true \
         -p:DebugType=none \
@@ -1410,6 +1412,11 @@ else
     publish_app
     stage_payload
     stage_pdf_converter
+    # Inspect the final overlay, not just the main app's publish output.
+    /usr/bin/python3 "$SCRIPT_DIR/verify-native-dependencies.py" \
+        "$STAGING_DIR" --arch "${RUNTIME_IDENTIFIER#osx-}" \
+        --min-macos "$MIN_MACOS_VERSION" \
+        || die "Non-portable native payload. Rebuild with Microsoft's official .NET SDK (see README.md)."
     build_icon
     assemble_bundle
     sign_bundle

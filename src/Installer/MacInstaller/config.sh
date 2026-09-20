@@ -65,6 +65,10 @@
 # not need to install .NET separately.
 : "${SELF_CONTAINED:=true}"
 
+# Pin both app and PDF helper to the same tested runtime. Use Microsoft's
+# official SDK; Homebrew runtime packs can depend on unbundled Homebrew dylibs.
+: "${RUNTIME_FRAMEWORK_VERSION:=10.0.12}"
+
 # ReadyToRun ahead-of-time compilation improves startup time at the cost of a
 # larger bundle. Off by default; set to true once you have confirmed the basic
 # pipeline works end to end.

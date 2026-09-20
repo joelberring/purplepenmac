@@ -2,7 +2,10 @@ Purple Pen – första öppningen på macOS
 ======================================
 
 Programmet innehåller .NET och behöver därför inte någon separat
-.NET-installation.
+.NET-installation eller Homebrew.
+
+Uppdatering från en äldre beta: stäng Purple Pen och ersätt den gamla appen
+med den nya. Dina sparade .ppen-filer och kartfiler behöver inte ändras.
 
 1. Packa upp zip-filen.
 2. Dra PurplePen.app till mappen Program/Applications.
@@ -36,7 +39,9 @@ Kör inte kommandot om appen redan öppnas normalt.
 Purple Pen – first launch on macOS
 ==================================
 
-The app is self-contained and does not require a separate .NET installation.
+The app is self-contained and requires neither a separate .NET installation
+nor Homebrew. To update, quit Purple Pen and replace the old app. Your saved
+.ppen course files and maps do not need to be changed.
 
 1. Unzip the download.
 2. Move PurplePen.app to Applications.

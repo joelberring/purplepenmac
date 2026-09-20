@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Build only the probe. Runtime and PDFsharp must come from the shipped app. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <AssemblyName>PdfPackageSmoke</AssemblyName>
+    <UseAppHost>true</UseAppHost>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="PdfSharp">
+      <HintPath>$(Payload)/PdfSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

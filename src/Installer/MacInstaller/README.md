@@ -33,6 +33,48 @@ git-ignored.
 
 ## One-time setup
 
+### Build with Microsoft's official .NET SDK
+
+Use the official **macOS Arm64 .NET 10 SDK**, not the Homebrew-built `dotnet`
+formula. Beta 9 is built with SDK **10.0.401** and pins the app and helper to
+runtime **10.0.12** (`RUNTIME_FRAMEWORK_VERSION` in `config.sh`). An unpacked
+official SDK can be used without changing the machine's installed SDK:
+
+```bash
+PATH="/absolute/path/to/official-dotnet-sdk:$PATH" ./build-mac-app.sh --skip-sign --skip-dmg
+```
+
+Download from [Microsoft's .NET download page](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)
+and verify the archive against its SHA-512 in
+[Microsoft's release metadata](https://builds.dotnet.microsoft.com/dotnet/release-metadata/10.0/releases.json).
+`--skip-sign` is for explicitly unsigned tester builds only.
+
+Homebrew's runtime can link `libSystem.IO.Compression.Native.dylib` to Brotli
+in `/opt/homebrew`, even in a self-contained publish. This caused the Beta 8
+PDF export error on testers' Macs. Do not copy those Homebrew libraries as a
+workaround: their deployment target may exceed the app's minimum macOS version.
+
+After the PDF helper overlay, `verify-native-dependencies.py` audits every
+Mach-O file. It rejects external non-system dependencies, missing target
+architectures, and minimum OS versions newer than `MIN_MACOS_VERSION`.
+Library identity (`LC_ID_DYLIB`) is distinguished from an actual dependency.
+
+Before releasing, extract the final zip and run both checks on that copy:
+
+```bash
+python3 verify-native-dependencies.py /path/to/extracted/PurplePen.app/Contents/MacOS
+bash test-pdf-package.sh /path/to/extracted/PurplePen.app
+```
+
+The smoke test copies the payload to a temporary directory, then runs the
+shipped runtime and PDFsharp with Homebrew and `/usr/local` unreadable and a
+clean environment. It tests Flate and Brotli round trips, saving and reopening
+compressed one-page and four-page PDFs, and PDF-to-PNG through the shipped
+PdfConverter. It does not alter the app or any user's course files. The same
+probe against Beta 8 reproduces the reported compression exception.
+This verifies dependency isolation on the build Mac, not full testing on every
+supported macOS version.
+
 ### 1. Install a Developer ID certificate
 
 Notarized distribution outside the Mac App Store requires a **Developer ID
