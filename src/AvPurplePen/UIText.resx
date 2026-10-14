@@ -4391,4 +4391,40 @@ Purple Pen cannot install this kind of file for you. Open it yourself to install
   <data name="PrintProfileEditor_PreflightStatus_NotPresent" xml:space="preserve"><value>Not in map</value></data>
   <data name="PrintProfileEditor_PreflightStatus_NeedsConfirmation" xml:space="preserve"><value>Needs confirmation</value></data>
   <data name="PrintProfileEditor_PreflightStatus_Ambiguous" xml:space="preserve"><value>Several possible colours</value></data>
+  <data name="PdfProductionReviewDialog_printColorsHeader_Text" xml:space="preserve">
+    <value>Course colours for print</value>
+  </data>
+  <data name="PdfProductionReviewDialog_printProfileLabel_Text" xml:space="preserve">
+    <value>Print profile:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_upperPurpleLabel_Text" xml:space="preserve">
+    <value>Upper purple (on top, opaque):</value>
+  </data>
+  <data name="PdfProductionReviewDialog_lowerPurpleLabel_Text" xml:space="preserve">
+    <value>Lower purple (circles, lines, numbers):</value>
+  </data>
+  <data name="PdfProductionReviewDialog_lowerPurpleUnderLabel_Text" xml:space="preserve">
+    <value>Lower purple lies under:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_lowerPurpleOverLabel_Text" xml:space="preserve">
+    <value>…and over:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_interleavedHelp_Text" xml:space="preserve">
+    <value>The lower purple is placed inside the map's colour order, as in an OCAD course-setting export: brown, black and 100% blue lines are printed on top of it, while all area colours lie below it.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_courseOnTopHelp_Text" xml:space="preserve">
+    <value>The whole course is drawn on top of the map.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_transparentPurpleHelp_Text" xml:space="preserve">
+    <value>The lower purple is transparent: it is written with overprint and the Darken blend mode, so map details under the circles stay visible both on offset presses and on digital printers.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_printProfileNeedsVectorMapWarning_Text" xml:space="preserve">
+    <value>• The map is a PDF or image file, so the course purple cannot be placed under brown, black and blue. Use the OCAD/OpenMapper map file for print production.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_printProfileLayerNotFromProfileWarning_Text" xml:space="preserve">
+    <value>• None of the map's colours could be matched to the print profile, so the profile could not decide where the course purple goes. Map the map colours in “Map Print Profile Colors”.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_printProfileColorOrderConflictWarning_Text" xml:space="preserve">
+    <value>• The map's own colour order differs from the print profile. These colours end up on the wrong side of the course purple:</value>
+  </data>
 </root>

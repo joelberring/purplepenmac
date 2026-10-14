@@ -74,5 +74,35 @@ namespace Map_PDF.Tests
                     File.Delete(pdfFileName);
             }
         }
+
+        /// <summary>
+        /// A white colour flagged as overprint in the map must not be written with /OP: with /OPM 1 a
+        /// colour without ink leaves every separation untouched, so the white mask would vanish.
+        /// </summary>
+        [Test]
+        public void WhiteOverprintColour_IsWrittenAsKnockout()
+        {
+            string pdfFileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".pdf");
+            try {
+                IPdfWriter pdfWriter = new PdfWriter();
+                IPdfDocumentWriter documentWriter = pdfWriter.CreateDocument(pdfFileName, "White overprint test", true);
+                IGraphicsTarget graphicsTarget = documentWriter.BeginPage(new SizeF(2, 2));
+                SymColor white = new SymColor(SymLayer.Normal);
+                white.SetCMYK(0, 0, 0, 0);
+                white.OverPrint = true;
+                object brushKey = white.GetBrushKey(graphicsTarget);
+                graphicsTarget.FillRectangle(brushKey, new RectangleF(10, 10, 40, 40));
+                documentWriter.EndPage(graphicsTarget);
+                documentWriter.Save();
+
+                string pdfContents = Encoding.Latin1.GetString(File.ReadAllBytes(pdfFileName));
+                Assert.That(pdfContents, Does.Not.Contain("/op true"));
+                Assert.That(pdfContents, Does.Not.Contain("/OP true"));
+            }
+            finally {
+                if (File.Exists(pdfFileName))
+                    File.Delete(pdfFileName);
+            }
+        }
     }
 }

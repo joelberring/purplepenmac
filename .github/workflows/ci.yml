@@ -7,6 +7,9 @@ on:
 permissions:
   contents: read
 
+env:
+  DOTNET_NOLOGO: true
+
 jobs:
   build-and-test:
     name: ${{ matrix.os }}
@@ -15,6 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+
+    permissions:
+      contents: write   # only used to publish sample print PDFs to the ci-print-output branch
 
     defaults:
       run:
@@ -41,6 +47,9 @@ jobs:
 
       - name: Restore PDF production tests
         run: dotnet restore MapModel/Map_PDF.Tests/Map_PDF.Tests.csproj -p:DisableGitVersionTask=true
+
+      - name: Restore print production tests
+        run: dotnet restore PurplePenCore.PrintTests/PurplePenCore.PrintTests.csproj -p:DisableGitVersionTask=true
 
       # Build output is echoed as annotations so failures are readable from the
       # checks API even when raw logs are not accessible.
@@ -75,3 +84,30 @@ jobs:
             grep -E "error|Failed|Assert|Expected|But was" vstest.log | head -60 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           }
+
+      - name: Print production tests (course PDFs with BL profiles)
+        env:
+          PP_PRINT_TEST_OUTPUT: ${{ runner.temp }}/print-output
+        run: |
+          set -o pipefail
+          dotnet test PurplePenCore.PrintTests/PurplePenCore.PrintTests.csproj --configuration Debug --no-restore --verbosity minimal -p:DisableGitVersionTask=true --logger:"console;verbosity=detailed" 2>&1 | tee printtest.log || {
+            grep -E "error|Failed|Assert|Expected|But was|Message:|at PurplePen" printtest.log | head -80 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          }
+          grep -E "Lower purple lies|colour operators" printtest.log | while IFS= read -r line; do echo "::notice::$line"; done
+
+      - name: Publish sample print PDFs
+        if: always() && matrix.os == 'ubuntu-latest' && github.event_name == 'push'
+        env:
+          OUT: ${{ runner.temp }}/print-output
+        run: |
+          if [ ! -d "$OUT" ] || [ -z "$(ls -A "$OUT")" ]; then echo "No sample PDFs"; exit 0; fi
+          cd "$OUT"
+          git init -q
+          git config user.name "ci"
+          git config user.email "ci@users.noreply.github.com"
+          git checkout -q -b ci-print-output
+          echo "Sample course PDFs from ${GITHUB_SHA} (${GITHUB_REF_NAME})" > README.txt
+          git add -A
+          git commit -q -m "Sample print PDFs for ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" ci-print-output

@@ -4159,4 +4159,40 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="PrintProfileEditor_PreflightStatus_NotPresent" xml:space="preserve"><value>Saknas i kartan</value></data>
   <data name="PrintProfileEditor_PreflightStatus_NeedsConfirmation" xml:space="preserve"><value>Behöver bekräftas</value></data>
   <data name="PrintProfileEditor_PreflightStatus_Ambiguous" xml:space="preserve"><value>Flera möjliga färger</value></data>
+  <data name="PdfProductionReviewDialog_printColorsHeader_Text" xml:space="preserve">
+    <value>Banfärger för tryck</value>
+  </data>
+  <data name="PdfProductionReviewDialog_printProfileLabel_Text" xml:space="preserve">
+    <value>Tryckprofil:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_upperPurpleLabel_Text" xml:space="preserve">
+    <value>Övre violett (överst, täckande):</value>
+  </data>
+  <data name="PdfProductionReviewDialog_lowerPurpleLabel_Text" xml:space="preserve">
+    <value>Undre violett (ringar, linjer, siffror):</value>
+  </data>
+  <data name="PdfProductionReviewDialog_lowerPurpleUnderLabel_Text" xml:space="preserve">
+    <value>Undre violett ligger under:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_lowerPurpleOverLabel_Text" xml:space="preserve">
+    <value>…och över:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_interleavedHelp_Text" xml:space="preserve">
+    <value>Undre violett läggs in i kartans färgordning, som vid export från OCAD: brunt, svart och 100 % blå linjer trycks ovanpå, medan alla ytfärger ligger under.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_courseOnTopHelp_Text" xml:space="preserve">
+    <value>Hela banan ritas ovanpå kartan.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_transparentPurpleHelp_Text" xml:space="preserve">
+    <value>Undre violett är transparent: den skrivs med övertryck och blandningsläget Darken, så att kartdetaljer under ringarna syns både i offset och i digitaltryck.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_printProfileNeedsVectorMapWarning_Text" xml:space="preserve">
+    <value>• Kartan är en PDF- eller bildfil, så banvioletten kan inte läggas under brunt, svart och blått. Använd OCAD/OpenMapper-kartfilen för tryck.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_printProfileLayerNotFromProfileWarning_Text" xml:space="preserve">
+    <value>• Ingen av kartans färger kunde kopplas till tryckprofilen, så profilen kunde inte avgöra var banvioletten ska ligga. Koppla kartans färger i ”Mappa tryckprofilens färger”.</value>
+  </data>
+  <data name="PdfProductionReviewDialog_printProfileColorOrderConflictWarning_Text" xml:space="preserve">
+    <value>• Kartans egen färgordning skiljer sig från tryckprofilen. De här färgerna hamnar på fel sida om banvioletten:</value>
+  </data>
 </root>

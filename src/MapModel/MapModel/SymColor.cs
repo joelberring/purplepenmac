@@ -95,8 +95,11 @@ namespace PurplePen.MapModel
             } 
         }
 
-        /// <summary>Gets the overprint value for the active render operation without changing the stored colour.</summary>
-        internal bool RenderOverPrint {
+        /// <summary>
+        /// Gets the overprint value for the active render operation (including export-only print-profile
+        /// overrides) without changing the stored colour. Output backends must use this, not <see cref="OverPrint"/>.
+        /// </summary>
+        public bool RenderOverPrint {
             get {
                 MapColorOverride colorOverride = map == null ? null : map.GetActiveColorOverride(this);
                 return colorOverride == null ? overprint : colorOverride.Overprint;

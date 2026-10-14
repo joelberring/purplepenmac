@@ -98,8 +98,12 @@ namespace PurplePen.MapModel
 
             XSolidBrush brush = new XSolidBrush(ToXColor(color));
             SymColor symColor = brushKey as SymColor;
-            if (symColor != null)
-                brush.Overprint = symColor.OverPrint;
+            if (symColor != null) {
+                // RenderOverPrint includes export-only print-profile overrides. A colour without ink
+                // (white) must never overprint: with /OPM 1 it would leave every separation untouched
+                // and the white mask would vanish at the printer ("white overprint" preflight error).
+                brush.Overprint = symColor.RenderOverPrint && HasInk(color);
+            }
 
             brushMap.Add(brushKey, brush);
         }
@@ -185,6 +189,15 @@ namespace PurplePen.MapModel
         private XRect ToXRect(RectangleF rect)
         {
             return new XRect(rect.X, rect.Y, rect.Width, rect.Height);
+        }
+
+        /// <summary>Determines whether a colour puts any ink on paper.</summary>
+        /// <param name="color">The colour to test.</param>
+        /// <returns>True if at least one CMYK component is non-zero.</returns>
+        private static bool HasInk(CmykColor color)
+        {
+            const float tolerance = 0.0005F;
+            return color.Cyan > tolerance || color.Magenta > tolerance || color.Yellow > tolerance || color.Black > tolerance;
         }
 
         private XColor ToXColor(CmykColor color)

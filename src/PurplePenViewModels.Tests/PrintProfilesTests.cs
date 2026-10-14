@@ -67,8 +67,14 @@ namespace PurplePenViewModels.Tests
             Assert.That(transparentViolet.EffectiveCmyk.Cyan, Is.EqualTo(35));
             Assert.That(transparentViolet.EffectiveCmyk.Magenta, Is.EqualTo(95));
             Assert.That(transparentViolet.OverprintIntent, Is.EqualTo(PrintProfileOverprintIntent.Overprint));
-            Assert.That(transparentViolet.MustBeBelowRuleIds, Is.EquivalentTo(new string[] { "brown-contours", "black", "blue-area" }));
-            Assert.That(transparentViolet.MustBeAboveRuleIds, Is.EquivalentTo(new string[] { "blue-70", "blue-50" }));
+            // BL: under brown, black and 100 % blue lines; directly above "Blå yta" and all other area colours.
+            Assert.That(transparentViolet.MustBeBelowRuleIds, Is.EquivalentTo(new string[] { "brown-contours", "black", "blue-line-point" }));
+            Assert.That(transparentViolet.MustBeAboveRuleIds, Does.Contain("blue-area"));
+            Assert.That(transparentViolet.MustBeAboveRuleIds, Does.Contain("blue-70"));
+            Assert.That(transparentViolet.MustBeAboveRuleIds, Does.Contain("blue-50"));
+            Assert.That(transparentViolet.MustBeBelowRuleIds.Intersect(transparentViolet.MustBeAboveRuleIds), Is.Empty);
+            Assert.That(profile.UpperCourseColorRuleId, Is.EqualTo("violet-opaque"));
+            Assert.That(profile.Requirements.ForbidRegistrationColor, Is.True);
         }
 
         /// <summary>Sprint profile preserves the current BL colour table values.</summary>
@@ -139,10 +145,10 @@ namespace PurplePenViewModels.Tests
             List<SourceMapColor> sourceColors = new List<SourceMapColor> {
                 CreateSourceColor("Blå 70%", 0),
                 CreateSourceColor("Blå 50%", 1),
-                CreateSourceColor("Violett transparent", 2, 52),
-                CreateSourceColor("Brun för höjdkurvor mm", 3),
-                CreateSourceColor("Svart", 4),
-                CreateSourceColor("Blå yta", 5),
+                CreateSourceColor("Blå yta", 2),
+                CreateSourceColor("Violett transparent", 3, 52),
+                CreateSourceColor("Brun för höjdkurvor mm", 4),
+                CreateSourceColor("Svart", 5),
             };
 
             ColorPreflightReport report = ColorPreflightReport.Analyze(profile, sourceColors, PdfExportCapabilities.CreateCurrentImplementation());
@@ -671,6 +677,225 @@ namespace PurplePenViewModels.Tests
         }
 
         /// <summary>Creates a minimal, read-only source-map colour snapshot for preflight tests.</summary>
+        /// <summary>Every built-in profile's layer relationships agree with its own colour-table order.</summary>
+        [Test]
+        public void BuiltInProfiles_RelationshipsMatchRelativeDrawOrder()
+        {
+            foreach (PrintProfile profile in BuiltInPrintProfiles.CreateAll()) {
+                foreach (PrintProfileColorRule rule in profile.ColorRules) {
+                    foreach (string belowId in rule.MustBeBelowRuleIds) {
+                        PrintProfileColorRule other = profile.ColorRules.Single(candidate => candidate.Id == belowId);
+                        Assert.That(other.RelativeDrawOrder, Is.LessThan(rule.RelativeDrawOrder), profile.Id + ": " + rule.Id + " must be below " + belowId);
+                    }
+                    foreach (string aboveId in rule.MustBeAboveRuleIds) {
+                        PrintProfileColorRule other = profile.ColorRules.Single(candidate => candidate.Id == aboveId);
+                        Assert.That(other.RelativeDrawOrder, Is.GreaterThan(rule.RelativeDrawOrder), profile.Id + ": " + rule.Id + " must be above " + aboveId);
+                    }
+                }
+            }
+        }
+
+        /// <summary>BL forest: the transparent course violet goes directly under brown and above "Blå yta".</summary>
+        [Test]
+        public void Layering_BlForestMap_PlacesLowerPurpleBetweenBlueAreaAndBrown()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = CreateBlForestMapColors(includeTransparentViolet: false);
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, map, true, null, null, null);
+
+            Assert.That(layering.Status, Is.EqualTo(PrintProfileLayeringStatus.FromProfileColorOrder));
+            Assert.That(layering.IsInterleaved, Is.True);
+            Assert.That(layering.LowerPurpleMapLayer, Is.EqualTo(map.Single(color => color.Name == "Blå yta").OcadId));
+            Assert.That(layering.MapColorBelowLowerPurple, Is.EqualTo("Blå yta"));
+            Assert.That(layering.MapColorAboveLowerPurple, Is.EqualTo("Brun för höjdkurvor mm"));
+            Assert.That(layering.ConflictingMapColors, Is.Empty);
+        }
+
+        /// <summary>If the map already contains BL's "Violett transparent" (52), the course purple goes right there.</summary>
+        [Test]
+        public void Layering_MapWithOwnTransparentViolet_UsesThatColour()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = CreateBlForestMapColors(includeTransparentViolet: true);
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, map, true, null, null, null);
+
+            Assert.That(layering.Status, Is.EqualTo(PrintProfileLayeringStatus.AtMapCoursePurple));
+            Assert.That(layering.LowerPurpleMapLayer, Is.EqualTo(52));
+            Assert.That(layering.MapColorAboveLowerPurple, Is.EqualTo("Brun för höjdkurvor mm"));
+        }
+
+        /// <summary>BL forest: upper violet (50) is opaque, lower "Violett transparent" (52) overprints, both 35/95/0/0.</summary>
+        [Test]
+        public void Layering_BlForest_UsesOpaqueUpperAndTransparentLowerViolet()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, CreateBlForestMapColors(false), true, null, null, null);
+
+            Assert.That(layering.UpperColor.OcadId, Is.EqualTo(50));
+            Assert.That(layering.UpperColor.Overprint, Is.False);
+            Assert.That(layering.UpperColor.CmykText, Is.EqualTo("35/95/0/0"));
+            Assert.That(layering.LowerColor.OcadId, Is.EqualTo(52));
+            Assert.That(layering.LowerColor.Overprint, Is.True);
+            Assert.That(layering.LowerColor.Magenta, Is.EqualTo(0.95F).Within(0.0001F));
+        }
+
+        /// <summary>BL sprint: upper "Täckande violett" opaque, lower course violet transparent, 35/100/0/0.</summary>
+        [Test]
+        public void Layering_BlSprint_UsesOpaqueUpperAndTransparentLowerViolet()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlSprint();
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, new List<SourceMapColor>(), false, null, null, null);
+
+            Assert.That(layering.UpperColor.Name, Is.EqualTo("Täckande violett"));
+            Assert.That(layering.UpperColor.Overprint, Is.False);
+            Assert.That(layering.LowerColor.Overprint, Is.True);
+            Assert.That(layering.LowerColor.CmykText, Is.EqualTo("35/100/0/0"));
+            Assert.That(layering.UpperColor.OcadId, Is.Not.EqualTo(layering.LowerColor.OcadId));
+        }
+
+        /// <summary>PDF and image maps cannot be split by colour, so the course stays on top.</summary>
+        [Test]
+        public void Layering_NonVectorMap_DrawsCourseOnTop()
+        {
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(BuiltInPrintProfiles.CreateBlForest(),
+                new List<SourceMapColor>(), false, null, null, null);
+
+            Assert.That(layering.Status, Is.EqualTo(PrintProfileLayeringStatus.NotVectorMap));
+            Assert.That(layering.LowerPurpleMapLayer, Is.Null);
+        }
+
+        /// <summary>Explicit colour mappings from an English ISOM map are honoured, and unknown colours stay below the purple.</summary>
+        [Test]
+        public void Layering_MappedIsomMap_PutsPurpleAboveAllAreaColours()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = new List<SourceMapColor> {
+                CreateSourceColor("Yellow", 0, 9),
+                CreateSourceColor("Green", 1, 6),
+                CreateSourceColor("White for green", 2, 13),   // not in the profile
+                CreateSourceColor("Brown 50%", 3, 5),           // not mapped
+                CreateSourceColor("Brown", 4, 4),
+                CreateSourceColor("Blue", 5, 3),
+                CreateSourceColor("Black", 6, 0),
+            };
+            List<PrintProfileColorMapping> mappings = new List<PrintProfileColorMapping> {
+                Mapping("yellow-100", map[0]), Mapping("green-100", map[1]),
+                Mapping("brown-contours", map[4]), Mapping("blue-line-point", map[5]), Mapping("black", map[6]),
+            };
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, map, true, null, mappings, null);
+
+            Assert.That(layering.Status, Is.EqualTo(PrintProfileLayeringStatus.FromProfileColorOrder));
+            Assert.That(layering.LowerPurpleMapLayer, Is.EqualTo(5), "Directly above Brown 50%, directly under Brown.");
+            Assert.That(layering.MapColorAboveLowerPurple, Is.EqualTo("Brown"));
+            Assert.That(layering.ConflictingMapColors, Is.Empty);
+        }
+
+        /// <summary>A map that draws an area colour above brown is reported; the area colour still never hides the course.</summary>
+        [Test]
+        public void Layering_MapOrderContradictsProfile_ReportsConflictAndKeepsCourseAboveAreas()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = new List<SourceMapColor> {
+                CreateSourceColor("Brun för höjdkurvor mm", 0, 4),
+                CreateSourceColor("Grön 100%", 1, 6),
+                CreateSourceColor("Svart", 2, 0),
+            };
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, map, true, null, null, null);
+
+            Assert.That(layering.LowerPurpleMapLayer, Is.EqualTo(6), "Above the green area colour.");
+            Assert.That(layering.ConflictingMapColors, Is.EquivalentTo(new string[] { "Brun för höjdkurvor mm" }));
+        }
+
+        /// <summary>Without any matching colour, the event's own lower-purple layer is used as fallback.</summary>
+        [Test]
+        public void Layering_NoMatches_UsesFallbackLayerOrDrawsOnTop()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = new List<SourceMapColor> {
+                CreateSourceColor("Area", 0, 20),
+                CreateSourceColor("Lines", 1, 21),
+            };
+
+            PrintProfileCourseLayering withFallback = PrintProfileCourseLayering.Create(profile, map, true, null, null, 20);
+            PrintProfileCourseLayering withoutFallback = PrintProfileCourseLayering.Create(profile, map, true, null, null, null);
+
+            Assert.That(withFallback.Status, Is.EqualTo(PrintProfileLayeringStatus.Fallback));
+            Assert.That(withFallback.LowerPurpleMapLayer, Is.EqualTo(20));
+            Assert.That(withoutFallback.Status, Is.EqualTo(PrintProfileLayeringStatus.CourseOnTop));
+            Assert.That(withoutFallback.LowerPurpleMapLayer, Is.Null);
+        }
+
+        /// <summary>BL forbids registration colour; preflight warns when the map contains one.</summary>
+        [Test]
+        public void Analyze_RegistrationColourInMap_WarnsForBl()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            SourceMapColor registration = CreateSourceColor("All color separations", 0, 14);
+            registration.Cmyk = new PrintProfileCmyk { Cyan = 100, Magenta = 100, Yellow = 100, Black = 100 };
+
+            ColorPreflightReport report = ColorPreflightReport.Analyze(profile, new List<SourceMapColor> { registration },
+                PdfExportCapabilities.CreateCurrentImplementation());
+
+            Assert.That(report.Findings.Any(finding => finding.Severity == ColorPreflightSeverity.Warning
+                                                      && finding.Message.Contains("registration colour")), Is.True);
+        }
+
+        /// <summary>Upper course colour survives JSON round-trips; older JSON without it still loads.</summary>
+        [Test]
+        public void UpperCourseColorRule_RoundTripsAndIsOptional()
+        {
+            PrintProfile forest = BuiltInPrintProfiles.CreateBlForest();
+            PrintProfile restored = PrintProfileSerializer.Deserialize(PrintProfileSerializer.Serialize(forest));
+            Assert.That(restored.UpperCourseColorRuleId, Is.EqualTo("violet-opaque"));
+            Assert.That(BuiltInPrintProfiles.GetUpperCourseColorRule(restored).Name, Is.EqualTo("Violett"));
+
+            forest.UpperCourseColorRuleId = "";
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(forest, new List<SourceMapColor>(), false, null, null, null);
+            Assert.That(layering.UpperColor.Name, Is.EqualTo("Violett transparent"));
+            Assert.That(layering.UpperColor.Overprint, Is.False, "Upper purple is always opaque.");
+        }
+
+        /// <summary>Creates a source colour list in BL forest table order, lowest first.</summary>
+        private static List<SourceMapColor> CreateBlForestMapColors(bool includeTransparentViolet)
+        {
+            List<string> names = new List<string> {
+                "Gul 50%", "Gul 100%", "Vit över gul", "Svart 35%", "Brun 50%", "Grön 30%", "Grön 60%", "Grön 100%",
+                "Vit över grön", "Blå 50%", "Blå 70%", "Gul 100%/grön 50%", "Blå yta",
+            };
+            if (includeTransparentViolet)
+                names.Add("Violett transparent");
+            names.AddRange(new string[] { "Brun för höjdkurvor mm", "Mask för vattendrag", "Blå linje och punkt", "Väg sidlinje",
+                                          "Vägfyllning", "Svart", "Vit", "Violett" });
+
+            List<SourceMapColor> colors = new List<SourceMapColor>();
+            for (int index = 0; index < names.Count; ++index) {
+                short ocadId = (short)(100 + index);
+                if (names[index] == "Violett transparent")
+                    ocadId = 52;
+                else if (names[index] == "Violett")
+                    ocadId = 50;
+                colors.Add(CreateSourceColor(names[index], index, ocadId));
+            }
+            return colors;
+        }
+
+        /// <summary>Creates an explicit user mapping from a profile rule to a map colour.</summary>
+        private static PrintProfileColorMapping Mapping(string ruleId, SourceMapColor color)
+        {
+            return new PrintProfileColorMapping {
+                RuleId = ruleId,
+                MapColorName = color.Name,
+                MapColorOcadId = color.OcadId,
+                MapColorDrawOrder = color.DrawOrder,
+            };
+        }
+
         private static SourceMapColor CreateSourceColor(string name, int drawOrder, short ocadId = 0)
         {
             return new SourceMapColor {

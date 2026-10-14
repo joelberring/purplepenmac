@@ -233,7 +233,27 @@ namespace PurplePen
             }
 
             AddDrawOrderFindings(report);
+            AddRegistrationColorFindings(report, profile.Requirements, sourceColorList);
             return report;
+        }
+
+        /// <summary>Warns about registration colours (CMYK 100/100/100/100) when the printer forbids them.</summary>
+        /// <param name="report">The report that receives findings.</param>
+        /// <param name="requirements">The selected profile's production requirements.</param>
+        /// <param name="sourceColors">Read-only snapshots of the source-map colours.</param>
+        private static void AddRegistrationColorFindings(ColorPreflightReport report, PrintProfileRequirements requirements,
+                                                         List<SourceMapColor> sourceColors)
+        {
+            if (requirements == null || !requirements.ForbidRegistrationColor)
+                return;
+
+            PrintProfileCmyk registration = new PrintProfileCmyk { Cyan = 100, Magenta = 100, Yellow = 100, Black = 100 };
+            foreach (SourceMapColor color in sourceColors.Where(candidate => CmykMatches(candidate.Cmyk, registration))) {
+                report.Findings.Add(new ColorPreflightFinding {
+                    Severity = ColorPreflightSeverity.Warning,
+                    Message = String.Format("Map colour '{0}' is a registration colour (CMYK 100/100/100/100). The printer does not accept it in delivered files; make sure no map object uses it.", color.Name),
+                });
+            }
         }
 
         /// <summary>Creates an evaluated result for a single profile rule.</summary>
