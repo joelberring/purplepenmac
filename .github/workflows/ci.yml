@@ -19,6 +19,7 @@ jobs:
     defaults:
       run:
         working-directory: src
+        shell: bash
 
     steps:
       - uses: actions/checkout@v4
@@ -41,14 +42,36 @@ jobs:
       - name: Restore PDF production tests
         run: dotnet restore MapModel/Map_PDF.Tests/Map_PDF.Tests.csproj
 
+      # Build output is echoed as annotations so failures are readable from the
+      # checks API even when raw logs are not accessible.
       - name: Build Avalonia application
-        run: dotnet build AvPurplePen/AvPurplePen.csproj --configuration Debug --no-restore --verbosity minimal -m:1
+        run: |
+          set -o pipefail
+          dotnet build AvPurplePen/AvPurplePen.csproj --configuration Debug --no-restore --verbosity minimal -m:1 2>&1 | tee build.log || {
+            grep -E "error|Error" build.log | sort -u | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          }
 
       - name: Test view models
-        run: dotnet test PurplePenViewModels.Tests/PurplePenViewModels.Tests.csproj --configuration Debug --no-restore --verbosity minimal
+        run: |
+          set -o pipefail
+          dotnet test PurplePenViewModels.Tests/PurplePenViewModels.Tests.csproj --configuration Debug --no-restore --verbosity minimal 2>&1 | tee test.log || {
+            grep -E "error|Failed|Assert|Expected|But was|at " test.log | head -60 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          }
 
       - name: Build PDF production tests
-        run: dotnet build MapModel/Map_PDF.Tests/Map_PDF.Tests.csproj --configuration Debug --no-restore --verbosity minimal -m:1
+        run: |
+          set -o pipefail
+          dotnet build MapModel/Map_PDF.Tests/Map_PDF.Tests.csproj --configuration Debug --no-restore --verbosity minimal -m:1 2>&1 | tee build-pdf.log || {
+            grep -E "error|Error" build-pdf.log | sort -u | head -40 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          }
 
       - name: Verify PDF overprint output
-        run: dotnet vstest MapModel/Map_PDF.Tests/bin/Debug/net10.0/Map_PDF.Tests.dll --TestCaseFilter:"FullyQualifiedName~PdfProductionTests" --logger:"console;verbosity=normal"
+        run: |
+          set -o pipefail
+          dotnet vstest MapModel/Map_PDF.Tests/bin/Debug/net10.0/Map_PDF.Tests.dll --TestCaseFilter:"FullyQualifiedName~PdfProductionTests" --logger:"console;verbosity=normal" 2>&1 | tee vstest.log || {
+            grep -E "error|Failed|Assert|Expected|But was" vstest.log | head -60 | while IFS= read -r line; do echo "::error::$line"; done
+            exit 1
+          }
