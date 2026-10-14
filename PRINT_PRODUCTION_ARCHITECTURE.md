@@ -19,11 +19,38 @@ and course layout without first solving the production metadata contract.
 | Profile colour preflight | Supported, non-destructively | `PurplePenCore/ColorPreflight.cs`. |
 | PDF/X OutputIntent | Not supported | `PdfDocument.SetPdfA()` is explicitly a `HACK_OLD`, produces an sRGB PDF/A-style OutputIntent, and is not called by `Map_PDF`. |
 | Embedded print ICC profile | Not supported | No profile selected from `CoursePdfSettings` reaches `PdfDocument`; the only embedded profile is the internal sRGB resource in the PDF/A prototype. |
-| True PDF overprint | Supported for map and course colours | `Pdf_GraphicsTarget` transfers `SymColor.OverPrint` to PDFsharp pens and brushes. `PdfProductionTests` generates a PDF and verifies its `/OP`, `/op`, and `/OPM 1` entries. |
+| True PDF overprint | Supported for map and course colours | `Pdf_GraphicsTarget` transfers `SymColor.RenderOverPrint` (including print-profile overrides) to PDFsharp pens and brushes; colours without ink are always knockout. `PdfProductionTests` generates a PDF and verifies its `/OP`, `/op`, and `/OPM 1` entries. |
 
 The preflight declares CMYK and the structurally verified true-overprint path
 as available. Custom profiles that require PDF/X OutputIntent or ICC embedding
 are intentionally blocked.
+
+## Course purple layering with a print profile (OCAD-like output)
+
+Printers such as BL Idrottsservice print course maps from OCAD, where the course
+colours are part of the map's colour table. BL's tables put "Violett transparent"
+(circles, lines, numbers) directly under "Brun för höjdkurvor mm", i.e. under
+brown, black and 100 % blue line colours but above every area colour, and the
+opaque "Violett" (start, finish, ...) at the top.
+
+When a print profile is selected, `PrintProfileCourseLayering` reproduces this
+for the export only:
+
+| Course colour | Source | PDF output |
+| --- | --- | --- |
+| Lower purple | `CourseColorRuleId` (BL: "Violett transparent", OCAD 52) | Interleaved in the vector map's colour order, `/OP` + `/OPM 1` and blend mode `Darken` |
+| Upper purple | `UpperCourseColorRuleId` (BL: "Violett", OCAD 50) | Drawn on top, knockout |
+
+The lower-purple position comes, in order, from: the map's own colour matching
+the course rule; otherwise directly below the lowest confirmed map colour that the
+profile puts above the course rule (and never below a confirmed area colour);
+otherwise the event's Upper/Lower purple layer; otherwise the course is drawn on
+top. PDF and image base maps cannot be interleaved and are reported in the
+production review. Colours without ink are never written with overprint.
+
+`PurplePenCore.PrintTests` creates real course PDFs from an OCAD test map and
+checks the content-stream order, blend mode and overprint state of the course
+purple.
 
 ## Extension plan
 

@@ -87,13 +87,18 @@ namespace PurplePen.PrintTests
             Assert.That(ops.Any(op => op.Color.Equals(blGreen)), "Mapped green must use BL's 76/0/91/0.");
             Assert.That(ops.Any(op => op.Color.Equals(purple)), "The course must be printed in BL violet 35/95/0/0.");
 
-            int lastArea = ops.FindLastIndex(op => op.Color.Equals(blGreen) || op.Color.Equals(blYellow));
-            int firstBrown = ops.FindIndex(op => op.Color.Equals(blBrown));
-            List<ColorOp> interleavedPurple = ops.Where((op, index) => index > lastArea && index < firstBrown && op.Color.Equals(purple)).ToList();
-
-            Assert.That(lastArea, Is.GreaterThanOrEqualTo(0), "Expected green/yellow area colours in the print area.");
-            Assert.That(firstBrown, Is.GreaterThan(lastArea), "Map colours must be drawn in colour-table order.");
-            Assert.That(interleavedPurple, Is.Not.Empty, "Lower course purple must be drawn after the area colours and before brown.");
+            // Lower purple = the transparent purple drawn inside the map. Area colours (green, yellow) must
+            // come before it and brown must not; brown must be printed after it.
+            int firstLower = ops.FindIndex(op => op.Color.Equals(purple) && op.BlendMode == "/Darken");
+            int lastLower = ops.FindLastIndex(op => op.Color.Equals(purple) && op.BlendMode == "/Darken");
+            Assert.That(firstLower, Is.GreaterThanOrEqualTo(0), "Expected transparent (Darken) lower course purple.");
+            Assert.That(ops.Take(firstLower).Any(op => op.Color.Equals(blGreen) || op.Color.Equals(blYellow)),
+                        "Green/yellow area colours must be printed before (under) the lower course purple.");
+            Assert.That(ops.Take(firstLower).Any(op => op.Color.Equals(blBrown)), Is.False,
+                        "Brown must not be printed before (under) the lower course purple.");
+            Assert.That(ops.Skip(lastLower + 1).Any(op => op.Color.Equals(blBrown)),
+                        "Brown must be printed after (on top of) the lower course purple.");
+            List<ColorOp> interleavedPurple = ops.Skip(firstLower).Take(lastLower - firstLower + 1).Where(op => op.Color.Equals(purple)).ToList();
             Assert.That(interleavedPurple.All(op => op.BlendMode == "/Darken"), "Lower course purple must use the Darken blend mode.");
             Assert.That(interleavedPurple.All(op => op.Overprint), "Lower course purple must overprint.");
 
