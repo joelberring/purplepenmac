@@ -94,7 +94,7 @@ jobs:
             grep -E -A2 "error|Failed|Assert|Expected|But was|Message:|Exception|colour operators|  colour " printtest.log | grep -v "^--" | head -150 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           }
-          grep -E "Lower purple lies|colour operators|  colour " printtest.log | head -60 | while IFS= read -r line; do echo "::notice::$line"; done
+          grep -E "Lower purple lies|Using map colour|colour operators|  colour " printtest.log | head -60 | while IFS= read -r line; do echo "::notice::$line"; done
 
       - name: Publish sample print PDFs
         if: always() && matrix.os == 'macos-latest' && github.event_name == 'push'

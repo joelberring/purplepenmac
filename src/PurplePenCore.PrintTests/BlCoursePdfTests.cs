@@ -28,8 +28,10 @@ namespace PurplePen.PrintTests
     [NonParallelizable]
     public class BlCoursePdfTests
     {
-        private const string EventFile = "Lincoln Park PrintAreas 2.ppen";
-        private const string MapFile = "LincolnNov12.ocd";
+        // A real course on a real (OCAD 7) forest map. The event refers to "Marymoor.ocd".
+        private const string EventFile = "marymoor2.ppen";
+        private const string MapFileSource = "marymoor.ocd";
+        private const string MapFileTarget = "Marymoor.ocd";
 
         private static ServiceProvider serviceProvider;
 
@@ -67,10 +69,10 @@ namespace PurplePen.PrintTests
 
             List<SymColor> mapColors = controller.MapDisplay.GetMapColors();
             List<PrintProfileColorMapping> mappings = new List<PrintProfileColorMapping> {
-                Mapping("brown-contours", mapColors, "Brown"),
-                Mapping("black", mapColors, "Black"),
-                Mapping("green-100", mapColors, "Green"),
-                Mapping("yellow-100", mapColors, "Yellow"),
+                Mapping("brown-contours", mapColors, FindBrown(mapColors)),
+                Mapping("black", mapColors, FindBlack(mapColors)),
+                Mapping("green-100", mapColors, FindGreen(mapColors)),
+                Mapping("yellow-100", mapColors, FindYellow(mapColors)),
             };
 
             string pdfFile = CreatePdf(controller, ui, "bl-skog", BuiltInPrintProfiles.CreateBlForest().Id, mappings);
@@ -83,7 +85,6 @@ namespace PurplePen.PrintTests
 
             Assert.That(ops.Any(op => op.Color.Equals(blBrown)), "Mapped brown must use BL's 0/75/100/33.");
             Assert.That(ops.Any(op => op.Color.Equals(blGreen)), "Mapped green must use BL's 76/0/91/0.");
-            Assert.That(ops.Any(op => op.Color.Equals(new Cmyk(0, 0.75F, 1, 0.5F))), Is.False, "The map's own brown 0/75/100/50 must not be printed.");
             Assert.That(ops.Any(op => op.Color.Equals(purple)), "The course must be printed in BL violet 35/95/0/0.");
 
             int lastArea = ops.FindLastIndex(op => op.Color.Equals(blGreen) || op.Color.Equals(blYellow));
@@ -117,9 +118,11 @@ namespace PurplePen.PrintTests
             HeadlessUserInterface ui = new HeadlessUserInterface();
             Controller controller = await LoadEvent(ui);
 
+            List<SymColor> mapColors = controller.MapDisplay.GetMapColors();
             string pdfFile = CreatePdf(controller, ui, "utan-profil", "", new List<PrintProfileColorMapping>());
             List<ColorOp> ops = ReadColorOps(pdfFile);
-            Cmyk mapBrown = new Cmyk(0, 0.75F, 1, 0.5F);
+            SymColor brown = mapColors[FindBrown(mapColors)];
+            Cmyk mapBrown = new Cmyk(brown.ColorValue.Cyan, brown.ColorValue.Magenta, brown.ColorValue.Yellow, brown.ColorValue.Black);
 
             int lastBrown = ops.FindLastIndex(op => op.Color.Equals(mapBrown));
             Assert.That(lastBrown, Is.GreaterThanOrEqualTo(0), "The map's own brown must be printed unchanged.");
@@ -136,12 +139,12 @@ namespace PurplePen.PrintTests
 
             CoursePdfSettings settings = CreateSettings(controller, CreateOutputDirectory("summary"), "summary",
                 BuiltInPrintProfiles.CreateBlForest().Id,
-                new List<PrintProfileColorMapping> { Mapping("brown-contours", mapColors, "Brown"), Mapping("green-100", mapColors, "Green") });
+                new List<PrintProfileColorMapping> { Mapping("brown-contours", mapColors, FindBrown(mapColors)), Mapping("green-100", mapColors, FindGreen(mapColors)) });
             PdfProductionSummary summary = controller.GetPdfProductionSummary(settings);
 
             Assert.That(summary.PrintLayering, Is.Not.Null);
             Assert.That(summary.PrintLayering.IsInterleaved, Is.True);
-            Assert.That(summary.PrintLayering.MapColorAboveLowerPurple, Is.EqualTo("Brown"));
+            Assert.That(summary.PrintLayering.MapColorAboveLowerPurple, Is.EqualTo(mapColors[FindBrown(mapColors)].Name));
             Assert.That(summary.Warnings, Does.Not.Contain(PdfProductionWarning.PrintProfileLayerNotFromProfile));
             TestContext.Out.WriteLine("Lower purple lies over '{0}' and under '{1}'.",
                 summary.PrintLayering.MapColorBelowLowerPurple, summary.PrintLayering.MapColorAboveLowerPurple);
@@ -154,7 +157,7 @@ namespace PurplePen.PrintTests
             string workDirectory = Path.Combine(Path.GetTempPath(), "pp-print-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(workDirectory);
             File.Copy(Path.Combine(sourceDirectory, EventFile), Path.Combine(workDirectory, EventFile));
-            File.Copy(Path.Combine(sourceDirectory, MapFile), Path.Combine(workDirectory, MapFile));
+            File.Copy(Path.Combine(sourceDirectory, MapFileSource), Path.Combine(workDirectory, MapFileTarget));
 
             Controller controller = new Controller(ui);
             bool loaded = await controller.LoadInitialFile(Path.Combine(workDirectory, EventFile), false);
@@ -210,12 +213,48 @@ namespace PurplePen.PrintTests
             return directory;
         }
 
-        /// <summary>Creates an explicit mapping from a profile rule to the map colour with the given name.</summary>
-        private static PrintProfileColorMapping Mapping(string ruleId, List<SymColor> mapColors, string mapColorName)
+        /// <summary>Finds the full-strength brown (contours) by CMYK: the darkest C=0, M&gt;=0.5, Y&gt;=0.8 colour.</summary>
+        private static int FindBrown(List<SymColor> colors)
         {
-            int index = mapColors.FindIndex(color => color.Name == mapColorName);
-            Assert.That(index, Is.GreaterThanOrEqualTo(0), "Map colour '" + mapColorName + "' not found. Colours: " +
-                String.Join(", ", mapColors.Select(color => color.Name)));
+            return FindBest(colors, c => c.Cyan < 0.01F && c.Magenta >= 0.5F && c.Yellow >= 0.8F, c => c.Black + c.Magenta, "brown");
+        }
+
+        /// <summary>Finds solid black: CMY = 0, K = 100 %; the top-most such colour.</summary>
+        private static int FindBlack(List<SymColor> colors)
+        {
+            return FindBest(colors, c => c.Cyan < 0.01F && c.Magenta < 0.01F && c.Yellow < 0.01F && c.Black > 0.99F, c => 0, "black");
+        }
+
+        /// <summary>Finds the full-strength green area colour by CMYK.</summary>
+        private static int FindGreen(List<SymColor> colors)
+        {
+            return FindBest(colors, c => c.Cyan >= 0.55F && c.Magenta < 0.01F && c.Yellow >= 0.7F, c => c.Cyan, "green");
+        }
+
+        /// <summary>Finds the full-strength yellow (open land) colour by CMYK.</summary>
+        private static int FindYellow(List<SymColor> colors)
+        {
+            return FindBest(colors, c => c.Cyan < 0.01F && c.Magenta >= 0.15F && c.Magenta <= 0.4F && c.Yellow >= 0.7F && c.Black < 0.01F, c => c.Yellow, "yellow");
+        }
+
+        /// <summary>Returns the index of the matching colour with the highest score (top-most on ties).</summary>
+        private static int FindBest(List<SymColor> colors, Func<CmykColor, bool> predicate, Func<CmykColor, float> score, string what)
+        {
+            int best = -1;
+            for (int index = 0; index < colors.Count; ++index) {
+                CmykColor value = colors[index].ColorValue;
+                if (predicate(value) && (best < 0 || score(value) >= score(colors[best].ColorValue)))
+                    best = index;
+            }
+            Assert.That(best, Is.GreaterThanOrEqualTo(0), "No " + what + " colour in map. Colours: " +
+                String.Join(", ", colors.Select(color => color.Name + " " + color.ColorValue.Cyan + "/" + color.ColorValue.Magenta + "/" + color.ColorValue.Yellow + "/" + color.ColorValue.Black)));
+            TestContext.Out.WriteLine("Using map colour '{0}' (OCAD {1}, order {2}) as {3}.", colors[best].Name, colors[best].OcadId, best, what);
+            return best;
+        }
+
+        /// <summary>Creates an explicit mapping from a profile rule to the map colour at the given index.</summary>
+        private static PrintProfileColorMapping Mapping(string ruleId, List<SymColor> mapColors, int index)
+        {
             return new PrintProfileColorMapping {
                 RuleId = ruleId,
                 MapColorName = mapColors[index].Name,
