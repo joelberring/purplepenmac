@@ -91,13 +91,13 @@ jobs:
         run: |
           set -o pipefail
           dotnet test PurplePenCore.PrintTests/PurplePenCore.PrintTests.csproj --configuration Debug --no-restore --verbosity minimal -p:DisableGitVersionTask=true --logger:"console;verbosity=detailed" 2>&1 | tee printtest.log || {
-            grep -E -A2 "error|Failed|Assert|Expected|But was|Message:|Exception" printtest.log | grep -v "^--" | head -120 | while IFS= read -r line; do echo "::error::$line"; done
+            grep -E -A2 "error|Failed|Assert|Expected|But was|Message:|Exception|colour operators|  colour " printtest.log | grep -v "^--" | head -150 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           }
-          grep -E "Lower purple lies|colour operators" printtest.log | while IFS= read -r line; do echo "::notice::$line"; done
+          grep -E "Lower purple lies|colour operators|  colour " printtest.log | head -60 | while IFS= read -r line; do echo "::notice::$line"; done
 
       - name: Publish sample print PDFs
-        if: always() && matrix.os == 'ubuntu-latest' && github.event_name == 'push'
+        if: always() && matrix.os == 'macos-latest' && github.event_name == 'push'
         env:
           OUT: ${{ runner.temp }}/print-output
         run: |

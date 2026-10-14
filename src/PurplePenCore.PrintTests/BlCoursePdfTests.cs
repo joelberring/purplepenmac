@@ -335,6 +335,8 @@ namespace PurplePen.PrintTests
                 }
 
                 TestContext.Out.WriteLine("{0}: {1} colour operators, {2} ExtGStates", Path.GetFileName(pdfFile), ops.Count, extGStates.Count);
+                foreach (IGrouping<string, ColorOp> group in ops.GroupBy(op => op.Color + " " + op.BlendMode + (op.Overprint ? " OP" : "")))
+                    TestContext.Out.WriteLine("  colour {0} x{1} first@{2} last@{3}", group.Key, group.Count(), group.First().Index, group.Last().Index);
                 return ops;
             }
         }
