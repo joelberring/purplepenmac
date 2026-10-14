@@ -319,10 +319,15 @@ namespace PurplePen.PrintTests
             public string BlendMode = "/Normal";
             public bool FillOverprint;
             public bool StrokeOverprint;
+            public Cmyk? FillColor;
+            public Cmyk? StrokeColor;
             public GraphicsState Clone() { return (GraphicsState)MemberwiseClone(); }
         }
 
-        /// <summary>Reads all CMYK colour operators of the first page, in drawing order, with their graphics state.</summary>
+        /// <summary>
+        /// Reads every painting operation of the first page in drawing order, with the CMYK colour,
+        /// blend mode and overprint state in effect when it paints.
+        /// </summary>
         private static List<ColorOp> ReadColorOps(string pdfFile)
         {
             using (PdfDocument document = PdfReader.Open(pdfFile, PdfDocumentOpenMode.Import)) {
@@ -341,14 +346,13 @@ namespace PurplePen.PrintTests
                 Regex tokens = new Regex(
                     @"(?<![\w./])(?<c>-?\d*\.?\d+)\s+(?<m>-?\d*\.?\d+)\s+(?<y>-?\d*\.?\d+)\s+(?<k>-?\d*\.?\d+)\s+(?<op>k|K)(?![\w])" +
                     @"|(?<gs>/[A-Za-z0-9_.+-]+)\s+gs(?![\w])" +
-                    @"|(?<![\w/])(?<save>q|Q)(?![\w])");
+                    @"|(?<![\w/])(?<save>q|Q)(?![\w])" +
+                    @"|(?<![\w/*])(?<paint>S|s|f\*|f|F|B\*|B|b\*|b|Tj|TJ)(?![\w*])");
 
                 List<ColorOp> ops = new List<ColorOp>();
                 Stack<GraphicsState> stack = new Stack<GraphicsState>();
                 GraphicsState state = new GraphicsState();
-                MatchCollection matches = tokens.Matches(content);
-                for (int matchIndex = 0; matchIndex < matches.Count; ++matchIndex) {
-                    Match match = matches[matchIndex];
+                foreach (Match match in tokens.Matches(content)) {
                     if (match.Groups["save"].Success) {
                         if (match.Groups["save"].Value == "q")
                             stack.Push(state.Clone());
@@ -358,27 +362,26 @@ namespace PurplePen.PrintTests
                     else if (match.Groups["gs"].Success) {
                         ApplyExtGState(extGStates, match.Groups["gs"].Value, state);
                     }
+                    else if (match.Groups["op"].Success) {
+                        Cmyk color = new Cmyk(Parse(match.Groups["c"].Value), Parse(match.Groups["m"].Value),
+                                              Parse(match.Groups["y"].Value), Parse(match.Groups["k"].Value));
+                        if (match.Groups["op"].Value == "K")
+                            state.StrokeColor = color;
+                        else
+                            state.FillColor = color;
+                    }
                     else {
-                        // PDFsharp writes "c m y k k" and then the matching "/GSn gs"; the state that
-                        // applies when the object is painted includes that following ExtGState.
-                        if (matchIndex + 1 < matches.Count && matches[matchIndex + 1].Groups["gs"].Success)
-                            ApplyExtGState(extGStates, matches[matchIndex + 1].Groups["gs"].Value, state);
-
-                        bool isStroke = match.Groups["op"].Value == "K";
-                        ops.Add(new ColorOp {
-                            Index = match.Index,
-                            Color = new Cmyk(Parse(match.Groups["c"].Value), Parse(match.Groups["m"].Value),
-                                             Parse(match.Groups["y"].Value), Parse(match.Groups["k"].Value)),
-                            IsStroke = isStroke,
-                            BlendMode = state.BlendMode,
-                            Overprint = isStroke ? state.StrokeOverprint : state.FillOverprint,
-                        });
+                        string paint = match.Groups["paint"].Value;
+                        bool strokes = paint == "S" || paint == "s" || paint.StartsWith("B", StringComparison.Ordinal) || paint.StartsWith("b", StringComparison.Ordinal);
+                        bool fills = !(paint == "S" || paint == "s");
+                        if (strokes && state.StrokeColor.HasValue)
+                            ops.Add(new ColorOp { Index = match.Index, Color = state.StrokeColor.Value, IsStroke = true, BlendMode = state.BlendMode, Overprint = state.StrokeOverprint });
+                        if (fills && state.FillColor.HasValue)
+                            ops.Add(new ColorOp { Index = match.Index, Color = state.FillColor.Value, IsStroke = false, BlendMode = state.BlendMode, Overprint = state.FillOverprint });
                     }
                 }
 
-                TestContext.Out.WriteLine("{0}: {1} colour operators, {2} ExtGStates", Path.GetFileName(pdfFile), ops.Count, extGStates.Count);
-                foreach (IGrouping<string, ColorOp> group in ops.GroupBy(op => op.Color + " " + op.BlendMode + (op.Overprint ? " OP" : "")))
-                    TestContext.Out.WriteLine("  colour {0} x{1} first@{2} last@{3}", group.Key, group.Count(), group.First().Index, group.Last().Index);
+                TestContext.Out.WriteLine("{0}: {1} painting operations, {2} ExtGStates", Path.GetFileName(pdfFile), ops.Count, extGStates.Count);
                 return ops;
             }
         }
