@@ -49,6 +49,9 @@ namespace PurplePen.PrintTests
             services.AddSingleton<IPdfWriter, PdfWriter>();
             serviceProvider = services.BuildServiceProvider();
             Services.RegisterServiceProvider(serviceProvider);
+
+            // Bundled fonts (Roboto for control numbers etc.), as the application does at startup.
+            FontDesc.InitializeFonts();
         }
 
         /// <summary>

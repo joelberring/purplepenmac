@@ -91,7 +91,7 @@ jobs:
         run: |
           set -o pipefail
           dotnet test PurplePenCore.PrintTests/PurplePenCore.PrintTests.csproj --configuration Debug --no-restore --verbosity minimal -p:DisableGitVersionTask=true --logger:"console;verbosity=detailed" 2>&1 | tee printtest.log || {
-            grep -E "error|Failed|Assert|Expected|But was|Message:|at PurplePen" printtest.log | head -80 | while IFS= read -r line; do echo "::error::$line"; done
+            grep -E -A2 "error|Failed|Assert|Expected|But was|Message:|Exception" printtest.log | grep -v "^--" | head -120 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           }
           grep -E "Lower purple lies|colour operators" printtest.log | while IFS= read -r line; do echo "::notice::$line"; done
