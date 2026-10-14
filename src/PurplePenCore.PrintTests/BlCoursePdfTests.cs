@@ -346,7 +346,9 @@ namespace PurplePen.PrintTests
                 List<ColorOp> ops = new List<ColorOp>();
                 Stack<GraphicsState> stack = new Stack<GraphicsState>();
                 GraphicsState state = new GraphicsState();
-                foreach (Match match in tokens.Matches(content)) {
+                MatchCollection matches = tokens.Matches(content);
+                for (int matchIndex = 0; matchIndex < matches.Count; ++matchIndex) {
+                    Match match = matches[matchIndex];
                     if (match.Groups["save"].Success) {
                         if (match.Groups["save"].Value == "q")
                             stack.Push(state.Clone());
@@ -354,19 +356,14 @@ namespace PurplePen.PrintTests
                             state = stack.Pop();
                     }
                     else if (match.Groups["gs"].Success) {
-                        if (extGStates.TryGetValue(match.Groups["gs"].Value, out PdfDictionary gs)) {
-                            if (gs.Elements.ContainsKey("/BM"))
-                                state.BlendMode = gs.Elements.GetName("/BM");
-                            if (gs.Elements.ContainsKey("/op"))
-                                state.FillOverprint = gs.Elements.GetBoolean("/op");
-                            if (gs.Elements.ContainsKey("/OP")) {
-                                state.StrokeOverprint = gs.Elements.GetBoolean("/OP");
-                                if (!gs.Elements.ContainsKey("/op"))
-                                    state.FillOverprint = state.StrokeOverprint;
-                            }
-                        }
+                        ApplyExtGState(extGStates, match.Groups["gs"].Value, state);
                     }
                     else {
+                        // PDFsharp writes "c m y k k" and then the matching "/GSn gs"; the state that
+                        // applies when the object is painted includes that following ExtGState.
+                        if (matchIndex + 1 < matches.Count && matches[matchIndex + 1].Groups["gs"].Success)
+                            ApplyExtGState(extGStates, matches[matchIndex + 1].Groups["gs"].Value, state);
+
                         bool isStroke = match.Groups["op"].Value == "K";
                         ops.Add(new ColorOp {
                             Index = match.Index,
@@ -383,6 +380,22 @@ namespace PurplePen.PrintTests
                 foreach (IGrouping<string, ColorOp> group in ops.GroupBy(op => op.Color + " " + op.BlendMode + (op.Overprint ? " OP" : "")))
                     TestContext.Out.WriteLine("  colour {0} x{1} first@{2} last@{3}", group.Key, group.Count(), group.First().Index, group.Last().Index);
                 return ops;
+            }
+        }
+
+        /// <summary>Applies the blend mode and overprint entries of a named ExtGState.</summary>
+        private static void ApplyExtGState(Dictionary<string, PdfDictionary> extGStates, string name, GraphicsState state)
+        {
+            if (!extGStates.TryGetValue(name, out PdfDictionary gs))
+                return;
+            if (gs.Elements.ContainsKey("/BM"))
+                state.BlendMode = gs.Elements.GetName("/BM");
+            if (gs.Elements.ContainsKey("/op"))
+                state.FillOverprint = gs.Elements.GetBoolean("/op");
+            if (gs.Elements.ContainsKey("/OP")) {
+                state.StrokeOverprint = gs.Elements.GetBoolean("/OP");
+                if (!gs.Elements.ContainsKey("/op"))
+                    state.FillOverprint = state.StrokeOverprint;
             }
         }
 
