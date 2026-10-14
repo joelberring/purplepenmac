@@ -90,11 +90,12 @@ jobs:
           PP_PRINT_TEST_OUTPUT: ${{ runner.temp }}/print-output
         run: |
           set -o pipefail
-          dotnet test PurplePenCore.PrintTests/PurplePenCore.PrintTests.csproj --configuration Debug --no-restore --verbosity minimal -p:DisableGitVersionTask=true --logger:"console;verbosity=detailed" 2>&1 | tee printtest.log || {
-            grep -E -A2 "error|Failed|Assert|Expected|But was|Message:|Exception|colour operators|  colour " printtest.log | grep -v "^--" | head -150 | while IFS= read -r line; do echo "::error::$line"; done
-            exit 1
-          }
-          grep -E "Lower purple lies|Using map colour|colour operators|  colour " printtest.log | head -60 | while IFS= read -r line; do echo "::notice::$line"; done
+          status=0
+          dotnet test PurplePenCore.PrintTests/PurplePenCore.PrintTests.csproj --configuration Debug --no-restore --verbosity minimal -p:DisableGitVersionTask=true --logger:"console;verbosity=detailed" > printtest.log 2>&1 || status=$?
+          # GitHub keeps only ~10 annotations per step, so pack the interesting lines into one.
+          summary=$(grep -E "Failed |Passed |Error Message|Expected|But was|must|Using map colour|Lower purple lies|colour operators|Exception" printtest.log | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          if [ "$status" -ne 0 ]; then echo "::error::$summary"; else echo "::notice::$summary"; fi
+          exit $status
 
       - name: Publish sample print PDFs
         if: always() && matrix.os == 'macos-latest' && github.event_name == 'push'
