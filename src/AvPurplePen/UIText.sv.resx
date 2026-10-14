@@ -1382,14 +1382,17 @@
     <value>Mappa tryckprofilens färger</value>
   </data>
   <data name="PrintProfileMappingsDialog_instructions_Text" xml:space="preserve">
-    <value>Utgå från lagren som faktiskt finns i kartan. Granska färgen och de numrerade kartsymbolerna som använder den, och välj sedan en målfärg i den färdiga tryckprofilen. Välj Behåll originalfärg för lager som inte ska konverteras.</value>
+    <value>Varje lager i kartan har redan fått en hantering: ett automatiskt förslag där namn, CMYK-värden och kartsymboler pekar ut en profilfärg, annars Behåll originalfärg. Granska förslagen, ändra de som blivit fel och tryck på Använd. Inget lager måste paras.</value>
   </data>
   <data name="PrintProfileMappingsDialog_sourceLayerHeader_Text" xml:space="preserve"><value>Lager i originalkartan</value></data>
   <data name="PrintProfileMappingsDialog_targetHandlingHeader_Text" xml:space="preserve"><value>Hantering i den färdiga profilen</value></data>
   <data name="PrintProfileMappingsDialog_keepOriginal_Text" xml:space="preserve"><value>Behåll originalfärg</value></data>
   <data name="PrintProfileMappingsDialog_chooseHandling_Text" xml:space="preserve"><value>Välj profilfärg eller behåll original</value></data>
-  <data name="PrintProfileMappingsDialog_unpairedHelp_Text" xml:space="preserve"><value>Oparade lager måste uttryckligen behålla originalfärgen eller paras med en profilfärg.</value></data>
+  <data name="PrintProfileMappingsDialog_unpairedHelp_Text" xml:space="preserve"><value>Lager som inte paras behåller sin originalfärg.</value></data>
   <data name="PrintProfileMappingsDialog_noSymbols_Text" xml:space="preserve"><value>Inga använda kartsymboler använder detta färglager.</value></data>
+  <data name="PrintProfileMappingsDialog_autoSummary_Text" xml:space="preserve"><value>{0} av {1} lager parades automatiskt med en profilfärg.</value></data>
+  <data name="PrintProfileMappingsDialog_autoSuggested_Text" xml:space="preserve"><value>Automatiskt förslag – kontrollera</value></data>
+  <data name="PrintProfileMappingsDialog_noProfileMatch_Text" xml:space="preserve"><value>Ingen motsvarande profilfärg – originalfärgen behålls</value></data>
   <data name="PrintProfileMappingsDialog_stepsHeader_Text" xml:space="preserve">
     <value>Tre snabba steg</value>
   </data>

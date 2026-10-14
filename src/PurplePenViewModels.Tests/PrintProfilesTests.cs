@@ -535,7 +535,7 @@ namespace PurplePenViewModels.Tests
             Assert.That(mappings.Single().MapColorDrawOrder, Is.EqualTo(4));
         }
 
-        /// <summary>Unmatched source layers explicitly keep their original colour instead of appearing blank.</summary>
+        /// <summary>Unmatched source layers keep their original colour, and the unused rule is recorded as not in the map.</summary>
         [Test]
         public void MappingDialog_UnpairedLayerDefaultsToKeepOriginal()
         {
@@ -549,13 +549,19 @@ namespace PurplePenViewModels.Tests
             viewModel.Configure(profile, new[] { sourceColor }, Array.Empty<ColorPreflightRuleResult>());
 
             Assert.That(viewModel.SourceLayers.Single().SelectedTarget!.IsKeepOriginal, Is.True);
+            Assert.That(viewModel.SourceLayers.Single().IsAutoKeptOriginal, Is.True);
             Assert.That(viewModel.CanApplyMappings, Is.True);
-            Assert.That(viewModel.CreateMappings(), Is.Empty);
+            PrintProfileColorMapping mapping = viewModel.CreateMappings().Single();
+            Assert.That(mapping.RuleId, Is.EqualTo("black"));
+            Assert.That(mapping.NotInMap, Is.True);
         }
 
-        /// <summary>An ambiguous profile colour requires one source-first choice and cannot be assigned twice.</summary>
+        /// <summary>
+        /// An ambiguous profile colour is suggested for one layer; choosing it for another layer moves it
+        /// there instead of blocking Apply.
+        /// </summary>
         [Test]
-        public void MappingDialog_AmbiguousLayerRequiresExplicitUniqueTarget()
+        public void MappingDialog_ChoosingUsedTargetMovesItAndKeepsApplyEnabled()
         {
             SourceMapColor first = CreateSourceColor("Brown A", 2, 101);
             SourceMapColor second = CreateSourceColor("Brown B", 3, 102);
@@ -569,13 +575,88 @@ namespace PurplePenViewModels.Tests
             PrintProfileMappingsDialogViewModel viewModel = new PrintProfileMappingsDialogViewModel();
             viewModel.Configure(profile, new[] { first, second }, new[] { result });
 
-            Assert.That(viewModel.CanApplyMappings, Is.False);
-            PrintProfileTargetOptionViewModel target = viewModel.SourceLayers[0].TargetOptions.Single(option => option.RuleId == "brown");
-            viewModel.SourceLayers[0].SelectedTarget = target;
-            viewModel.SourceLayers[1].SelectedTarget = viewModel.SourceLayers[1].TargetOptions.Single(option => option.IsKeepOriginal);
-
             Assert.That(viewModel.CanApplyMappings, Is.True);
-            Assert.That(viewModel.CreateMappings().Single().MapColorName, Is.EqualTo("Brown A"));
+            Assert.That(viewModel.SourceLayers[0].SelectedTarget!.RuleId, Is.EqualTo("brown"));
+            Assert.That(viewModel.SourceLayers[0].IsAutoSuggested, Is.True);
+            Assert.That(viewModel.SourceLayers[1].SelectedTarget!.IsKeepOriginal, Is.True);
+
+            viewModel.SourceLayers[1].SelectedTarget = viewModel.SourceLayers[1].TargetOptions.Single(option => option.RuleId == "brown");
+
+            Assert.That(viewModel.SourceLayers[0].SelectedTarget!.IsKeepOriginal, Is.True);
+            Assert.That(viewModel.SourceLayers[1].IsAutoSuggested, Is.False);
+            Assert.That(viewModel.CanApplyMappings, Is.True);
+            Assert.That(viewModel.CreateMappings().Single().MapColorName, Is.EqualTo("Brown B"));
+        }
+
+        /// <summary>A map with BL's own colour names is paired completely and can then be exported.</summary>
+        [Test]
+        public void AutoMapper_BlNamedMap_PairsEveryLayerByName()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = CreateBlForestMapColors(includeTransparentViolet: true);
+            ColorPreflightReport report = ColorPreflightReport.Analyze(profile, map, PdfExportCapabilities.CreateCurrentImplementation());
+
+            List<PrintProfileMappingSuggestion> suggestions = PrintProfileAutoMapper.Suggest(profile, map, report.RuleResults);
+
+            foreach (PrintProfileMappingSuggestion suggestion in suggestions) {
+                Assert.That(suggestion.Rule, Is.Not.Null, suggestion.SourceColor.Name);
+                Assert.That(suggestion.Rule!.Name, Is.EqualTo(suggestion.SourceColor.Name));
+            }
+        }
+
+        /// <summary>English names, real CMYK values and ISOM symbols are enough to pair a typical map.</summary>
+        [Test]
+        public void AutoMapper_EnglishIsomMap_UsesNamesCmykAndSymbols()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = new List<SourceMapColor> {
+                CreateCmykColor("Yellow 50%", 0, 0, 20, 44, 0, "403.0"),
+                CreateCmykColor("Open land", 1, 0, 27, 94, 0, "401.0"),
+                CreateCmykColor("Green 30%", 2, 20, 0, 26, 0, "406.0"),
+                CreateCmykColor("Brown", 3, 0, 75, 100, 33, "101.0", "102.0"),
+                CreateCmykColor("Blue", 4, 100, 0, 0, 0, "304.0", "305.0"),
+                CreateCmykColor("Black", 5, 0, 0, 0, 100, "201.0"),
+                CreateCmykColor("Company logo red", 6, 0, 100, 100, 0),
+            };
+
+            List<PrintProfileMappingSuggestion> suggestions = PrintProfileAutoMapper.Suggest(profile, map, null);
+            Dictionary<string, string?> byName = suggestions.ToDictionary(item => item.SourceColor.Name, item => item.Rule?.Id);
+
+            Assert.That(byName["Yellow 50%"], Is.EqualTo("yellow-50"));
+            Assert.That(byName["Open land"], Is.EqualTo("yellow-100"));
+            Assert.That(byName["Green 30%"], Is.EqualTo("green-30"));
+            Assert.That(byName["Brown"], Is.EqualTo("brown-contours"));
+            Assert.That(byName["Blue"], Is.EqualTo("blue-line-point"));
+            Assert.That(byName["Black"], Is.EqualTo("black"));
+            Assert.That(byName["Company logo red"], Is.Null);
+            Assert.That(suggestions.Where(item => item.Rule != null).Select(item => item.Rule!.Id).Distinct().Count(),
+                        Is.EqualTo(suggestions.Count(item => item.Rule != null)));
+        }
+
+        /// <summary>Applying the dialog's choices resolves every ambiguity, including rules no layer uses.</summary>
+        [Test]
+        public void MappingDialog_AppliedChoicesUnblockExport()
+        {
+            PrintProfileColorRule rule = new PrintProfileColorRule {
+                Id = "brown", Name = "Brun",
+                Identifier = new PrintProfileColorIdentifier { Names = new List<string> { "Brun" } },
+            };
+            PrintProfile profile = new PrintProfile { Name = "Test", ColorRules = new List<PrintProfileColorRule> { rule } };
+            List<SourceMapColor> map = new List<SourceMapColor> { CreateSourceColor("Brun", 0, 10), CreateSourceColor("Brun", 1, 11) };
+            ColorPreflightReport before = ColorPreflightReport.Analyze(profile, map, PdfExportCapabilities.CreateCurrentImplementation());
+            Assert.That(before.CanExport, Is.False);
+
+            // Keep both original colours: the rule is recorded as not in the map instead of staying ambiguous.
+            PrintProfileMappingsDialogViewModel viewModel = new PrintProfileMappingsDialogViewModel();
+            viewModel.Configure(profile, map, before.RuleResults);
+            foreach (PrintProfileSourceLayerViewModel layer in viewModel.SourceLayers)
+                layer.SelectedTarget = layer.KeepOriginalOption;
+            ColorPreflightReport after = ColorPreflightReport.Analyze(profile, map, PdfExportCapabilities.CreateCurrentImplementation(),
+                                                                      null, viewModel.CreateMappings());
+
+            Assert.That(after.RuleResults.Single().MatchStatus, Is.EqualTo(ColorPreflightMatchStatus.NotPresent));
+            Assert.That(after.RuleResults.Single().MappingMissing, Is.False);
+            Assert.That(after.CanExport, Is.True);
         }
 
         /// <summary>Visual editor pairings replace fragile source names with the selected map colour identity.</summary>
@@ -977,6 +1058,19 @@ namespace PurplePenViewModels.Tests
                 MapColorName = color.Name,
                 MapColorOcadId = color.OcadId,
                 MapColorDrawOrder = color.DrawOrder,
+            };
+        }
+
+        /// <summary>Creates a source colour with real CMYK percentages and the ISOM symbols that use it.</summary>
+        private static SourceMapColor CreateCmykColor(string name, int drawOrder, float cyan, float magenta, float yellow, float black,
+                                                      params string[] symbolIds)
+        {
+            return new SourceMapColor {
+                Name = name,
+                OcadId = (short)(drawOrder + 1),
+                DrawOrder = drawOrder,
+                Cmyk = new PrintProfileCmyk { Cyan = cyan, Magenta = magenta, Yellow = yellow, Black = black },
+                Symbols = symbolIds.Select(id => new SourceMapSymbol { SymbolId = id, Name = id }).ToList(),
             };
         }
 

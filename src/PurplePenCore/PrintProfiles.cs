@@ -103,6 +103,12 @@ namespace PurplePen
 
         /// <summary>Gets or sets the lowest-to-highest drawing-order index selected by the user.</summary>
         public int MapColorDrawOrder { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the user decided that no map colour corresponds to this profile colour
+        /// (every candidate keeps its original colour). The rule is then treated as not present.
+        /// </summary>
+        public bool NotInMap { get; set; }
     }
 
     /// <summary>Describes production capabilities a selected profile can require.</summary>

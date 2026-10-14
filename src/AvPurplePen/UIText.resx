@@ -1480,14 +1480,17 @@
     <value>Map Print Profile Colors</value>
   </data>
   <data name="PrintProfileMappingsDialog_instructions_Text" xml:space="preserve">
-    <value>Start with the layers that actually exist in the map. Review their colour and the numbered map symbols that use them, then choose a target colour in the finished print profile. Choose Keep original for layers that should not be converted.</value>
+    <value>Each layer in the map has already been given a handling: an automatic suggestion where name, CMYK values and map symbols point to a profile colour, otherwise Keep original colour. Check the suggestions, change any that are wrong and press Apply. Nothing has to be paired.</value>
   </data>
   <data name="PrintProfileMappingsDialog_sourceLayerHeader_Text" xml:space="preserve"><value>Layer in the original map</value></data>
   <data name="PrintProfileMappingsDialog_targetHandlingHeader_Text" xml:space="preserve"><value>Handling in the finished profile</value></data>
   <data name="PrintProfileMappingsDialog_keepOriginal_Text" xml:space="preserve"><value>Keep original colour</value></data>
   <data name="PrintProfileMappingsDialog_chooseHandling_Text" xml:space="preserve"><value>Choose profile colour or keep original</value></data>
-  <data name="PrintProfileMappingsDialog_unpairedHelp_Text" xml:space="preserve"><value>Unpaired layers must explicitly keep their original colour or be paired with one profile colour.</value></data>
+  <data name="PrintProfileMappingsDialog_unpairedHelp_Text" xml:space="preserve"><value>Layers that are not paired keep their original colour.</value></data>
   <data name="PrintProfileMappingsDialog_noSymbols_Text" xml:space="preserve"><value>No used map symbols reference this colour layer.</value></data>
+  <data name="PrintProfileMappingsDialog_autoSummary_Text" xml:space="preserve"><value>{0} of {1} layers were paired with a profile colour automatically.</value></data>
+  <data name="PrintProfileMappingsDialog_autoSuggested_Text" xml:space="preserve"><value>Automatic suggestion – check it</value></data>
+  <data name="PrintProfileMappingsDialog_noProfileMatch_Text" xml:space="preserve"><value>No matching profile colour – the original colour is kept</value></data>
   <data name="PrintProfileMappingsDialog_stepsHeader_Text" xml:space="preserve">
     <value>Three quick steps</value>
   </data>

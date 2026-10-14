@@ -269,7 +269,12 @@ namespace PurplePen
             List<SourceMapColor> candidates;
             ColorPreflightMatchStatus matchStatus;
             bool userMapped = mapping != null;
-            if (userMapped) {
+            if (userMapped && mapping.NotInMap) {
+                candidates = new List<SourceMapColor>();
+                matchStatus = ColorPreflightMatchStatus.NotPresent;
+                userMapped = false;
+            }
+            else if (userMapped) {
                 candidates = sourceColors.Where(color => MappingMatches(mapping, color)).ToList();
                 matchStatus = candidates.Count == 1 ? ColorPreflightMatchStatus.Matched : ColorPreflightMatchStatus.NotPresent;
             }

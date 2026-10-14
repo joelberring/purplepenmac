@@ -266,6 +266,8 @@ namespace PurplePen.ViewModels
         public void ApplyMapPairings(IEnumerable<PrintProfileColorMapping> mappings)
         {
             foreach (PrintProfileColorMapping mapping in mappings ?? Enumerable.Empty<PrintProfileColorMapping>()) {
+                if (mapping.NotInMap)
+                    continue;
                 PrintProfileRuleEditorItem? rule = Rules.FirstOrDefault(item => String.Equals(item.Id, mapping.RuleId, StringComparison.Ordinal));
                 SourceMapColor? mapColor = currentMapColors.FirstOrDefault(color =>
                     String.Equals(color.Name, mapping.MapColorName, StringComparison.Ordinal)

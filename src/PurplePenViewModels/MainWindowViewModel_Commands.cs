@@ -2808,10 +2808,14 @@ namespace PurplePen.ViewModels
                 PdfExportCapabilities.CreateCurrentImplementation(), settings.ConfirmedPrintProfileRuleIds,
                 settings.PrintProfileColorMappings);
             if (!report.CanExport) {
-                List<ColorPreflightRuleResult> ambiguousRules = report.RuleResults
-                    .Where(result => result.MatchStatus == ColorPreflightMatchStatus.Ambiguous)
+                // Ambiguous and partial matches are both resolved in the mapping dialog, which comes
+                // pre-filled with automatic suggestions so the user normally only reviews and applies.
+                List<ColorPreflightRuleResult> unresolvedRules = report.RuleResults
+                    .Where(result => result.MatchStatus == ColorPreflightMatchStatus.Ambiguous
+                                     || (result.MatchStatus == ColorPreflightMatchStatus.NeedsConfirmation && !result.UserConfirmed)
+                                     || result.MappingMissing)
                     .ToList();
-                if (ambiguousRules.Count > 0) {
+                if (unresolvedRules.Count > 0) {
                     PrintProfileMappingsDialogViewModel mappingVm = new PrintProfileMappingsDialogViewModel();
                     mappingVm.Configure(profile, sourceColors, report.RuleResults);
 

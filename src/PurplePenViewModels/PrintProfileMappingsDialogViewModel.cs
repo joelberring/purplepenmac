@@ -34,8 +34,23 @@ namespace PurplePen.ViewModels
         public string SourceIdentity => String.Format(CultureInfo.InvariantCulture, "OCAD {0} · {1}", SourceColor.OcadId, SourceColor.DrawOrder);
         public bool HasSymbols => SourceColor.Symbols.Count > 0;
 
+        /// <summary>Gets the option that keeps the layer's original colour.</summary>
+        public PrintProfileTargetOptionViewModel KeepOriginalOption => TargetOptions.First(option => option.IsKeepOriginal);
+
         [ObservableProperty]
         private PrintProfileTargetOptionViewModel? selectedTarget;
+
+        /// <summary>Gets or sets how the current selection was chosen; null once the user changed it.</summary>
+        [ObservableProperty]
+        [NotifyPropertyChangedFor(nameof(IsAutoSuggested))]
+        [NotifyPropertyChangedFor(nameof(IsAutoKeptOriginal))]
+        private PrintProfileSuggestionKind? suggestionKind;
+
+        /// <summary>Gets whether the selected profile colour was proposed automatically and not yet changed.</summary>
+        public bool IsAutoSuggested => SuggestionKind == PrintProfileSuggestionKind.Suggested;
+
+        /// <summary>Gets whether the original colour is kept because no profile colour fits.</summary>
+        public bool IsAutoKeptOriginal => SuggestionKind == PrintProfileSuggestionKind.NoMatch;
     }
 
     /// <summary>Maps visible source-map layers to a finished print profile without requiring memorized identifiers.</summary>
@@ -44,7 +59,23 @@ namespace PurplePen.ViewModels
         public string ProfileName { get; set; } = String.Empty;
         public List<PrintProfileSourceLayerViewModel> SourceLayers { get; } = new List<PrintProfileSourceLayerViewModel>();
 
-        /// <summary>Gets whether every source layer has an explicit, non-conflicting handling choice.</summary>
+        /// <summary>Ids of every colour rule in the profile, used to record rules that no layer uses.</summary>
+        private readonly List<string> profileRuleIds = new List<string>();
+
+        /// <summary>Set while one row's selection is being adjusted because another row took its rule.</summary>
+        private bool adjustingSelections;
+
+        /// <summary>Gets the number of layers that were paired with a profile colour automatically.</summary>
+        public int AutoPairedCount => SourceLayers.Count(item => item.SuggestionKind == PrintProfileSuggestionKind.Suggested
+                                                              || item.SuggestionKind == PrintProfileSuggestionKind.Confirmed);
+
+        /// <summary>Gets the number of map colour layers shown in the dialog.</summary>
+        public int LayerCount => SourceLayers.Count;
+
+        /// <summary>
+        /// Gets whether the choices can be applied. Every layer always has a handling (a profile colour or
+        /// its original colour), so this only fails if the same profile colour is used twice.
+        /// </summary>
         public bool CanApplyMappings {
             get {
                 if (SourceLayers.Count == 0 || SourceLayers.Any(item => item.SelectedTarget == null))
@@ -55,39 +86,48 @@ namespace PurplePen.ViewModels
             }
         }
 
-        /// <summary>Creates source-first rows and preselects only unambiguous matches.</summary>
+        /// <summary>
+        /// Creates source-first rows and preselects a handling for every row: exact and earlier matches,
+        /// automatic suggestions from names, CMYK and symbols, and otherwise the original colour.
+        /// </summary>
+        /// <param name="profile">The selected print profile.</param>
+        /// <param name="sourceColors">The map's colour layers, lowest first.</param>
+        /// <param name="ruleResults">Preflight results for the profile.</param>
         public void Configure(PrintProfile profile, IEnumerable<SourceMapColor> sourceColors, IEnumerable<ColorPreflightRuleResult> ruleResults)
         {
             if (profile == null)
                 throw new ArgumentNullException(nameof(profile));
             ProfileName = profile.Name;
+            foreach (PrintProfileSourceLayerViewModel oldItem in SourceLayers)
+                oldItem.PropertyChanged -= SourceLayerPropertyChanged;
             SourceLayers.Clear();
-            List<ColorPreflightRuleResult> results = (ruleResults ?? Enumerable.Empty<ColorPreflightRuleResult>()).ToList();
+            profileRuleIds.Clear();
+            profileRuleIds.AddRange(profile.ColorRules.Select(rule => rule.Id));
 
-            foreach (SourceMapColor sourceColor in sourceColors ?? Enumerable.Empty<SourceMapColor>()) {
-                PrintProfileSourceLayerViewModel item = new PrintProfileSourceLayerViewModel { SourceColor = sourceColor };
-                PrintProfileTargetOptionViewModel keepOriginal = new PrintProfileTargetOptionViewModel { IsKeepOriginal = true };
-                item.TargetOptions.Add(keepOriginal);
+            List<PrintProfileMappingSuggestion> suggestions = PrintProfileAutoMapper.Suggest(profile, sourceColors, ruleResults);
+            foreach (PrintProfileMappingSuggestion suggestion in suggestions) {
+                PrintProfileSourceLayerViewModel item = new PrintProfileSourceLayerViewModel { SourceColor = suggestion.SourceColor };
+                item.TargetOptions.Add(new PrintProfileTargetOptionViewModel { IsKeepOriginal = true });
                 foreach (PrintProfileColorRule rule in profile.ColorRules)
                     item.TargetOptions.Add(new PrintProfileTargetOptionViewModel { Rule = rule });
 
-                List<ColorPreflightRuleResult> sourceMatches = results.Where(result => result.CandidateColors.Any(candidate => SameColor(candidate, sourceColor))).ToList();
-                if (sourceMatches.Count == 1 && sourceMatches[0].CandidateColors.Count == 1 &&
-                    sourceMatches[0].MatchStatus != ColorPreflightMatchStatus.Ambiguous) {
-                    string ruleId = sourceMatches[0].Rule.Id;
-                    item.SelectedTarget = item.TargetOptions.Single(option => option.RuleId == ruleId);
-                }
-                else if (sourceMatches.Count == 0) {
-                    item.SelectedTarget = keepOriginal;
-                }
-
+                item.SelectedTarget = suggestion.Rule == null
+                    ? item.KeepOriginalOption
+                    : item.TargetOptions.Single(option => !option.IsKeepOriginal && option.RuleId == suggestion.Rule.Id);
+                item.SuggestionKind = suggestion.Kind;
                 item.PropertyChanged += SourceLayerPropertyChanged;
                 SourceLayers.Add(item);
             }
             OnPropertyChanged(nameof(CanApplyMappings));
+            OnPropertyChanged(nameof(AutoPairedCount));
+            OnPropertyChanged(nameof(LayerCount));
         }
 
-        /// <summary>Creates persistent rule-to-source mappings from the inverse visual editor.</summary>
+        /// <summary>
+        /// Creates persistent rule-to-source mappings from the inverse visual editor. Profile colours that no
+        /// layer uses are recorded as not in the map, so the export does not ask about them again.
+        /// </summary>
+        /// <returns>One mapping per profile rule shown in the dialog.</returns>
         public List<PrintProfileColorMapping> CreateMappings()
         {
             List<PrintProfileColorMapping> mappings = new List<PrintProfileColorMapping>();
@@ -99,21 +139,50 @@ namespace PurplePen.ViewModels
                     MapColorDrawOrder = item.SourceColor.DrawOrder,
                 });
             }
+
+            foreach (string ruleId in profileRuleIds) {
+                if (!mappings.Any(mapping => String.Equals(mapping.RuleId, ruleId, StringComparison.Ordinal))) {
+                    mappings.Add(new PrintProfileColorMapping {
+                        RuleId = ruleId,
+                        MapColorOcadId = -1,
+                        MapColorDrawOrder = -1,
+                        NotInMap = true,
+                    });
+                }
+            }
             return mappings;
         }
 
-        /// <summary>Raises Apply-button validation when a row's handling changes.</summary>
+        /// <summary>
+        /// Reacts when the user changes a row: the row is no longer an automatic suggestion, and any other row
+        /// that used the same profile colour falls back to its original colour, so Apply never gets blocked.
+        /// </summary>
         private void SourceLayerPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(PrintProfileSourceLayerViewModel.SelectedTarget))
-                OnPropertyChanged(nameof(CanApplyMappings));
-        }
+            if (e.PropertyName != nameof(PrintProfileSourceLayerViewModel.SelectedTarget))
+                return;
 
-        /// <summary>Compares the stable identity fields of two source-map colours.</summary>
-        private static bool SameColor(SourceMapColor first, SourceMapColor second)
-        {
-            return first.OcadId == second.OcadId && first.DrawOrder == second.DrawOrder &&
-                   String.Equals(first.Name, second.Name, StringComparison.Ordinal);
+            if (!adjustingSelections && sender is PrintProfileSourceLayerViewModel changed) {
+                adjustingSelections = true;
+                try {
+                    changed.SuggestionKind = null;
+                    if (changed.SelectedTarget != null && !changed.SelectedTarget.IsKeepOriginal) {
+                        string ruleId = changed.SelectedTarget.RuleId;
+                        foreach (PrintProfileSourceLayerViewModel other in SourceLayers) {
+                            if (other != changed && other.SelectedTarget != null && !other.SelectedTarget.IsKeepOriginal &&
+                                String.Equals(other.SelectedTarget.RuleId, ruleId, StringComparison.Ordinal)) {
+                                other.SelectedTarget = other.KeepOriginalOption;
+                                other.SuggestionKind = null;
+                            }
+                        }
+                    }
+                }
+                finally {
+                    adjustingSelections = false;
+                }
+                OnPropertyChanged(nameof(AutoPairedCount));
+            }
+            OnPropertyChanged(nameof(CanApplyMappings));
         }
 
         /// <summary>Creates an sRGB approximation for a CMYK colour swatch.</summary>
