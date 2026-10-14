@@ -1,0 +1,92 @@
+name: Build macOS app
+
+# Builds PurplePen.app for Apple Silicon (ad-hoc signed, not notarized), starts it
+# with a sample event to prove that it launches, and offers the zip for download.
+
+on:
+  push:
+    branches: [purple-pen-next, bl-tryckfarger]
+  workflow_dispatch:
+
+permissions:
+  contents: write   # publishes the zip and launch screenshot to the ci-mac-app branch
+
+jobs:
+  mac-app:
+    runs-on: macos-latest
+    env:
+      DOTNET_NOLOGO: true
+      # GitVersion 5.12 (used by the bundled PDFsharp) fails on CI branches; MSBuild
+      # reads environment variables as properties, so this reaches dotnet publish too.
+      DisableGitVersionTask: true
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Build PurplePen.app
+        working-directory: src/Installer/MacInstaller
+        run: ./build-mac-app.sh --skip-sign --skip-dmg --skip-zip
+
+      - name: Ad-hoc sign
+        working-directory: src/Installer/MacInstaller/build
+        run: |
+          codesign --force --deep --sign - PurplePen.app
+          codesign --verify --deep --strict PurplePen.app
+          /usr/libexec/PlistBuddy -c "Print :CFBundleVersion" PurplePen.app/Contents/Info.plist
+
+      - name: Launch the app with a sample event
+        run: |
+          set -u
+          APP="$PWD/src/Installer/MacInstaller/build/PurplePen.app"
+          OUT="$RUNNER_TEMP/mac-app"
+          WORK="$RUNNER_TEMP/launch"
+          mkdir -p "$OUT" "$WORK"
+          cp "src/TestFiles/courseprinting/marymoor2.ppen" "$WORK/"
+          cp "src/TestFiles/courseprinting/marymoor.ocd" "$WORK/Marymoor.ocd"
+          "$APP/Contents/MacOS/PurplePen" "$WORK/marymoor2.ppen" > "$OUT/launch.log" 2>&1 &
+          PID=$!
+          sleep 45
+          if kill -0 "$PID" 2>/dev/null; then
+            echo "RUNNING after 45 s" | tee "$OUT/launch-result.txt"
+            screencapture -x "$OUT/launch-screenshot.png" || true
+            kill "$PID" || true
+            echo "::notice::PurplePen.app started and was still running after 45 seconds."
+          else
+            wait "$PID"; code=$?
+            echo "EXITED with code $code" | tee "$OUT/launch-result.txt"
+            tail -40 "$OUT/launch.log"
+            echo "::error::PurplePen.app exited during start-up (code $code)."
+            exit 1
+          fi
+
+      - name: Zip the app
+        run: |
+          cd src/Installer/MacInstaller/build
+          ditto -c -k --sequesterRsrc --keepParent PurplePen.app "$RUNNER_TEMP/mac-app/PurplePen-macOS-${GITHUB_REF_NAME}.zip"
+          cp "../README - FIRST OPEN.txt" "$RUNNER_TEMP/mac-app/"
+          ls -la "$RUNNER_TEMP/mac-app"
+
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: PurplePen-macOS
+          path: ${{ runner.temp }}/mac-app
+
+      - name: Publish app to the ci-mac-app branch
+        if: github.event_name != 'pull_request'
+        run: |
+          cd "$RUNNER_TEMP/mac-app"
+          git init -q
+          git config user.name ci
+          git config user.email ci@users.noreply.github.com
+          git checkout -q -b ci-mac-app
+          echo "PurplePen.app built from ${GITHUB_SHA} (${GITHUB_REF_NAME})" > README.txt
+          git add -A
+          git commit -q -m "PurplePen.app from ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" ci-mac-app
