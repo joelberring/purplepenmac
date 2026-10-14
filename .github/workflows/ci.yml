@@ -31,23 +31,23 @@ jobs:
           dotnet-version: 10.0.x
 
       - name: Restore Avalonia application
-        run: dotnet restore AvPurplePen/AvPurplePen.csproj
+        run: dotnet restore AvPurplePen/AvPurplePen.csproj -p:DisableGitVersionTask=true
 
       - name: Restore PDF converter
-        run: dotnet restore PdfConverter/PdfConverter.csproj
+        run: dotnet restore PdfConverter/PdfConverter.csproj -p:DisableGitVersionTask=true
 
       - name: Restore view-model tests
-        run: dotnet restore PurplePenViewModels.Tests/PurplePenViewModels.Tests.csproj
+        run: dotnet restore PurplePenViewModels.Tests/PurplePenViewModels.Tests.csproj -p:DisableGitVersionTask=true
 
       - name: Restore PDF production tests
-        run: dotnet restore MapModel/Map_PDF.Tests/Map_PDF.Tests.csproj
+        run: dotnet restore MapModel/Map_PDF.Tests/Map_PDF.Tests.csproj -p:DisableGitVersionTask=true
 
       # Build output is echoed as annotations so failures are readable from the
       # checks API even when raw logs are not accessible.
       - name: Build Avalonia application
         run: |
           set -o pipefail
-          dotnet build AvPurplePen/AvPurplePen.csproj --configuration Debug --no-restore --verbosity minimal -m:1 2>&1 | tee build.log || {
+          dotnet build AvPurplePen/AvPurplePen.csproj --configuration Debug --no-restore --verbosity minimal -m:1 -p:DisableGitVersionTask=true 2>&1 | tee build.log || {
             grep -E "error|Error" build.log | sort -u | head -40 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           }
@@ -55,7 +55,7 @@ jobs:
       - name: Test view models
         run: |
           set -o pipefail
-          dotnet test PurplePenViewModels.Tests/PurplePenViewModels.Tests.csproj --configuration Debug --no-restore --verbosity minimal 2>&1 | tee test.log || {
+          dotnet test PurplePenViewModels.Tests/PurplePenViewModels.Tests.csproj --configuration Debug --no-restore --verbosity minimal -p:DisableGitVersionTask=true 2>&1 | tee test.log || {
             grep -E "error|Failed|Assert|Expected|But was|at " test.log | head -60 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           }
@@ -63,7 +63,7 @@ jobs:
       - name: Build PDF production tests
         run: |
           set -o pipefail
-          dotnet build MapModel/Map_PDF.Tests/Map_PDF.Tests.csproj --configuration Debug --no-restore --verbosity minimal -m:1 2>&1 | tee build-pdf.log || {
+          dotnet build MapModel/Map_PDF.Tests/Map_PDF.Tests.csproj --configuration Debug --no-restore --verbosity minimal -m:1 -p:DisableGitVersionTask=true 2>&1 | tee build-pdf.log || {
             grep -E "error|Error" build-pdf.log | sort -u | head -40 | while IFS= read -r line; do echo "::error::$line"; done
             exit 1
           }
