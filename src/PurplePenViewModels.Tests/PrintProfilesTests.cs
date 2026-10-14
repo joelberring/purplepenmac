@@ -271,9 +271,35 @@ namespace PurplePenViewModels.Tests
                 },
             };
 
-            ColorPreflightReport report = ColorPreflightReport.Analyze(profile, sourceColors, PdfExportCapabilities.CreateCurrentImplementation());
+            PdfExportCapabilities noConversion = PdfExportCapabilities.CreateCurrentImplementation();
+            noConversion.ConvertsMatchedMapColors = false;
+            ColorPreflightReport report = ColorPreflightReport.Analyze(profile, sourceColors, noConversion);
 
-            Assert.That(report.Findings.Any(finding => finding.RuleId == "violet-transparent" && finding.Message.Contains("CMYK")), Is.True);
+            Assert.That(report.Findings.Any(finding => finding.RuleId == "violet-transparent" && finding.Message.Contains("CMYK")
+                                                       && finding.Severity == ColorPreflightSeverity.Warning), Is.True);
+        }
+
+        /// <summary>When the export converts paired colours, a CMYK or overprint difference is only information.</summary>
+        [Test]
+        public void Analyze_ConvertedColourDifference_IsInformationNotWarning()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> sourceColors = new List<SourceMapColor> {
+                new SourceMapColor {
+                    Name = "Violett transparent",
+                    OcadId = 52,
+                    DrawOrder = 0,
+                    Overprint = false,
+                    Cmyk = new PrintProfileCmyk { Cyan = 1, Magenta = 2, Yellow = 3, Black = 4 },
+                },
+            };
+
+            ColorPreflightReport report = ColorPreflightReport.Analyze(profile, sourceColors, PdfExportCapabilities.CreateCurrentImplementation());
+            List<ColorPreflightFinding> violetFindings = report.Findings.Where(finding => finding.RuleId == "violet-transparent").ToList();
+
+            Assert.That(violetFindings.Any(finding => finding.Message.Contains("CMYK")), Is.True);
+            Assert.That(violetFindings.Any(finding => finding.Message.Contains("overprint")), Is.True);
+            Assert.That(violetFindings.All(finding => finding.Severity == ColorPreflightSeverity.Information), Is.True);
         }
 
         /// <summary>A missing true-overprint capability remains blocking for a custom profile that requires it.</summary>

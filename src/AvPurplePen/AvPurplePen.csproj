@@ -28,6 +28,30 @@
     </None>
   </ItemGroup>
 
+  <!-- Stamps the build with its date and git commit so the About dialog can tell builds apart.
+       The commit is left empty when git is not available. -->
+  <Target Name="PurplePenBuildStamp" BeforeTargets="GetAssemblyAttributes">
+    <Exec Command="git rev-parse --short HEAD" ConsoleToMSBuild="true" StandardOutputImportance="low"
+          StandardErrorImportance="low" IgnoreExitCode="true" ContinueOnError="true" EchoOff="true">
+      <Output TaskParameter="ConsoleOutput" PropertyName="PurplePenGitOutput" />
+      <Output TaskParameter="ExitCode" PropertyName="PurplePenGitExitCode" />
+    </Exec>
+    <PropertyGroup>
+      <PurplePenCommit Condition="'$(PurplePenGitExitCode)' == '0'">$(PurplePenGitOutput)</PurplePenCommit>
+      <PurplePenBuildDate>$([System.DateTime]::UtcNow.ToString("yyyy-MM-dd"))</PurplePenBuildDate>
+    </PropertyGroup>
+    <ItemGroup>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>PurplePenBuildDate</_Parameter1>
+        <_Parameter2>$(PurplePenBuildDate)</_Parameter2>
+      </AssemblyAttribute>
+      <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute">
+        <_Parameter1>PurplePenCommit</_Parameter1>
+        <_Parameter2>$(PurplePenCommit)</_Parameter2>
+      </AssemblyAttribute>
+    </ItemGroup>
+  </Target>
+
   <!-- Exclude ImageSharp from ReadyToRun — it grows from 1.7 MB to 30 MB
        and is only used for metadata/format detection, not on the hot path. -->
   <ItemGroup>

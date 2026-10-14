@@ -11256,5 +11256,14 @@ namespace AvPurplePen {
                 return ResourceManager.GetString("PrintProfileMappingsDialog_autoSummary_Text", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Build {0}.
+        /// </summary>
+        public static string AboutDialog_BuildLabel {
+            get {
+                return ResourceManager.GetString("AboutDialog_BuildLabel", resourceCulture);
+            }
+        }
     }
 }

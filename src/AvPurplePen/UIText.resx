@@ -4439,4 +4439,5 @@ Purple Pen cannot install this kind of file for you. Open it yourself to install
   <data name="PdfProductionReviewDialog_surfacesCoverCourse_Text" xml:space="preserve">
     <value>• These area or road colours lie on top of the opaque course purple and will hide it where they overlap:</value>
   </data>
+  <data name="AboutDialog_BuildLabel" xml:space="preserve"><value>Build {0}</value></data>
 </root>

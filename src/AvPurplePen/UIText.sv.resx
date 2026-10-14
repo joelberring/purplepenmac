@@ -4207,4 +4207,5 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="PdfProductionReviewDialog_surfacesCoverCourse_Text" xml:space="preserve">
     <value>• De här yt- eller vägfärgerna ligger ovanpå den täckande banvioletten och döljer den där de överlappar:</value>
   </data>
+  <data name="AboutDialog_BuildLabel" xml:space="preserve"><value>Bygge {0}</value></data>
 </root>
