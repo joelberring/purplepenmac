@@ -66,6 +66,24 @@ namespace PurplePen.ViewModels
         /// <summary>Comma-separated map colours whose order contradicts the print profile.</summary>
         public string ConflictingMapColorsText => Layering == null ? "" : String.Join(", ", Layering.ConflictingMapColors);
 
+        /// <summary>Surface colours (area and road fills) kept under the course so they cannot hide it.</summary>
+        public string SurfaceColorsKeptUnderCourseText => Layering == null ? "" : String.Join(", ", Layering.SurfaceColorsKeptUnderCourse);
+
+        /// <summary>True when one or more surface colours were kept under the course.</summary>
+        public bool HasSurfaceColorsKeptUnderCourse => Layering != null && Layering.SurfaceColorsKeptUnderCourse.Count > 0;
+
+        /// <summary>Line colours that show through the transparent course purple.</summary>
+        public string LineColorsUnderTransparentCourseText => Layering == null ? "" : String.Join(", ", Layering.LineColorsUnderTransparentCourse);
+
+        /// <summary>True when line colours lie under the transparent course purple.</summary>
+        public bool HasLineColorsUnderTransparentCourse => Layering != null && Layering.LineColorsUnderTransparentCourse.Count > 0;
+
+        /// <summary>Surface colours that still hide the (opaque) course purple.</summary>
+        public string SurfaceColorsCoveringCourseText => Layering == null ? "" : String.Join(", ", Layering.SurfaceColorsCoveringCourse);
+
+        /// <summary>True when surface colours still hide the course purple.</summary>
+        public bool HasSurfaceColorsCoveringCourse => Layering != null && Layering.SurfaceColorsCoveringCourse.Count > 0;
+
         /// <summary>True when a print profile is used with a PDF or image base map.</summary>
         public bool HasPrintProfileNeedsVectorMapWarning => HasWarning(PdfProductionWarning.PrintProfileNeedsVectorMap);
 
@@ -115,6 +133,12 @@ namespace PurplePen.ViewModels
             OnPropertyChanged(nameof(MapColorAboveLowerPurple));
             OnPropertyChanged(nameof(MapColorBelowLowerPurple));
             OnPropertyChanged(nameof(ConflictingMapColorsText));
+            OnPropertyChanged(nameof(SurfaceColorsKeptUnderCourseText));
+            OnPropertyChanged(nameof(HasSurfaceColorsKeptUnderCourse));
+            OnPropertyChanged(nameof(LineColorsUnderTransparentCourseText));
+            OnPropertyChanged(nameof(HasLineColorsUnderTransparentCourse));
+            OnPropertyChanged(nameof(SurfaceColorsCoveringCourseText));
+            OnPropertyChanged(nameof(HasSurfaceColorsCoveringCourse));
             OnPropertyChanged(nameof(HasPrintProfileNeedsVectorMapWarning));
             OnPropertyChanged(nameof(HasPrintProfileLayerNotFromProfileWarning));
             OnPropertyChanged(nameof(HasPrintProfileColorOrderConflictWarning));

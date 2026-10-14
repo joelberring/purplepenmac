@@ -812,6 +812,76 @@ namespace PurplePenViewModels.Tests
             Assert.That(layering.ConflictingMapColors, Is.EquivalentTo(new string[] { "Brun för höjdkurvor mm" }));
         }
 
+        /// <summary>
+        /// A road/area fill colour drawn above brown (e.g. "Street infill" for parking lots) must never
+        /// hide the course: the transparent lower purple is raised above it, and brown, now under the
+        /// purple, is reported as showing through.
+        /// </summary>
+        [Test]
+        public void Layering_SurfaceColourAboveBrown_IsKeptUnderTheCourse()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = new List<SourceMapColor> {
+                CreateSourceColor("Yellow", 0, 9),
+                CreateSourceColor("Green", 1, 6),
+                CreateSourceColor("Brown", 2, 4),
+                CreateSourceColor("Street infill", 3, 15),
+                CreateSourceColor("Blue", 4, 3),
+                CreateSourceColor("Black", 5, 0),
+            };
+            map[0].FillsSurfaces = true;
+            map[1].FillsSurfaces = true;
+            map[3].FillsSurfaces = true;
+            map[5].FillsSurfaces = true;   // black buildings: never moved under the course
+            map[5].Cmyk = new PrintProfileCmyk { Cyan = 0, Magenta = 0, Yellow = 0, Black = 100 };
+            List<PrintProfileColorMapping> mappings = new List<PrintProfileColorMapping> {
+                Mapping("yellow-100", map[0]), Mapping("green-100", map[1]),
+                Mapping("brown-contours", map[2]), Mapping("black", map[5]),
+            };
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, map, true, null, mappings, null);
+
+            Assert.That(layering.LowerPurpleMapLayer, Is.EqualTo(15), "Directly above Street infill.");
+            Assert.That(layering.SurfaceColorsKeptUnderCourse, Is.EqualTo(new List<string> { "Street infill" }));
+            Assert.That(layering.LineColorsUnderTransparentCourse, Is.EqualTo(new List<string> { "Brown" }));
+            Assert.That(layering.SurfaceColorsCoveringCourse, Is.Empty);
+            Assert.That(layering.MapColorAboveLowerPurple, Is.EqualTo("Blue"));
+        }
+
+        /// <summary>Black and white surfaces (buildings, masks) stay above the course, as in BL's table.</summary>
+        [Test]
+        public void Layering_BlackAndWhiteSurfaces_AreNotMoved()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = CreateBlForestMapColors(includeTransparentViolet: true);
+            foreach (SourceMapColor color in map.Where(color => color.Name == "Svart" || color.Name == "Mask för vattendrag" || color.Name == "Vit")) {
+                color.FillsSurfaces = true;
+                color.Cmyk = color.Name == "Svart"
+                    ? new PrintProfileCmyk { Cyan = 0, Magenta = 0, Yellow = 0, Black = 100 }
+                    : new PrintProfileCmyk();
+            }
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, map, true, null, null, null);
+
+            Assert.That(layering.LowerPurpleMapLayer, Is.EqualTo(52));
+            Assert.That(layering.SurfaceColorsKeptUnderCourse, Is.Empty);
+        }
+
+        /// <summary>An opaque lower purple is not raised over line colours; covering surfaces are reported.</summary>
+        [Test]
+        public void Layering_OpaqueLowerPurple_ReportsCoveringSurfaces()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            profile.ColorRules.Single(rule => rule.Id == "violet-transparent").OverprintIntent = PrintProfileOverprintIntent.Knockout;
+            List<SourceMapColor> map = CreateBlForestMapColors(includeTransparentViolet: false);
+            map.Single(color => color.Name == "Vägfyllning").FillsSurfaces = true;
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, map, true, null, null, null);
+
+            Assert.That(layering.MapColorBelowLowerPurple, Is.EqualTo("Blå yta"));
+            Assert.That(layering.SurfaceColorsCoveringCourse, Is.EqualTo(new List<string> { "Vägfyllning" }));
+        }
+
         /// <summary>Without any matching colour, the event's own lower-purple layer is used as fallback.</summary>
         [Test]
         public void Layering_NoMatches_UsesFallbackLayerOrDrawsOnTop()

@@ -94,10 +94,20 @@ namespace PurplePen.PrintTests
             Assert.That(firstLower, Is.GreaterThanOrEqualTo(0), "Expected transparent (Darken) lower course purple.");
             Assert.That(ops.Take(firstLower).Any(op => op.Color.Equals(blGreen) || op.Color.Equals(blYellow)),
                         "Green/yellow area colours must be printed before (under) the lower course purple.");
-            Assert.That(ops.Take(firstLower).Any(op => op.Color.Equals(blBrown)), Is.False,
-                        "Brown must not be printed before (under) the lower course purple.");
-            Assert.That(ops.Skip(lastLower + 1).Any(op => op.Color.Equals(blBrown)),
-                        "Brown must be printed after (on top of) the lower course purple.");
+            Assert.That(ops.Skip(lastLower + 1).Any(op => op.Color.Equals(new Cmyk(0, 0, 0, 1))),
+                        "Black must be printed after (on top of) the lower course purple.");
+
+            // No surface colour (area fill, road fill, wide line) may be printed on top of the course.
+            CoursePdfSettings settings = CreateSettings(controller, CreateOutputDirectory("check"), "check",
+                BuiltInPrintProfiles.CreateBlForest().Id, mappings);
+            PrintProfileCourseLayering layering = controller.GetPdfProductionSummary(settings).PrintLayering;
+            TestContext.Out.WriteLine("Surfaces kept under course: {0}; lines under transparent course: {1}",
+                String.Join(", ", layering.SurfaceColorsKeptUnderCourse), String.Join(", ", layering.LineColorsUnderTransparentCourse));
+            foreach (SymColor surface in mapColors.Where(color => layering.SurfaceColorsKeptUnderCourse.Contains(color.Name))) {
+                Cmyk surfaceColor = new Cmyk(surface.ColorValue.Cyan, surface.ColorValue.Magenta, surface.ColorValue.Yellow, surface.ColorValue.Black);
+                Assert.That(ops.Skip(lastLower + 1).Any(op => op.Color.Equals(surfaceColor)), Is.False,
+                            "Surface colour '" + surface.Name + "' " + surfaceColor + " must not be printed on top of the course.");
+            }
             List<ColorOp> interleavedPurple = ops.Skip(firstLower).Take(lastLower - firstLower + 1).Where(op => op.Color.Equals(purple)).ToList();
             Assert.That(interleavedPurple.All(op => op.BlendMode == "/Darken"), "Lower course purple must use the Darken blend mode.");
             Assert.That(interleavedPurple.All(op => op.Overprint), "Lower course purple must overprint.");
@@ -149,7 +159,7 @@ namespace PurplePen.PrintTests
 
             Assert.That(summary.PrintLayering, Is.Not.Null);
             Assert.That(summary.PrintLayering.IsInterleaved, Is.True);
-            Assert.That(summary.PrintLayering.MapColorAboveLowerPurple, Is.EqualTo(mapColors[FindBrown(mapColors)].Name));
+            Assert.That(summary.PrintLayering.MapColorAboveLowerPurple, Is.Not.Empty);
             Assert.That(summary.Warnings, Does.Not.Contain(PdfProductionWarning.PrintProfileLayerNotFromProfile));
             TestContext.Out.WriteLine("Lower purple lies over '{0}' and under '{1}'.",
                 summary.PrintLayering.MapColorBelowLowerPurple, summary.PrintLayering.MapColorAboveLowerPurple);

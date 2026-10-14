@@ -4427,4 +4427,13 @@ Purple Pen cannot install this kind of file for you. Open it yourself to install
   <data name="PdfProductionReviewDialog_printProfileColorOrderConflictWarning_Text" xml:space="preserve">
     <value>• The map's own colour order differs from the print profile. These colours end up on the wrong side of the course purple:</value>
   </data>
+  <data name="PdfProductionReviewDialog_surfacesUnderCourse_Text" xml:space="preserve">
+    <value>These map colours fill areas or roads and are kept under the course, so they never hide circles, lines or numbers:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_linesUnderTransparentCourse_Text" xml:space="preserve">
+    <value>These line colours lie under the course here but stay visible through the transparent purple:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_surfacesCoverCourse_Text" xml:space="preserve">
+    <value>• These area or road colours lie on top of the opaque course purple and will hide it where they overlap:</value>
+  </data>
 </root>

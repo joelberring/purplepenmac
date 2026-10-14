@@ -90,7 +90,7 @@ jobs:
           status=0
           dotnet test PurplePenCore.PrintTests/PurplePenCore.PrintTests.csproj --configuration Debug --no-restore --verbosity minimal -p:DisableGitVersionTask=true --logger:"console;verbosity=detailed" > printtest.log 2>&1 || status=$?
           # GitHub keeps only ~10 annotations per step, so pack the interesting lines into one.
-          summary=$(grep -E "Failed |Passed |Error Message|Expected|But was|must|Using map colour|Lower purple lies|painting operations|Inconsistent|Exception" printtest.log | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
+          summary=$(grep -E "Failed |Passed |Error Message|Expected|But was|must|Using map colour|Lower purple lies|Surfaces kept|painting operations|Inconsistent|Exception" printtest.log | head -60 | sed 's/%/%25/g' | awk '{printf "%s%%0A", $0}')
           if [ "$status" -ne 0 ]; then echo "::error::$summary"; else echo "::notice::$summary"; fi
           exit $status
 

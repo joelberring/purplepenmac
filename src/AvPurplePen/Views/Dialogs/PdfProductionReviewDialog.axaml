@@ -133,6 +133,12 @@
                         </Grid>
                     </Border>
                     <TextBlock IsVisible="{Binding IsLowerPurpleInterleaved}" Text="{resx:Localize PdfProductionReviewDialog_interleavedHelp_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasSurfaceColorsKeptUnderCourse}" Text="{resx:Localize PdfProductionReviewDialog_surfacesUnderCourse_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasSurfaceColorsKeptUnderCourse}" Text="{Binding SurfaceColorsKeptUnderCourseText}" TextWrapping="Wrap" Margin="12,0,0,0"/>
+                    <TextBlock IsVisible="{Binding HasLineColorsUnderTransparentCourse}" Text="{resx:Localize PdfProductionReviewDialog_linesUnderTransparentCourse_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasLineColorsUnderTransparentCourse}" Text="{Binding LineColorsUnderTransparentCourseText}" TextWrapping="Wrap" Margin="12,0,0,0"/>
+                    <TextBlock IsVisible="{Binding HasSurfaceColorsCoveringCourse}" Text="{resx:Localize PdfProductionReviewDialog_surfacesCoverCourse_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasSurfaceColorsCoveringCourse}" Text="{Binding SurfaceColorsCoveringCourseText}" TextWrapping="Wrap" Margin="12,0,0,0"/>
                     <TextBlock IsVisible="{Binding IsCourseOnTop}" Text="{resx:Localize PdfProductionReviewDialog_courseOnTopHelp_Text}" TextWrapping="Wrap"/>
                     <TextBlock IsVisible="{Binding LowerCourseColorIsTransparent}" Text="{resx:Localize PdfProductionReviewDialog_transparentPurpleHelp_Text}" TextWrapping="Wrap"/>
                 </StackPanel>

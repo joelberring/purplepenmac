@@ -102,6 +102,25 @@ namespace PurplePen
         /// </summary>
         public List<string> ConflictingMapColors { get; private set; } = new List<string>();
 
+        /// <summary>
+        /// Gets names of map surface colours (area fills, road fills, wide lines) that would have been
+        /// drawn on top of the course. The lower purple was raised above them so the course stays visible.
+        /// </summary>
+        public List<string> SurfaceColorsKeptUnderCourse { get; private set; } = new List<string>();
+
+        /// <summary>
+        /// Gets names of map colours that the profile puts above the course but that now lie under the
+        /// transparent lower purple because a surface colour above them had to stay below the course.
+        /// They remain visible through the transparent (Darken/overprint) purple.
+        /// </summary>
+        public List<string> LineColorsUnderTransparentCourse { get; private set; } = new List<string>();
+
+        /// <summary>
+        /// Gets names of surface colours that still cover the lower purple because it is opaque in the
+        /// profile and therefore cannot be raised above line colours.
+        /// </summary>
+        public List<string> SurfaceColorsCoveringCourse { get; private set; } = new List<string>();
+
         /// <summary>Gets whether the lower purple is placed inside the map's colour order.</summary>
         public bool IsInterleaved {
             get { return LowerPurpleMapLayer.HasValue; }
@@ -186,6 +205,8 @@ namespace PurplePen
                 return layering;
             }
 
+            index = KeepSurfacesUnderCourse(layering, report, courseRule, colors, index);
+
             layering.LowerPurpleMapLayer = colors[index].OcadId;
             layering.MapColorBelowLowerPurple = colors[index].Name;
             layering.MapColorAboveLowerPurple = index + 1 < colors.Count ? colors[index + 1].Name : String.Empty;
@@ -251,6 +272,76 @@ namespace PurplePen
                 conflicts.Add(colors[belowIndex].Name);
 
             return index;
+        }
+
+        /// <summary>
+        /// Raises the lower purple above every surface colour (area fill, road fill, wide line) that
+        /// would otherwise be drawn on top of it and hide the course. The map's own colour order is
+        /// never changed; black (buildings etc.), white masks and registration colours are left alone.
+        /// </summary>
+        /// <param name="layering">Receives the lists describing the adjustment.</param>
+        /// <param name="report">Preflight report for the profile and map.</param>
+        /// <param name="courseRule">The profile's course (lower purple) rule.</param>
+        /// <param name="colors">Map colours ordered from lowest to highest.</param>
+        /// <param name="index">The position found from the profile.</param>
+        /// <returns>The adjusted position.</returns>
+        private static int KeepSurfacesUnderCourse(PrintProfileCourseLayering layering, ColorPreflightReport report,
+                                                   PrintProfileColorRule courseRule, List<SourceMapColor> colors, int index)
+        {
+            int highestSurface = -1;
+            for (int i = colors.Count - 1; i > index; --i) {
+                if (colors[i].FillsSurfaces && !IsBlackWhiteOrRegistration(colors[i].Cmyk)) {
+                    highestSurface = i;
+                    break;
+                }
+            }
+
+            if (highestSurface < 0)
+                return index;
+
+            List<string> surfaces = colors.Skip(index + 1).Take(highestSurface - index)
+                                          .Where(color => color.FillsSurfaces && !IsBlackWhiteOrRegistration(color.Cmyk))
+                                          .Select(color => color.Name).ToList();
+
+            if (!layering.LowerColor.Overprint) {
+                // An opaque lower purple above line colours would hide them; report instead.
+                layering.SurfaceColorsCoveringCourse.AddRange(surfaces);
+                return index;
+            }
+
+            // Make sure the raised position is a first occurrence of its OCAD id (exact split).
+            int newIndex = highestSurface;
+            while (newIndex + 1 < colors.Count && colors.FindIndex(color => color.OcadId == colors[newIndex].OcadId) != newIndex)
+                ++newIndex;
+            if (colors.FindIndex(color => color.OcadId == colors[newIndex].OcadId) != newIndex) {
+                layering.SurfaceColorsCoveringCourse.AddRange(surfaces);
+                return index;
+            }
+
+            layering.SurfaceColorsKeptUnderCourse.AddRange(surfaces);
+
+            // Confirmed colours the profile wants above the course that now end up below it.
+            HashSet<string> nowBelow = new HashSet<string>(StringComparer.Ordinal);
+            foreach (ColorPreflightRuleResult result in report.RuleResults) {
+                if (result.Rule.Id == courseRule.Id || !result.HasConfirmedMatch || result.Rule.RelativeDrawOrder >= courseRule.RelativeDrawOrder)
+                    continue;
+                int mapIndex = IndexOf(colors, result.CandidateColors[0]);
+                if (mapIndex > index && mapIndex <= newIndex)
+                    nowBelow.Add(colors[mapIndex].Name);
+            }
+            layering.LineColorsUnderTransparentCourse.AddRange(colors.Where(color => nowBelow.Contains(color.Name)).Select(color => color.Name).Distinct());
+
+            return newIndex;
+        }
+
+        /// <summary>Black, white (no ink) and registration colours are never moved under the course.</summary>
+        private static bool IsBlackWhiteOrRegistration(PrintProfileCmyk cmyk)
+        {
+            const float tolerance = 0.5F;
+            bool noInk = cmyk.Cyan <= tolerance && cmyk.Magenta <= tolerance && cmyk.Yellow <= tolerance && cmyk.Black <= tolerance;
+            bool black = cmyk.Black >= 90F && cmyk.Cyan <= 10F && cmyk.Magenta <= 10F && cmyk.Yellow <= 10F;
+            bool registration = cmyk.Cyan >= 99F && cmyk.Magenta >= 99F && cmyk.Yellow >= 99F && cmyk.Black >= 99F;
+            return noInk || black || registration;
         }
 
         /// <summary>Finds a source colour snapshot in the ordered colour list.</summary>

@@ -45,6 +45,12 @@ namespace PurplePen
         /// <summary>Gets or sets the source drawing-order index, from lowest to highest.</summary>
         public int DrawOrder { get; set; }
 
+        /// <summary>
+        /// Gets or sets whether the map uses this colour to cover surfaces (area fills, road fills,
+        /// wide lines). Such colours must never be drawn on top of the course purple.
+        /// </summary>
+        public bool FillsSurfaces { get; set; }
+
         /// <summary>Gets the map symbols that actually use this colour layer.</summary>
         public List<SourceMapSymbol> Symbols { get; set; } = new List<SourceMapSymbol>();
 

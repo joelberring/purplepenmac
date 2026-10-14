@@ -544,8 +544,12 @@ namespace PurplePen
             List<SourceMapColor> sourceColors = new List<SourceMapColor>();
             if (isVectorMap) {
                 List<SymColor> mapColors = mapDisplay.GetMapColors();
-                for (int index = 0; index < mapColors.Count; ++index)
-                    sourceColors.Add(SourceMapColor.FromSymColor(mapColors[index], index));
+                HashSet<SymColor> surfaceColors = mapDisplay.GetSurfaceFillColors();
+                for (int index = 0; index < mapColors.Count; ++index) {
+                    SourceMapColor sourceColor = SourceMapColor.FromSymColor(mapColors[index], index);
+                    sourceColor.FillsSurfaces = surfaceColors.Contains(mapColors[index]);
+                    sourceColors.Add(sourceColor);
+                }
             }
 
             // If the profile cannot place the purple, respect a lower-purple layer the course setter chose

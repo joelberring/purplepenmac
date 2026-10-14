@@ -4195,4 +4195,13 @@ För att skriva ut tävlingskartor är det rekommenderat att banorna exporteras 
   <data name="PdfProductionReviewDialog_printProfileColorOrderConflictWarning_Text" xml:space="preserve">
     <value>• Kartans egen färgordning skiljer sig från tryckprofilen. De här färgerna hamnar på fel sida om banvioletten:</value>
   </data>
+  <data name="PdfProductionReviewDialog_surfacesUnderCourse_Text" xml:space="preserve">
+    <value>De här kartfärgerna fyller ytor eller vägar och hålls under banan, så att de aldrig döljer ringar, linjer eller siffror:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_linesUnderTransparentCourse_Text" xml:space="preserve">
+    <value>De här linjefärgerna hamnar under banan här, men syns igenom den transparenta violetten:</value>
+  </data>
+  <data name="PdfProductionReviewDialog_surfacesCoverCourse_Text" xml:space="preserve">
+    <value>• De här yt- eller vägfärgerna ligger ovanpå den täckande banvioletten och döljer den där de överlappar:</value>
+  </data>
 </root>
