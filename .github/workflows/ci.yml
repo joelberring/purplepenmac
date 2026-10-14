@@ -19,6 +19,9 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
 
+    permissions:
+      contents: write   # only for the review branch below; remove together with that step
+
     defaults:
       run:
         working-directory: src
@@ -101,3 +104,14 @@ jobs:
           name: print-test-pdfs
           path: ${{ runner.temp }}/print-output
           if-no-files-found: ignore
+
+      # Temporary while reviewing the BL print work: lets the PDFs be fetched with git.
+      - name: Publish sample print PDFs for review
+        if: always() && matrix.os == 'macos-latest' && github.ref_name == 'bl-tryckfarger'
+        env:
+          OUT: ${{ runner.temp }}/print-output
+        run: |
+          if [ ! -d "$OUT" ] || [ -z "$(ls -A "$OUT")" ]; then exit 0; fi
+          cd "$OUT" && git init -q && git config user.name ci && git config user.email ci@users.noreply.github.com
+          git checkout -q -b ci-print-output && echo "Sample course PDFs from ${GITHUB_SHA}" > README.txt && git add -A && git commit -q -m "Sample PDFs ${GITHUB_SHA}"
+          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" ci-print-output
