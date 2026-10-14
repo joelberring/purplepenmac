@@ -90,7 +90,7 @@ namespace PurplePen.MapModel
                             else {
                                 pen = this;
                                 if (!g.HasPen(this)) {
-                                    g.CreatePen(this, color.ColorValue, lineWidth, lineCap, lineJoin, GraphicsUtil.MITER_LIMIT);
+                                    g.CreatePen(this, color.GetBrushKey(g), lineWidth, lineCap, lineJoin, GraphicsUtil.MITER_LIMIT);
                                 }
                             }
 
@@ -137,7 +137,7 @@ namespace PurplePen.MapModel
                             else {
                                 pen = this;
                                 if (!g.HasPen(this)) {
-                                    GraphicsUtil.CreateSolidPen(g, this, color.ColorValue, lineWidth, LineStyle.Mitered);
+                                    GraphicsUtil.CreateSolidPen(g, this, color.GetBrushKey(g), lineWidth, LineStyle.Mitered);
                                 }
                             }
 
