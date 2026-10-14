@@ -848,23 +848,37 @@ namespace PurplePenViewModels.Tests
             Assert.That(layering.MapColorAboveLowerPurple, Is.EqualTo("Blue"));
         }
 
-        /// <summary>Black and white surfaces (buildings, masks) stay above the course, as in BL's table.</summary>
+        /// <summary>Black surfaces (buildings) stay above the course, as in BL's table.</summary>
         [Test]
-        public void Layering_BlackAndWhiteSurfaces_AreNotMoved()
+        public void Layering_BlackSurfaces_AreNotMoved()
         {
             PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
             List<SourceMapColor> map = CreateBlForestMapColors(includeTransparentViolet: true);
-            foreach (SourceMapColor color in map.Where(color => color.Name == "Svart" || color.Name == "Mask för vattendrag" || color.Name == "Vit")) {
-                color.FillsSurfaces = true;
-                color.Cmyk = color.Name == "Svart"
-                    ? new PrintProfileCmyk { Cyan = 0, Magenta = 0, Yellow = 0, Black = 100 }
-                    : new PrintProfileCmyk();
-            }
+            SourceMapColor black = map.Single(color => color.Name == "Svart");
+            black.FillsSurfaces = true;
+            black.Cmyk = new PrintProfileCmyk { Cyan = 0, Magenta = 0, Yellow = 0, Black = 100 };
 
             PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, map, true, null, null, null);
 
             Assert.That(layering.LowerPurpleMapLayer, Is.EqualTo(52));
             Assert.That(layering.SurfaceColorsKeptUnderCourse, Is.Empty);
+        }
+
+        /// <summary>A white area fill above the course (e.g. white parking markings) would erase it and is kept below.</summary>
+        [Test]
+        public void Layering_WhiteAreaFillAboveCourse_IsKeptUnderTheCourse()
+        {
+            PrintProfile profile = BuiltInPrintProfiles.CreateBlForest();
+            List<SourceMapColor> map = CreateBlForestMapColors(includeTransparentViolet: true);
+            SourceMapColor white = map.Single(color => color.Name == "Mask för vattendrag");
+            white.FillsSurfaces = true;
+            white.Cmyk = new PrintProfileCmyk();
+
+            PrintProfileCourseLayering layering = PrintProfileCourseLayering.Create(profile, map, true, null, null, null);
+
+            Assert.That(layering.SurfaceColorsKeptUnderCourse, Is.EqualTo(new List<string> { "Mask för vattendrag" }));
+            Assert.That(layering.MapColorBelowLowerPurple, Is.EqualTo("Mask för vattendrag"));
+            Assert.That(layering.LineColorsUnderTransparentCourse, Is.EqualTo(new List<string> { "Brun för höjdkurvor mm" }));
         }
 
         /// <summary>An opaque lower purple is not raised over line colours; covering surfaces are reported.</summary>

@@ -277,7 +277,7 @@ namespace PurplePen
         /// <summary>
         /// Raises the lower purple above every surface colour (area fill, road fill, wide line) that
         /// would otherwise be drawn on top of it and hide the course. The map's own colour order is
-        /// never changed; black (buildings etc.), white masks and registration colours are left alone.
+        /// never changed; black (buildings etc.) and registration colours are left alone.
         /// </summary>
         /// <param name="layering">Receives the lists describing the adjustment.</param>
         /// <param name="report">Preflight report for the profile and map.</param>
@@ -290,7 +290,7 @@ namespace PurplePen
         {
             int highestSurface = -1;
             for (int i = colors.Count - 1; i > index; --i) {
-                if (colors[i].FillsSurfaces && !IsBlackWhiteOrRegistration(colors[i].Cmyk)) {
+                if (colors[i].FillsSurfaces && !IsBlackOrRegistration(colors[i].Cmyk)) {
                     highestSurface = i;
                     break;
                 }
@@ -300,7 +300,7 @@ namespace PurplePen
                 return index;
 
             List<string> surfaces = colors.Skip(index + 1).Take(highestSurface - index)
-                                          .Where(color => color.FillsSurfaces && !IsBlackWhiteOrRegistration(color.Cmyk))
+                                          .Where(color => color.FillsSurfaces && !IsBlackOrRegistration(color.Cmyk))
                                           .Select(color => color.Name).ToList();
 
             if (!layering.LowerColor.Overprint) {
@@ -326,7 +326,7 @@ namespace PurplePen
                 if (result.Rule.Id == courseRule.Id || !result.HasConfirmedMatch || result.Rule.RelativeDrawOrder >= courseRule.RelativeDrawOrder)
                     continue;
                 int mapIndex = IndexOf(colors, result.CandidateColors[0]);
-                if (mapIndex > index && mapIndex <= newIndex)
+                if (mapIndex > index && mapIndex <= newIndex && !surfaces.Contains(colors[mapIndex].Name))
                     nowBelow.Add(colors[mapIndex].Name);
             }
             layering.LineColorsUnderTransparentCourse.AddRange(colors.Where(color => nowBelow.Contains(color.Name)).Select(color => color.Name).Distinct());
@@ -334,14 +334,16 @@ namespace PurplePen
             return newIndex;
         }
 
-        /// <summary>Black, white (no ink) and registration colours are never moved under the course.</summary>
-        private static bool IsBlackWhiteOrRegistration(PrintProfileCmyk cmyk)
+        /// <summary>
+        /// Black (buildings, black areas: nothing would show through anyway) and registration colours
+        /// are never moved under the course. White area fills are: a white surface on top would erase
+        /// circles, lines and numbers. (White mask lines are not reported as surfaces at all.)
+        /// </summary>
+        private static bool IsBlackOrRegistration(PrintProfileCmyk cmyk)
         {
-            const float tolerance = 0.5F;
-            bool noInk = cmyk.Cyan <= tolerance && cmyk.Magenta <= tolerance && cmyk.Yellow <= tolerance && cmyk.Black <= tolerance;
             bool black = cmyk.Black >= 90F && cmyk.Cyan <= 10F && cmyk.Magenta <= 10F && cmyk.Yellow <= 10F;
             bool registration = cmyk.Cyan >= 99F && cmyk.Magenta >= 99F && cmyk.Yellow >= 99F && cmyk.Black >= 99F;
-            return noInk || black || registration;
+            return black || registration;
         }
 
         /// <summary>Finds a source colour snapshot in the ordered colour list.</summary>

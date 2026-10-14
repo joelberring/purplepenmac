@@ -325,6 +325,8 @@ namespace PurplePen
         /// between the edges of double-line symbols (road fill), and plain line symbols at least
         /// <paramref name="minWideLineWidth"/> mm wide. Only symbols that occur in the map count.
         /// A course colour placed below such a colour would be hidden wherever the surface lies.
+        /// Wide lines without ink (white masks along streams etc.) are deliberately not included:
+        /// printers place such masks above the course on purpose.
         /// </summary>
         /// <param name="minWideLineWidth">Minimum width, in map millimetres, for a line to count as a surface.</param>
         /// <returns>The surface colours; empty for non-vector maps.</returns>
@@ -345,12 +347,19 @@ namespace PurplePen
                     else if (symdef is LineSymDef lineSymdef) {
                         if (lineSymdef.IsDoubleLine && lineSymdef.DoubleLines.doubleFillColor != null && lineSymdef.DoubleLines.doubleThick > 0)
                             result.Add(lineSymdef.DoubleLines.doubleFillColor);
-                        if (lineSymdef.LineColor != null && lineSymdef.LineThickness >= minWideLineWidth)
+                        if (lineSymdef.LineColor != null && lineSymdef.LineThickness >= minWideLineWidth && HasInk(lineSymdef.LineColor.ColorValue))
                             result.Add(lineSymdef.LineColor);
                     }
                 }
             }
             return result;
+        }
+
+        /// <summary>Determines whether a colour puts any ink on paper.</summary>
+        private static bool HasInk(CmykColor color)
+        {
+            const float tolerance = 0.005F;
+            return color.Cyan > tolerance || color.Magenta > tolerance || color.Yellow > tolerance || color.Black > tolerance;
         }
 
         /// <summary>Returns used map symbols which reference one colour, including their original toolbox icons.</summary>
