@@ -213,37 +213,38 @@ namespace PurplePen.PrintTests
             return directory;
         }
 
-        /// <summary>Finds the full-strength brown (contours) by CMYK: the darkest C=0, M&gt;=0.5, Y&gt;=0.8 colour.</summary>
+        /// <summary>Finds the full-strength contour brown: name contains "brown", strongest ink.</summary>
         private static int FindBrown(List<SymColor> colors)
         {
-            return FindBest(colors, c => c.Cyan < 0.01F && c.Magenta >= 0.5F && c.Yellow >= 0.8F, c => c.Black + c.Magenta, "brown");
+            return FindBest(colors, (n, c) => n.Contains("brown") && c.Cyan < 0.01F && c.Yellow >= 0.6F, c => c.Magenta + c.Black, "brown");
         }
 
-        /// <summary>Finds solid black: CMY = 0, K = 100 %; the top-most such colour.</summary>
+        /// <summary>Finds solid black by name and CMYK (never the registration colour).</summary>
         private static int FindBlack(List<SymColor> colors)
         {
-            return FindBest(colors, c => c.Cyan < 0.01F && c.Magenta < 0.01F && c.Yellow < 0.01F && c.Black > 0.99F, c => 0, "black");
+            return FindBest(colors, (n, c) => n.Contains("black") && c.Cyan < 0.01F && c.Magenta < 0.01F && c.Yellow < 0.01F && c.Black > 0.99F, c => 0, "black");
         }
 
-        /// <summary>Finds the full-strength green area colour by CMYK.</summary>
+        /// <summary>Finds the full-strength green area colour.</summary>
         private static int FindGreen(List<SymColor> colors)
         {
-            return FindBest(colors, c => c.Cyan >= 0.55F && c.Magenta < 0.01F && c.Yellow >= 0.7F, c => c.Cyan, "green");
+            return FindBest(colors, (n, c) => n.Contains("green") && !n.Contains("symbol") && !n.Contains("white") && c.Magenta < 0.01F, c => c.Cyan + c.Yellow, "green");
         }
 
-        /// <summary>Finds the full-strength yellow (open land) colour by CMYK.</summary>
+        /// <summary>Finds the full-strength yellow (open land) colour.</summary>
         private static int FindYellow(List<SymColor> colors)
         {
-            return FindBest(colors, c => c.Cyan < 0.01F && c.Magenta >= 0.15F && c.Magenta <= 0.4F && c.Yellow >= 0.7F && c.Black < 0.01F, c => c.Yellow, "yellow");
+            return FindBest(colors, (n, c) => n.Contains("yellow") && !n.Contains("green") && !n.Contains("white") && c.Cyan < 0.01F, c => c.Yellow + c.Magenta, "yellow");
         }
 
         /// <summary>Returns the index of the matching colour with the highest score (top-most on ties).</summary>
-        private static int FindBest(List<SymColor> colors, Func<CmykColor, bool> predicate, Func<CmykColor, float> score, string what)
+        private static int FindBest(List<SymColor> colors, Func<string, CmykColor, bool> predicate, Func<CmykColor, float> score, string what)
         {
             int best = -1;
             for (int index = 0; index < colors.Count; ++index) {
                 CmykColor value = colors[index].ColorValue;
-                if (predicate(value) && (best < 0 || score(value) >= score(colors[best].ColorValue)))
+                string name = (colors[index].Name ?? "").ToLowerInvariant();
+                if (predicate(name, value) && (best < 0 || score(value) >= score(colors[best].ColorValue)))
                     best = index;
             }
             Assert.That(best, Is.GreaterThanOrEqualTo(0), "No " + what + " colour in map. Colours: " +
