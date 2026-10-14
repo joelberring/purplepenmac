@@ -19,9 +19,6 @@ jobs:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
 
-    permissions:
-      contents: write   # only used to publish sample print PDFs to the ci-print-output branch
-
     defaults:
       run:
         working-directory: src
@@ -97,18 +94,10 @@ jobs:
           if [ "$status" -ne 0 ]; then echo "::error::$summary"; else echo "::notice::$summary"; fi
           exit $status
 
-      - name: Publish sample print PDFs
-        if: always() && matrix.os == 'macos-latest' && github.event_name == 'push'
-        env:
-          OUT: ${{ runner.temp }}/print-output
-        run: |
-          if [ ! -d "$OUT" ] || [ -z "$(ls -A "$OUT")" ]; then echo "No sample PDFs"; exit 0; fi
-          cd "$OUT"
-          git init -q
-          git config user.name "ci"
-          git config user.email "ci@users.noreply.github.com"
-          git checkout -q -b ci-print-output
-          echo "Sample course PDFs from ${GITHUB_SHA} (${GITHUB_REF_NAME})" > README.txt
-          git add -A
-          git commit -q -m "Sample print PDFs for ${GITHUB_SHA}"
-          git push -q -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" ci-print-output
+      - name: Upload sample print PDFs
+        if: always() && matrix.os == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: print-test-pdfs
+          path: ${{ runner.temp }}/print-output
+          if-no-files-found: ignore
