@@ -45,7 +45,17 @@ The lower-purple position comes, in order, from: the map's own colour matching
 the course rule; otherwise directly below the lowest confirmed map colour that the
 profile puts above the course rule (and never below a confirmed area colour);
 otherwise the event's Upper/Lower purple layer; otherwise the course is drawn on
-top. PDF and image base maps cannot be interleaved and are reported in the
+top.
+
+Surfaces never hide the course: if a colour that fills areas or roads (area
+fills, double-line road fills, lines at least 0.5 mm wide; not black, not
+registration, not white mask lines) would be drawn above that position, the
+transparent lower purple is raised above it. The map's own colour order is never
+changed, because moving a road fill below its edge lines would turn roads black.
+Line colours that then lie under the purple stay visible through it (Darken and
+overprint). The production review lists both groups.
+
+PDF and image base maps cannot be interleaved and are reported in the
 production review. Colours without ink are never written with overprint.
 
 `PurplePenCore.PrintTests` creates real course PDFs from an OCAD test map and
