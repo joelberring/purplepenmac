@@ -19,8 +19,18 @@ namespace PdfSharp.Pdf.Advanced
         /// Gets a PdfExtGState with the key 'CA' set to the specified alpha value.
         /// </summary>
         public PdfExtGState GetExtGStateStroke(double alpha, bool overprint)
+            => GetExtGStateStroke(alpha, overprint, overprint);
+
+        /// <summary>
+        /// Gets a PdfExtGState with the key 'CA' set to the specified alpha value and explicit
+        /// stroking (/OP) and non-stroking (/op) overprint flags.
+        /// Purple Pen: both flags are always written. An absent /op would take the value of /OP
+        /// (PDF 32000-1, 8.4.5), silently switching on overprint for later fills, and an absent
+        /// /OP (when turning overprint off) would leave a previous /OP true in effect.
+        /// </summary>
+        public PdfExtGState GetExtGStateStroke(double alpha, bool overprint, bool nonStrokeOverprint)
         {
-            string key = PdfExtGState.MakeKey(alpha, overprint);
+            string key = PdfExtGState.MakeKey(alpha, overprint) + (nonStrokeOverprint ? "N" : "n");
             if (!_strokeAlphaValues.TryGetValue(key, out var extGState))
             {
                 extGState = new PdfExtGState(Owner)
@@ -28,11 +38,10 @@ namespace PdfSharp.Pdf.Advanced
                     //extGState.Elements[PdfExtGState.Keys.CA] = new PdfReal(alpha);
                     StrokeAlpha = alpha
                 };
-                if (overprint)
-                {
-                    extGState.StrokeOverprint = true;
+                extGState.StrokeOverprint = overprint;
+                extGState.NonStrokeOverprint = nonStrokeOverprint;
+                if (overprint || nonStrokeOverprint)
                     extGState.Elements.SetInteger(PdfExtGState.Keys.OPM, 1);
-                }
                 _strokeAlphaValues[key] = extGState;
             }
             return extGState;
@@ -51,11 +60,10 @@ namespace PdfSharp.Pdf.Advanced
                     //extGState.Elements[PdfExtGState.Keys.ca] = new PdfReal(alpha);
                     NonStrokeAlpha = alpha
                 };
+                // Purple Pen: always explicit, so that turning overprint off really resets /op.
+                extGState.NonStrokeOverprint = overprint;
                 if (overprint)
-                {
-                    extGState.NonStrokeOverprint = true;
                     extGState.Elements.SetInteger(PdfExtGState.Keys.OPM, 1);
-                }
 
                 _nonStrokeStates[key] = extGState;
             }
