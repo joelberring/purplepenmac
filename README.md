@@ -11,6 +11,30 @@ versioned print profile must be applied at export time without changing the
 source map. See [CODEX_LOCAL_HANDOFF.md](CODEX_LOCAL_HANDOFF.md) for the
 agreed product and implementation plan.
 
+## Installera på Mac / Install on a Mac
+
+1. Ladda ner den senaste `PurplePen-…-osx-arm64.zip` under **Assets** på
+   [Releases](https://github.com/joelberring/purplepenmac/releases)
+   (inte "Source code"). Kräver Apple Silicon (M1 eller senare) och macOS 14+.
+2. Packa upp och dra **PurplePen.app** till **Program**.
+3. Betaversionerna är inte notariserade av Apple, så första gången stoppar
+   macOS appen. Gör så här en gång:
+   - Försök öppna appen och klicka **Klar** i varningen.
+   - Öppna **Systeminställningar › Integritet och säkerhet**, scrolla till
+     **Säkerhet** och klicka **Öppna ändå** vid "PurplePen". Bekräfta med
+     lösenord eller Touch ID.
+   - Säger macOS att appen är "skadad", eller syns ingen **Öppna ändå**-knapp:
+     öppna Terminal och kör
+     `xattr -dr com.apple.quarantine "/Applications/PurplePen.app"`.
+
+Fullständig anvisning (svenska och engelska) finns i zip-filen och i
+[`README - FIRST OPEN.txt`](src/Installer/MacInstaller/README%20-%20FIRST%20OPEN.txt).
+
+*English:* download the `osx-arm64` zip from Releases, move PurplePen.app to
+Applications, try to open it once, then use **System Settings › Privacy &
+Security › Open Anyway**. If macOS calls the app "damaged", run the `xattr`
+command above in Terminal.
+
 ## Upstream and licence
 
 This repository starts from [`petergolde/PurplePen`](https://github.com/petergolde/PurplePen)
