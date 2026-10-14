@@ -670,4 +670,73 @@ Tryck OK och försök hitta kartfilen på din dator.</value>
   <data name="GhostscriptNotInstalled" xml:space="preserve">
     <value>GPL Ghostscript är inte installerat</value>
   </data>
+  <data name="ContourOnly_NeedsVectorMap" xml:space="preserve">
+    <value>Träningsytor med bara höjdkurvor kan bara exporteras med vektorkartor från OCAD/OpenOrienteering Mapper.</value>
+  </data>
+  <data name="PrintProfile_NeedsOpenMap" xml:space="preserve">
+    <value>En karta måste vara öppen innan tryckprofilen kan kontrolleras.</value>
+  </data>
+  <data name="PrintProfile_NotAvailable" xml:space="preserve">
+    <value>Den valda tryckprofilen finns inte i den här versionen av Purple Pen.</value>
+  </data>
+  <data name="PrintProfile_PartialMatchesHeader" xml:space="preserve">
+    <value>Kontrollen mot tryckprofilen {0} hittade färger som bara delvis stämmer:</value>
+  </data>
+  <data name="PrintProfile_ConfirmMappings" xml:space="preserve">
+    <value>Godkänna de här paren för den här PDF-exporten?</value>
+  </data>
+  <data name="PrintProfile_BlockedHeader" xml:space="preserve">
+    <value>Kontrollen mot tryckprofilen {0} stoppade PDF-exporten:</value>
+  </data>
+  <data name="PrintProfile_WarningsHeader" xml:space="preserve">
+    <value>Kontrollen mot tryckprofilen {0} gav varningar:</value>
+  </data>
+  <data name="PrintProfile_RegistrationColor" xml:space="preserve">
+    <value>Kartfärgen '{0}' är en passmärkesfärg (CMYK 100/100/100/100). Tryckeriet tar inte emot den i levererade filer; se till att inga kartobjekt använder den.</value>
+  </data>
+  <data name="PrintProfile_NeedsCmyk" xml:space="preserve">
+    <value>Profilen kräver CMYK, men den valda exporten kan inte ge det.</value>
+  </data>
+  <data name="PrintProfile_NeedsPdfX" xml:space="preserve">
+    <value>Profilen kräver PDF/X OutputIntent, men den valda exporten kan inte ge det.</value>
+  </data>
+  <data name="PrintProfile_NeedsIcc" xml:space="preserve">
+    <value>Profilen kräver en inbäddad ICC-profil, men den valda exporten kan inte ge det.</value>
+  </data>
+  <data name="PrintProfile_NeedsOverprint" xml:space="preserve">
+    <value>Profilen kräver äkta PDF-övertryck, men den valda exporten kan inte ge det.</value>
+  </data>
+  <data name="PrintProfile_MappingMissing" xml:space="preserve">
+    <value>Det sparade paret för profilfärgen '{0}' matchar inte längre någon kartfärg; välj paret igen.</value>
+  </data>
+  <data name="PrintProfile_NotPresent" xml:space="preserve">
+    <value>Profilfärgen '{0}' används inte i den här kartan.</value>
+  </data>
+  <data name="PrintProfile_PartialConfirmed" xml:space="preserve">
+    <value>Profilfärgen '{0}' stämde bara delvis med en kartfärg och godkändes för den här exporten.</value>
+  </data>
+  <data name="PrintProfile_PartialNeedsConfirmation" xml:space="preserve">
+    <value>Profilfärgen '{0}' stämmer bara delvis med en kartfärg; godkänn paret före exporten.</value>
+  </data>
+  <data name="PrintProfile_Ambiguous" xml:space="preserve">
+    <value>Profilfärgen '{0}' matchar flera kartfärger; välj ett par före exporten.</value>
+  </data>
+  <data name="PrintProfile_CmykDiffers" xml:space="preserve">
+    <value>Profilfärgen '{0}' har CMYK {1}, men kartan använder {2}.</value>
+  </data>
+  <data name="PrintProfile_CmykConverted" xml:space="preserve">
+    <value>Profilfärgen '{0}': kartans CMYK {2} skrivs som {1} i PDF:en.</value>
+  </data>
+  <data name="PrintProfile_ShouldOverprint" xml:space="preserve">
+    <value>Profilfärgen '{0}' ska övertrycka, men kartfärgen är inställd på urtag.</value>
+  </data>
+  <data name="PrintProfile_OverprintConverted" xml:space="preserve">
+    <value>Profilfärgen '{0}' får övertryck i PDF:en.</value>
+  </data>
+  <data name="PrintProfile_ShouldBeBelow" xml:space="preserve">
+    <value>Profilfärgen '{0}' ska ligga under '{1}' i kartans färgordning.</value>
+  </data>
+  <data name="PrintProfile_ShouldBeAbove" xml:space="preserve">
+    <value>Profilfärgen '{0}' ska ligga över '{1}' i kartans färgordning.</value>
+  </data>
 </root>

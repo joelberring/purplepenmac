@@ -1674,5 +1674,212 @@ namespace PurplePen {
                 return ResourceManager.GetString("Zoom", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Contour-only training areas can only be exported with OCAD/OpenMapper vector maps..
+        /// </summary>
+        public static string ContourOnly_NeedsVectorMap {
+            get {
+                return ResourceManager.GetString("ContourOnly_NeedsVectorMap", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to A map must be open before a print profile can be checked..
+        /// </summary>
+        public static string PrintProfile_NeedsOpenMap {
+            get {
+                return ResourceManager.GetString("PrintProfile_NeedsOpenMap", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The selected print profile is not available in this version of Purple Pen..
+        /// </summary>
+        public static string PrintProfile_NotAvailable {
+            get {
+                return ResourceManager.GetString("PrintProfile_NotAvailable", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The check against print profile {0} found partial colour matches:.
+        /// </summary>
+        public static string PrintProfile_PartialMatchesHeader {
+            get {
+                return ResourceManager.GetString("PrintProfile_PartialMatchesHeader", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Confirm these pairings for this PDF export?.
+        /// </summary>
+        public static string PrintProfile_ConfirmMappings {
+            get {
+                return ResourceManager.GetString("PrintProfile_ConfirmMappings", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The check against print profile {0} stopped the PDF export:.
+        /// </summary>
+        public static string PrintProfile_BlockedHeader {
+            get {
+                return ResourceManager.GetString("PrintProfile_BlockedHeader", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The check against print profile {0} reported warnings:.
+        /// </summary>
+        public static string PrintProfile_WarningsHeader {
+            get {
+                return ResourceManager.GetString("PrintProfile_WarningsHeader", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Map colour '{0}' is a registration colour (CMYK 100/100/100/100). The printer does not accept it in delivered files; make sure no map object uses it..
+        /// </summary>
+        public static string PrintProfile_RegistrationColor {
+            get {
+                return ResourceManager.GetString("PrintProfile_RegistrationColor", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to CMYK output is required, but the selected export path cannot provide it..
+        /// </summary>
+        public static string PrintProfile_NeedsCmyk {
+            get {
+                return ResourceManager.GetString("PrintProfile_NeedsCmyk", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to PDF/X OutputIntent is required, but the selected export path cannot provide it..
+        /// </summary>
+        public static string PrintProfile_NeedsPdfX {
+            get {
+                return ResourceManager.GetString("PrintProfile_NeedsPdfX", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to An embedded ICC profile is required, but the selected export path cannot provide it..
+        /// </summary>
+        public static string PrintProfile_NeedsIcc {
+            get {
+                return ResourceManager.GetString("PrintProfile_NeedsIcc", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to True PDF overprint is required, but the selected export path cannot provide it..
+        /// </summary>
+        public static string PrintProfile_NeedsOverprint {
+            get {
+                return ResourceManager.GetString("PrintProfile_NeedsOverprint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to The saved pairing for profile colour '{0}' no longer matches a map colour; choose the pairing again..
+        /// </summary>
+        public static string PrintProfile_MappingMissing {
+            get {
+                return ResourceManager.GetString("PrintProfile_MappingMissing", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}' is not used in this map..
+        /// </summary>
+        public static string PrintProfile_NotPresent {
+            get {
+                return ResourceManager.GetString("PrintProfile_NotPresent", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}' only partly matched a map colour and was confirmed for this export..
+        /// </summary>
+        public static string PrintProfile_PartialConfirmed {
+            get {
+                return ResourceManager.GetString("PrintProfile_PartialConfirmed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}' only partly matches a map colour; confirm the pairing before export..
+        /// </summary>
+        public static string PrintProfile_PartialNeedsConfirmation {
+            get {
+                return ResourceManager.GetString("PrintProfile_PartialNeedsConfirmation", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}' matches several map colours; choose a pairing before export..
+        /// </summary>
+        public static string PrintProfile_Ambiguous {
+            get {
+                return ResourceManager.GetString("PrintProfile_Ambiguous", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}' has CMYK {1}, but the map uses {2}..
+        /// </summary>
+        public static string PrintProfile_CmykDiffers {
+            get {
+                return ResourceManager.GetString("PrintProfile_CmykDiffers", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}': the map's CMYK {2} is printed as {1} in the PDF..
+        /// </summary>
+        public static string PrintProfile_CmykConverted {
+            get {
+                return ResourceManager.GetString("PrintProfile_CmykConverted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}' should overprint, but the map colour is set to knockout..
+        /// </summary>
+        public static string PrintProfile_ShouldOverprint {
+            get {
+                return ResourceManager.GetString("PrintProfile_ShouldOverprint", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}' is set to overprint in the PDF..
+        /// </summary>
+        public static string PrintProfile_OverprintConverted {
+            get {
+                return ResourceManager.GetString("PrintProfile_OverprintConverted", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}' should be below '{1}' in the map colour order..
+        /// </summary>
+        public static string PrintProfile_ShouldBeBelow {
+            get {
+                return ResourceManager.GetString("PrintProfile_ShouldBeBelow", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Profile colour '{0}' should be above '{1}' in the map colour order..
+        /// </summary>
+        public static string PrintProfile_ShouldBeAbove {
+            get {
+                return ResourceManager.GetString("PrintProfile_ShouldBeAbove", resourceCulture);
+            }
+        }
     }
 }

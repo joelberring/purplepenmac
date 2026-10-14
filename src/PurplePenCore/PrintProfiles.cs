@@ -103,6 +103,12 @@ namespace PurplePen
 
         /// <summary>Gets or sets the lowest-to-highest drawing-order index selected by the user.</summary>
         public int MapColorDrawOrder { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the user decided that no map colour corresponds to this profile colour
+        /// (every candidate keeps its original colour). The rule is then treated as not present.
+        /// </summary>
+        public bool NotInMap { get; set; }
     }
 
     /// <summary>Describes production capabilities a selected profile can require.</summary>
@@ -119,6 +125,12 @@ namespace PurplePen
 
         /// <summary>Gets or sets whether real PDF overprint semantics are required.</summary>
         public bool RequireTrueOverprint { get; set; }
+
+        /// <summary>
+        /// Gets or sets whether the printer rejects files that contain a registration colour
+        /// (CMYK 100/100/100/100, "Alla färger"/"All color separations"). Reported as a preflight warning.
+        /// </summary>
+        public bool ForbidRegistrationColor { get; set; }
     }
 
     /// <summary>Defines a versioned and non-destructive print-profile document.</summary>
@@ -148,8 +160,19 @@ namespace PurplePen
         /// <summary>Gets or sets the map standard targeted by the profile.</summary>
         public PrintProfileMapKind MapKind { get; set; }
 
-        /// <summary>Gets or sets the rule used for course markings such as control circles.</summary>
+        /// <summary>
+        /// Gets or sets the rule used for course markings such as control circles, connecting lines and
+        /// control numbers. In print exports this is the "lower" course purple, which is placed inside the
+        /// map's colour order according to the rule's <see cref="PrintProfileColorRule.RelativeDrawOrder"/>.
+        /// </summary>
         public string CourseColorRuleId { get; set; } = String.Empty;
+
+        /// <summary>
+        /// Gets or sets the optional rule used for the "upper" course purple (start, finish and other
+        /// symbols that are drawn on top of the whole map). The upper purple is always knockout (opaque).
+        /// When empty, the upper purple uses the CMYK values of <see cref="CourseColorRuleId"/>.
+        /// </summary>
+        public string UpperCourseColorRuleId { get; set; } = String.Empty;
 
         /// <summary>Gets or sets the optional intended printer name.</summary>
         public string PrinterName { get; set; } = String.Empty;
@@ -254,6 +277,20 @@ namespace PurplePen
             return profile.ColorRules.Find(rule => rule.Id == profile.CourseColorRuleId);
         }
 
+        /// <summary>Gets the profile rule used to render upper (opaque, top-most) course markings.</summary>
+        /// <param name="profile">The selected print profile.</param>
+        /// <returns>The upper course-colour rule, or null when the profile does not define one.</returns>
+        public static PrintProfileColorRule GetUpperCourseColorRule(PrintProfile profile)
+        {
+            if (profile == null)
+                throw new ArgumentNullException(nameof(profile));
+
+            if (String.IsNullOrEmpty(profile.UpperCourseColorRuleId))
+                return null;
+
+            return profile.ColorRules.Find(rule => rule.Id == profile.UpperCourseColorRuleId);
+        }
+
         /// <summary>Creates the BL forest-map profile observed on 2026-08-27.</summary>
         /// <returns>A new BL forest profile.</returns>
         public static PrintProfile CreateBlForest()
@@ -262,6 +299,7 @@ namespace PurplePen
                 "https://www.bl-idrottsservice.se/farginstallningar-kartnormen/",
                 "BL Idrottsservice current forest table accessed 2026-08-27.",
                 PrintProfileMapKind.Forest, "violet-transparent");
+            profile.UpperCourseColorRuleId = "violet-opaque";
 
             profile.ColorRules.Add(CreateRule("violet-opaque", "Violett", 1, 35, 95, 0, 0, new string[] { "Violett" }, new short[] { 50 }));
             profile.ColorRules.Add(CreateRule("white", "Vit", 2, 0, 0, 0, 0, new string[] { "Vit" }, new short[0]));
@@ -275,8 +313,11 @@ namespace PurplePen
             profile.ColorRules.Add(CreateRule("brown-contours", "Brun för höjdkurvor mm", 10, 0, 75, 100, 33, new string[] { "Brun för höjdkurvor mm" }, new short[0]));
             PrintProfileColorRule transparentViolet = CreateRule("violet-transparent", "Violett transparent", 11, 35, 95, 0, 0, new string[] { "Violett transparent" }, new short[] { 52 });
             transparentViolet.OverprintIntent = PrintProfileOverprintIntent.Overprint;
-            transparentViolet.MustBeBelowRuleIds.AddRange(new string[] { "brown-contours", "black", "blue-area" });
-            transparentViolet.MustBeAboveRuleIds.AddRange(new string[] { "blue-70", "blue-50" });
+            // BL: "Normalt läggs färgen för banpåtrycket Violett transparent under bl a kurvbild, svartbild
+            // och 100 procent blå." In BL's table the colour sits directly below "Brun för höjdkurvor mm"
+            // and directly above "Blå yta", i.e. above all area colours so circles stay visible in lakes.
+            transparentViolet.MustBeBelowRuleIds.AddRange(new string[] { "brown-contours", "black", "blue-line-point" });
+            transparentViolet.MustBeAboveRuleIds.AddRange(new string[] { "blue-area", "yellow-green", "blue-70", "blue-50", "green-100", "yellow-100" });
             profile.ColorRules.Add(transparentViolet);
             profile.ColorRules.Add(CreateRule("blue-area", "Blå yta", 12, 100, 0, 0, 0, new string[] { "Blå yta" }, new short[0]));
             profile.ColorRules.Add(CreateRule("yellow-green", "Gul 100%/grön 50%", 13, 33, 28, 85, 0, new string[] { "Gul 100%/grön 50%" }, new short[0]));
@@ -302,6 +343,7 @@ namespace PurplePen
                 "https://www.bl-idrottsservice.se/farginstallning-sprintnormen/",
                 "BL Idrottsservice current sprint setting, effective from 2025-05-01.",
                 PrintProfileMapKind.Sprint, "course-violet");
+            profile.UpperCourseColorRuleId = "violet-opaque";
 
             profile.ColorRules.Add(CreateRule("violet-opaque", "Täckande violett", 1, 35, 100, 0, 0, new string[] { "Täckande violett" }, new short[0]));
             profile.ColorRules.Add(CreateRule("white-opaque", "Täckande vitt", 2, 0, 0, 0, 0, new string[] { "Täckande vitt" }, new short[0]));
@@ -311,6 +353,8 @@ namespace PurplePen
             profile.ColorRules.Add(CreateRule("white-two-level", "Vit för två nivåstruktur", 6, 0, 0, 0, 0, new string[] { "Vit för två nivåstruktur" }, new short[0]));
             PrintProfileColorRule courseViolet = CreateRule("course-violet", "Violett (kontrollringar mm)", 7, 35, 100, 0, 0, new string[] { "Violett (kontrollringar mm)" }, new short[0]);
             courseViolet.OverprintIntent = PrintProfileOverprintIntent.Overprint;
+            courseViolet.MustBeBelowRuleIds.AddRange(new string[] { "black", "blue", "brown" });
+            courseViolet.MustBeAboveRuleIds.AddRange(new string[] { "blue-area", "green-area", "yellow" });
             profile.ColorRules.Add(courseViolet);
             profile.ColorRules.Add(CreateRule("white-number-shadow", "Vit skugga för siffra", 8, 0, 0, 0, 0, new string[] { "Vit skugga för siffra" }, new short[0]));
             profile.ColorRules.Add(CreateRule("violet-50", "Violett 50% (53)", 9, 18, 43, 0, 0, new string[] { "Violett 50% (53)" }, new short[0]));
@@ -365,6 +409,7 @@ namespace PurplePen
                     RequirePdfXOutputIntent = false,
                     RequireEmbeddedIccProfile = false,
                     RequireTrueOverprint = false,
+                    ForbidRegistrationColor = true,
                 },
             };
         }
@@ -568,6 +613,8 @@ namespace PurplePen
 
             if (String.IsNullOrWhiteSpace(profile.CourseColorRuleId) || !ruleIds.Contains(profile.CourseColorRuleId))
                 throw new ArgumentException("The course colour rule must reference a profile colour rule.", nameof(profile));
+            if (!String.IsNullOrEmpty(profile.UpperCourseColorRuleId) && !ruleIds.Contains(profile.UpperCourseColorRuleId))
+                throw new ArgumentException("The upper course colour rule must reference a profile colour rule.", nameof(profile));
             if (profile.ColorRules.Any(rule => rule.MustBeAboveRuleIds.Concat(rule.MustBeBelowRuleIds).Any(reference => !ruleIds.Contains(reference))))
                 throw new ArgumentException("A print-profile rule relationship must reference an existing rule.", nameof(profile));
             if (profile.History.Any(entry => entry == null || entry.AddedRules == null || entry.RemovedRules == null || entry.ChangedRules == null))

@@ -1,6 +1,7 @@
 <!--
     PrintProfileMappingsDialog.axaml
-    Resolves ambiguous source-map colours for a selected print profile.
+    Resolves ambiguous source-map colours for a selected print profile. Every layer is
+    pre-filled with an automatic suggestion or Keep original colour, so Apply is always possible.
 -->
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -52,6 +53,15 @@
                 <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_instructions_Text}"
                            TextWrapping="Wrap"/>
                 <TextBlock Text="{Binding ProfileName}" FontWeight="Bold"/>
+                <TextBlock TextWrapping="Wrap">
+                    <TextBlock.Text>
+                        <MultiBinding StringFormat="{x:Static resx:UIText.PrintProfileMappingsDialog_autoSummary_Text}">
+                            <Binding Path="AutoPairedCount"/>
+                            <Binding Path="LayerCount"/>
+                        </MultiBinding>
+                    </TextBlock.Text>
+                </TextBlock>
+                <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_unpairedHelp_Text}" FontSize="11" TextWrapping="Wrap" Opacity="0.72"/>
                 <Grid ColumnDefinitions="1.35*,16,*" Margin="8,4,8,0">
                     <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_sourceLayerHeader_Text}" FontWeight="SemiBold"/>
                     <TextBlock Grid.Column="2" Text="{resx:Localize PrintProfileMappingsDialog_targetHandlingHeader_Text}" FontWeight="SemiBold"/>
@@ -111,7 +121,10 @@
                                             </DataTemplate>
                                         </ComboBox.ItemTemplate>
                                         </ComboBox>
-                                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_unpairedHelp_Text}" FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
+                                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_autoSuggested_Text}" IsVisible="{Binding IsAutoSuggested}"
+                                                   FontSize="11" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource SemiOrange6}"/>
+                                        <TextBlock Text="{resx:Localize PrintProfileMappingsDialog_noProfileMatch_Text}" IsVisible="{Binding IsAutoKeptOriginal}"
+                                                   FontSize="11" TextWrapping="Wrap" Opacity="0.65"/>
                                     </StackPanel>
                                 </Grid>
                             </Border>

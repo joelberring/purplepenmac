@@ -11247,5 +11247,23 @@ namespace AvPurplePen {
                 return ResourceManager.GetString("YesButton", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to {0} of {1} layers were paired with a profile colour automatically..
+        /// </summary>
+        public static string PrintProfileMappingsDialog_autoSummary_Text {
+            get {
+                return ResourceManager.GetString("PrintProfileMappingsDialog_autoSummary_Text", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to Build {0}.
+        /// </summary>
+        public static string AboutDialog_BuildLabel {
+            get {
+                return ResourceManager.GetString("AboutDialog_BuildLabel", resourceCulture);
+            }
+        }
     }
 }

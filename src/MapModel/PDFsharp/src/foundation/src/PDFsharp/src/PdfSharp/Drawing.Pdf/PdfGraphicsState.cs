@@ -182,7 +182,9 @@ namespace PdfSharp.Drawing.Pdf
 
             if (renderer.Owner.Version >= 14 && (_realizedStrokeColor.A != color.A || _realizedStrokeOverPrint != overPrint))
             {
-                PdfExtGState extGState = renderer.Owner.ExtGStateTable.GetExtGStateStroke(color.A, overPrint);
+                // Pass the current fill overprint so the stroke state writes /op explicitly and does
+                // not change it (an absent /op would inherit /OP).
+                PdfExtGState extGState = renderer.Owner.ExtGStateTable.GetExtGStateStroke(color.A, overPrint, _realizedNonStrokeOverPrint);
                 string gs = renderer.Resources.AddExtGState(extGState);
                 renderer.AppendFormatString("{0} gs\n", gs);
 

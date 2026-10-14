@@ -62,6 +62,7 @@ namespace PurplePen
         private string sourcePdfMapFileName;
         private int totalPages, currentPage;
         private IDictionary<SymColor, MapColorOverride> printProfileMapColorOverrides;
+        private PrintProfileCourseLayering printLayering;  // course colours and lower-purple position from the print profile, or null.
 
         // mapDisplay is a MapDisplay that contains the correct map. All other features of the map display need to be customized.
         public CoursePdf(EventDB eventDB, SymbolDB symbolDB, Controller controller, MapDisplay mapDisplay, 
@@ -88,6 +89,16 @@ namespace PurplePen
             }
 
             printProfileMapColorOverrides = CreatePrintProfileMapColorOverrides();
+
+            // With a print profile, the profile decides where the course purple goes in the map's colour
+            // order (e.g. BL: transparent course violet under brown/black/blue lines, above area colours).
+            // This only affects the cloned export MapDisplay, never the event's saved appearance.
+            printLayering = CreatePrintLayering();
+            if (printLayering != null) {
+                if (mapDisplay.MapType == MapType.OCAD)
+                    mapDisplay.LowerPurpleMapLayer = printLayering.LowerPurpleMapLayer;
+                mapDisplay.SetCourse(null);   // never reuse a course map rendered for the screen's layer order
+            }
         }
 
         // Is the map a PDF map?
@@ -366,6 +377,16 @@ namespace PurplePen
             if (courseViews.Values.Any(count => count > coursePdfSettings.Copies))
                 summary.Warnings.Add(PdfProductionWarning.MultiplePagesPerCourse);
 
+            summary.PrintLayering = printLayering;
+            if (printLayering != null && !coursePdfSettings.DontPrintBaseMap) {
+                if (printLayering.Status == PrintProfileLayeringStatus.NotVectorMap)
+                    summary.Warnings.Add(PdfProductionWarning.PrintProfileNeedsVectorMap);
+                else if (printLayering.Status == PrintProfileLayeringStatus.Fallback || printLayering.Status == PrintProfileLayeringStatus.CourseOnTop)
+                    summary.Warnings.Add(PdfProductionWarning.PrintProfileLayerNotFromProfile);
+                if (printLayering.ConflictingMapColors.Count > 0)
+                    summary.Warnings.Add(PdfProductionWarning.PrintProfileColorOrderConflict);
+            }
+
             return summary;
         }
 
@@ -413,18 +434,26 @@ namespace PurplePen
             // Get the course view for the course we are printing.
             CourseView courseView = CourseView.CreatePrintingCourseView(eventDB, page.courseDesignator);
 
-            // Get the correct purple color to print the course in.
-            short ocadId;
-            float purpleC, purpleM, purpleY, purpleK;
-            bool purpleOverprint;
-            FindPurple.GetPurpleColor(mapDisplay, appearance, out ocadId, out purpleC, out purpleM, out purpleY, out purpleK, out purpleOverprint);
-            ApplyPrintProfileCourseColor(ref ocadId, ref purpleC, ref purpleM, ref purpleY, ref purpleK, ref purpleOverprint);
-
             // Create a course layout from the view.
             CourseLayout layout = new CourseLayout();
             layout.SetLayerColor(CourseLayer.Descriptions, NormalCourseAppearance.blackColorOcadId, NormalCourseAppearance.blackColorName, NormalCourseAppearance.blackColorC, NormalCourseAppearance.blackColorM, NormalCourseAppearance.blackColorY, NormalCourseAppearance.blackColorK, false);
-            layout.SetLayerColor(CourseLayer.MainCourse, ocadId, NormalCourseAppearance.courseColorName, purpleC, purpleM, purpleY, purpleK, purpleOverprint);
-            layout.SetLowerLayerColor(CourseLayer.MainCourse, NormalCourseAppearance.lowerPurpleOcadId, NormalCourseAppearance.lowerPurpleColorName, purpleC, purpleM, purpleY, purpleK, purpleOverprint);
+
+            if (printLayering != null) {
+                // Print profile: opaque upper purple on top, profile-defined (normally transparent) lower purple.
+                PrintProfileCourseColor upper = printLayering.UpperColor;
+                PrintProfileCourseColor lower = printLayering.LowerColor;
+                layout.SetLayerColor(CourseLayer.MainCourse, upper.OcadId, upper.Name, upper.Cyan, upper.Magenta, upper.Yellow, upper.Black, upper.Overprint);
+                layout.SetLowerLayerColor(CourseLayer.MainCourse, lower.OcadId, lower.Name, lower.Cyan, lower.Magenta, lower.Yellow, lower.Black, lower.Overprint);
+            }
+            else {
+                // Get the correct purple color to print the course in.
+                short ocadId;
+                float purpleC, purpleM, purpleY, purpleK;
+                bool purpleOverprint;
+                FindPurple.GetPurpleColor(mapDisplay, appearance, out ocadId, out purpleC, out purpleM, out purpleY, out purpleK, out purpleOverprint);
+                layout.SetLayerColor(CourseLayer.MainCourse, ocadId, NormalCourseAppearance.courseColorName, purpleC, purpleM, purpleY, purpleK, purpleOverprint);
+                layout.SetLowerLayerColor(CourseLayer.MainCourse, NormalCourseAppearance.lowerPurpleOcadId, NormalCourseAppearance.lowerPurpleColorName, purpleC, purpleM, purpleY, purpleK, purpleOverprint);
+            }
 
             CourseFormatterOptions formatterOptions = new CourseFormatterOptions();
             formatterOptions.showDescriptions = coursePdfSettings.RenderControlDescriptions;
@@ -497,37 +526,40 @@ namespace PurplePen
         }
 
         /// <summary>
-        /// Applies the selected profile's course-colour rule to this export
-        /// only. The source map and saved course appearance remain unchanged.
+        /// Creates the export-only course-colour plan for the selected print profile: upper and lower
+        /// course colours, and where the lower purple goes in the vector map's colour order. The source
+        /// map and the saved course appearance remain unchanged.
         /// </summary>
-        /// <param name="ocadId">The course colour OCAD identifier.</param>
-        /// <param name="cyan">The course colour cyan component.</param>
-        /// <param name="magenta">The course colour magenta component.</param>
-        /// <param name="yellow">The course colour yellow component.</param>
-        /// <param name="black">The course colour black component.</param>
-        /// <param name="overprint">Whether the course colour should overprint.</param>
-        private void ApplyPrintProfileCourseColor(ref short ocadId, ref float cyan, ref float magenta, ref float yellow,
-                                                  ref float black, ref bool overprint)
+        /// <returns>The plan, or null when no (usable) print profile is selected.</returns>
+        private PrintProfileCourseLayering CreatePrintLayering()
         {
             if (String.IsNullOrEmpty(coursePdfSettings.PrintProfileId))
-                return;
+                return null;
 
             PrintProfile profile = PrintProfileCatalog.FindById(coursePdfSettings.PrintProfileId);
             if (profile == null)
-                return;
+                return null;
 
-            PrintProfileColorRule courseRule = BuiltInPrintProfiles.GetCourseColorRule(profile);
-            if (courseRule == null)
-                return;
+            bool isVectorMap = mapDisplay.MapType == MapType.OCAD && !coursePdfSettings.DontPrintBaseMap;
+            List<SourceMapColor> sourceColors = new List<SourceMapColor>();
+            if (isVectorMap) {
+                List<SymColor> mapColors = mapDisplay.GetMapColors();
+                HashSet<SymColor> surfaceColors = mapDisplay.GetSurfaceFillColors();
+                for (int index = 0; index < mapColors.Count; ++index) {
+                    SourceMapColor sourceColor = SourceMapColor.FromSymColor(mapColors[index], index);
+                    sourceColor.FillsSurfaces = surfaceColors.Contains(mapColors[index]);
+                    sourceColors.Add(sourceColor);
+                }
+            }
 
-            PrintProfileCmyk color = courseRule.EffectiveCmyk;
-            cyan = color.Cyan / 100F;
-            magenta = color.Magenta / 100F;
-            yellow = color.Yellow / 100F;
-            black = color.Black / 100F;
-            overprint = courseRule.OverprintIntent == PrintProfileOverprintIntent.Overprint;
-            if (courseRule.Identifier.OcadIds.Count == 1)
-                ocadId = courseRule.Identifier.OcadIds[0];
+            // If the profile cannot place the purple, respect a lower-purple layer the course setter chose
+            // in Course Appearance. Otherwise the course is drawn on top of the map.
+            int? fallbackLayer = (appearance != null && appearance.purpleColorBlend == PurpleColorBlend.UpperLowerPurple)
+                ? appearance.mapLayerForLowerPurple
+                : (int?)null;
+
+            return PrintProfileCourseLayering.Create(profile, sourceColors, isVectorMap,
+                coursePdfSettings.ConfirmedPrintProfileRuleIds, coursePdfSettings.PrintProfileColorMappings, fallbackLayer);
         }
 
         /// <summary>Builds non-mutating base-map colour replacements from confirmed profile matches.</summary>

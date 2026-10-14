@@ -16,12 +16,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        d:DesignWidth="447" d:DesignHeight="439"
+        d:DesignWidth="447" d:DesignHeight="455"
         x:Class="AvPurplePen.Views.AboutDialog"
         Classes="dialog"
         x:DataType="vm:AboutDialogViewModel"
         Title="{resx:Localize AboutForm_Text}"
-        Width="447" Height="439"
+        Width="447" Height="455"
         CanResize="False"
         CanMaximize="False"
         CanMinimize="False"
@@ -84,6 +84,18 @@
                 <TextBlock.Text>
                     <Binding Path="PrettyVersion"
                              StringFormat="{x:Static resx:UIText.MiscText_VersionLabel}" />
+                </TextBlock.Text>
+            </TextBlock>
+
+            <!-- Build label: date and git commit of this build, so builds with the
+                 same version number can be told apart. -->
+            <TextBlock x:Name="buildLabel"
+                       FontSize="11"
+                       Opacity="0.7"
+                       IsVisible="{Binding HasBuildText}">
+                <TextBlock.Text>
+                    <Binding Path="BuildText"
+                             StringFormat="{x:Static resx:UIText.AboutDialog_BuildLabel}" />
                 </TextBlock.Text>
             </TextBlock>
 

@@ -118,6 +118,7 @@
     <Project Path="PurplePenCore/PurplePenCore.csproj" Id="130fb09c-b6f6-45ab-b374-1f0457cfffb0">
       <BuildType Solution="StorePkg|*" Project="Release" />
     </Project>
+    <Project Path="PurplePenCore.PrintTests/PurplePenCore.PrintTests.csproj" />
     <Project Path="PurplePenViewModels.Tests/PurplePenViewModels.Tests.csproj">
       <BuildType Solution="StorePkg|*" Project="Release" />
     </Project>

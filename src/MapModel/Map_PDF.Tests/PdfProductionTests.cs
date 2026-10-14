@@ -74,5 +74,83 @@ namespace Map_PDF.Tests
                     File.Delete(pdfFileName);
             }
         }
+
+        /// <summary>
+        /// After an overprinting stroke, a knockout fill and a knockout stroke must really be knockout:
+        /// every ExtGState that sets /OP also sets /op explicitly (an absent /op inherits /OP), and
+        /// switching overprint off writes an explicit false.
+        /// </summary>
+        [Test]
+        public void OverprintStrokeThenKnockout_WritesExplicitOverprintFlags()
+        {
+            string pdfFileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".pdf");
+            try {
+                IPdfWriter pdfWriter = new PdfWriter();
+                IPdfDocumentWriter documentWriter = pdfWriter.CreateDocument(pdfFileName, "Overprint reset test", true);
+                IGraphicsTarget graphicsTarget = documentWriter.BeginPage(new SizeF(2, 2));
+
+                SymColor purple = new SymColor(SymLayer.Normal);
+                purple.SetCMYK(0.35F, 0.95F, 0, 0);
+                purple.OverPrint = true;
+                SymColor black = new SymColor(SymLayer.Normal);
+                black.SetCMYK(0, 0, 0, 1);
+                black.OverPrint = false;
+
+                object purplePen = new object();
+                graphicsTarget.CreatePen(purplePen, purple.GetBrushKey(graphicsTarget), 2, LineCapMode.Round, LineJoinMode.Round, 2);
+                graphicsTarget.DrawLine(purplePen, new PointF(10, 10), new PointF(50, 10));
+
+                object blackBrush = black.GetBrushKey(graphicsTarget);
+                object blackPen = new object();
+                graphicsTarget.CreatePen(blackPen, blackBrush, 2, LineCapMode.Round, LineJoinMode.Round, 2);
+                graphicsTarget.FillRectangle(blackBrush, new RectangleF(10, 20, 40, 40));
+                graphicsTarget.DrawLine(blackPen, new PointF(10, 70), new PointF(50, 70));
+
+                documentWriter.EndPage(graphicsTarget);
+                documentWriter.Save();
+
+                string pdfContents = Encoding.Latin1.GetString(File.ReadAllBytes(pdfFileName));
+                System.Text.RegularExpressions.MatchCollection dictionaries =
+                    System.Text.RegularExpressions.Regex.Matches(pdfContents, @"<<[^<>]*/OP (true|false)[^<>]*>>");
+                Assert.That(dictionaries.Count, Is.GreaterThan(0));
+                foreach (System.Text.RegularExpressions.Match dictionary in dictionaries)
+                    Assert.That(dictionary.Value, Does.Contain("/op "), "Stroke ExtGState without explicit /op: " + dictionary.Value);
+                Assert.That(pdfContents, Does.Contain("/OP false"), "Switching stroke overprint off must be explicit.");
+            }
+            finally {
+                if (File.Exists(pdfFileName))
+                    File.Delete(pdfFileName);
+            }
+        }
+
+        /// <summary>
+        /// A white colour flagged as overprint in the map must not be written with /OP: with /OPM 1 a
+        /// colour without ink leaves every separation untouched, so the white mask would vanish.
+        /// </summary>
+        [Test]
+        public void WhiteOverprintColour_IsWrittenAsKnockout()
+        {
+            string pdfFileName = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N") + ".pdf");
+            try {
+                IPdfWriter pdfWriter = new PdfWriter();
+                IPdfDocumentWriter documentWriter = pdfWriter.CreateDocument(pdfFileName, "White overprint test", true);
+                IGraphicsTarget graphicsTarget = documentWriter.BeginPage(new SizeF(2, 2));
+                SymColor white = new SymColor(SymLayer.Normal);
+                white.SetCMYK(0, 0, 0, 0);
+                white.OverPrint = true;
+                object brushKey = white.GetBrushKey(graphicsTarget);
+                graphicsTarget.FillRectangle(brushKey, new RectangleF(10, 10, 40, 40));
+                documentWriter.EndPage(graphicsTarget);
+                documentWriter.Save();
+
+                string pdfContents = Encoding.Latin1.GetString(File.ReadAllBytes(pdfFileName));
+                Assert.That(pdfContents, Does.Not.Contain("/op true"));
+                Assert.That(pdfContents, Does.Not.Contain("/OP true"));
+            }
+            finally {
+                if (File.Exists(pdfFileName))
+                    File.Delete(pdfFileName);
+            }
+        }
     }
 }

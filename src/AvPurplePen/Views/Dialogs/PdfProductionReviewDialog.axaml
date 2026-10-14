@@ -116,6 +116,33 @@
                     </Border>
                 </StackPanel>
 
+                <StackPanel IsVisible="{Binding HasPrintLayering}" Spacing="4" Margin="0,6,0,0">
+                    <TextBlock Text="{resx:Localize PdfProductionReviewDialog_printColorsHeader_Text}" FontWeight="SemiBold"/>
+                    <Border BorderBrush="{DynamicResource SemiGrey2}" BorderThickness="1" Padding="8">
+                        <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto">
+                            <TextBlock Grid.Row="0" Text="{resx:Localize PdfProductionReviewDialog_printProfileLabel_Text}" Margin="0,2,12,2"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Text="{Binding PrintProfileName}" TextWrapping="Wrap" Margin="0,2"/>
+                            <TextBlock Grid.Row="1" Text="{resx:Localize PdfProductionReviewDialog_upperPurpleLabel_Text}" Margin="0,2,12,2"/>
+                            <TextBlock Grid.Row="1" Grid.Column="1" Text="{Binding UpperCourseColorText}" TextWrapping="Wrap" Margin="0,2"/>
+                            <TextBlock Grid.Row="2" Text="{resx:Localize PdfProductionReviewDialog_lowerPurpleLabel_Text}" Margin="0,2,12,2"/>
+                            <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding LowerCourseColorText}" TextWrapping="Wrap" Margin="0,2"/>
+                            <TextBlock Grid.Row="3" IsVisible="{Binding IsLowerPurpleInterleaved}" Text="{resx:Localize PdfProductionReviewDialog_lowerPurpleUnderLabel_Text}" Margin="0,2,12,2"/>
+                            <TextBlock Grid.Row="3" Grid.Column="1" IsVisible="{Binding IsLowerPurpleInterleaved}" Text="{Binding MapColorAboveLowerPurple}" TextWrapping="Wrap" Margin="0,2"/>
+                            <TextBlock Grid.Row="4" IsVisible="{Binding IsLowerPurpleInterleaved}" Text="{resx:Localize PdfProductionReviewDialog_lowerPurpleOverLabel_Text}" Margin="0,2,12,2"/>
+                            <TextBlock Grid.Row="4" Grid.Column="1" IsVisible="{Binding IsLowerPurpleInterleaved}" Text="{Binding MapColorBelowLowerPurple}" TextWrapping="Wrap" Margin="0,2"/>
+                        </Grid>
+                    </Border>
+                    <TextBlock IsVisible="{Binding IsLowerPurpleInterleaved}" Text="{resx:Localize PdfProductionReviewDialog_interleavedHelp_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasSurfaceColorsKeptUnderCourse}" Text="{resx:Localize PdfProductionReviewDialog_surfacesUnderCourse_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasSurfaceColorsKeptUnderCourse}" Text="{Binding SurfaceColorsKeptUnderCourseText}" TextWrapping="Wrap" Margin="12,0,0,0"/>
+                    <TextBlock IsVisible="{Binding HasLineColorsUnderTransparentCourse}" Text="{resx:Localize PdfProductionReviewDialog_linesUnderTransparentCourse_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasLineColorsUnderTransparentCourse}" Text="{Binding LineColorsUnderTransparentCourseText}" TextWrapping="Wrap" Margin="12,0,0,0"/>
+                    <TextBlock IsVisible="{Binding HasSurfaceColorsCoveringCourse}" Text="{resx:Localize PdfProductionReviewDialog_surfacesCoverCourse_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasSurfaceColorsCoveringCourse}" Text="{Binding SurfaceColorsCoveringCourseText}" TextWrapping="Wrap" Margin="12,0,0,0"/>
+                    <TextBlock IsVisible="{Binding IsCourseOnTop}" Text="{resx:Localize PdfProductionReviewDialog_courseOnTopHelp_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding LowerCourseColorIsTransparent}" Text="{resx:Localize PdfProductionReviewDialog_transparentPurpleHelp_Text}" TextWrapping="Wrap"/>
+                </StackPanel>
+
                 <StackPanel IsVisible="{Binding HasWarnings}" Spacing="4" Margin="0,6,0,0">
                     <TextBlock Text="{resx:Localize PdfProductionReviewDialog_warningsHeader_Text}" FontWeight="SemiBold"/>
                     <TextBlock IsVisible="{Binding HasCourseOnlyWarning}" Text="{resx:Localize PdfProductionReviewDialog_courseOnlyWarning_Text}" TextWrapping="Wrap"/>
@@ -123,6 +150,10 @@
                     <TextBlock IsVisible="{Binding HasNoDescriptionsWarning}" Text="{resx:Localize PdfProductionReviewDialog_noDescriptionsWarning_Text}" TextWrapping="Wrap"/>
                     <TextBlock IsVisible="{Binding HasPdfMapMultiUpWarning}" Text="{resx:Localize PdfProductionReviewDialog_pdfMapMultiUpWarning_Text}" TextWrapping="Wrap"/>
                     <TextBlock IsVisible="{Binding HasMultiplePagesWarning}" Text="{resx:Localize PdfProductionReviewDialog_multiplePagesWarning_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasPrintProfileNeedsVectorMapWarning}" Text="{resx:Localize PdfProductionReviewDialog_printProfileNeedsVectorMapWarning_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasPrintProfileLayerNotFromProfileWarning}" Text="{resx:Localize PdfProductionReviewDialog_printProfileLayerNotFromProfileWarning_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasPrintProfileColorOrderConflictWarning}" Text="{resx:Localize PdfProductionReviewDialog_printProfileColorOrderConflictWarning_Text}" TextWrapping="Wrap"/>
+                    <TextBlock IsVisible="{Binding HasPrintProfileColorOrderConflictWarning}" Text="{Binding ConflictingMapColorsText}" TextWrapping="Wrap" Margin="12,0,0,0"/>
                 </StackPanel>
             </StackPanel>
         </ScrollViewer>

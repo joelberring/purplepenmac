@@ -691,4 +691,73 @@ After pressing OK, try to find a copy of the map file on your computer.</value>
   <data name="OpenImageDialog_Filter" xml:space="preserve">
     <value>Image file|*.jpg;*.jpeg;*.gif;*.png;*.bmp;*.tif;*.tiff</value>
   </data>
+  <data name="ContourOnly_NeedsVectorMap" xml:space="preserve">
+    <value>Contour-only training areas can only be exported with OCAD/OpenMapper vector maps.</value>
+  </data>
+  <data name="PrintProfile_NeedsOpenMap" xml:space="preserve">
+    <value>A map must be open before a print profile can be checked.</value>
+  </data>
+  <data name="PrintProfile_NotAvailable" xml:space="preserve">
+    <value>The selected print profile is not available in this version of Purple Pen.</value>
+  </data>
+  <data name="PrintProfile_PartialMatchesHeader" xml:space="preserve">
+    <value>The check against print profile {0} found partial colour matches:</value>
+  </data>
+  <data name="PrintProfile_ConfirmMappings" xml:space="preserve">
+    <value>Confirm these pairings for this PDF export?</value>
+  </data>
+  <data name="PrintProfile_BlockedHeader" xml:space="preserve">
+    <value>The check against print profile {0} stopped the PDF export:</value>
+  </data>
+  <data name="PrintProfile_WarningsHeader" xml:space="preserve">
+    <value>The check against print profile {0} reported warnings:</value>
+  </data>
+  <data name="PrintProfile_RegistrationColor" xml:space="preserve">
+    <value>Map colour '{0}' is a registration colour (CMYK 100/100/100/100). The printer does not accept it in delivered files; make sure no map object uses it.</value>
+  </data>
+  <data name="PrintProfile_NeedsCmyk" xml:space="preserve">
+    <value>CMYK output is required, but the selected export path cannot provide it.</value>
+  </data>
+  <data name="PrintProfile_NeedsPdfX" xml:space="preserve">
+    <value>PDF/X OutputIntent is required, but the selected export path cannot provide it.</value>
+  </data>
+  <data name="PrintProfile_NeedsIcc" xml:space="preserve">
+    <value>An embedded ICC profile is required, but the selected export path cannot provide it.</value>
+  </data>
+  <data name="PrintProfile_NeedsOverprint" xml:space="preserve">
+    <value>True PDF overprint is required, but the selected export path cannot provide it.</value>
+  </data>
+  <data name="PrintProfile_MappingMissing" xml:space="preserve">
+    <value>The saved pairing for profile colour '{0}' no longer matches a map colour; choose the pairing again.</value>
+  </data>
+  <data name="PrintProfile_NotPresent" xml:space="preserve">
+    <value>Profile colour '{0}' is not used in this map.</value>
+  </data>
+  <data name="PrintProfile_PartialConfirmed" xml:space="preserve">
+    <value>Profile colour '{0}' only partly matched a map colour and was confirmed for this export.</value>
+  </data>
+  <data name="PrintProfile_PartialNeedsConfirmation" xml:space="preserve">
+    <value>Profile colour '{0}' only partly matches a map colour; confirm the pairing before export.</value>
+  </data>
+  <data name="PrintProfile_Ambiguous" xml:space="preserve">
+    <value>Profile colour '{0}' matches several map colours; choose a pairing before export.</value>
+  </data>
+  <data name="PrintProfile_CmykDiffers" xml:space="preserve">
+    <value>Profile colour '{0}' has CMYK {1}, but the map uses {2}.</value>
+  </data>
+  <data name="PrintProfile_CmykConverted" xml:space="preserve">
+    <value>Profile colour '{0}': the map's CMYK {2} is printed as {1} in the PDF.</value>
+  </data>
+  <data name="PrintProfile_ShouldOverprint" xml:space="preserve">
+    <value>Profile colour '{0}' should overprint, but the map colour is set to knockout.</value>
+  </data>
+  <data name="PrintProfile_OverprintConverted" xml:space="preserve">
+    <value>Profile colour '{0}' is set to overprint in the PDF.</value>
+  </data>
+  <data name="PrintProfile_ShouldBeBelow" xml:space="preserve">
+    <value>Profile colour '{0}' should be below '{1}' in the map colour order.</value>
+  </data>
+  <data name="PrintProfile_ShouldBeAbove" xml:space="preserve">
+    <value>Profile colour '{0}' should be above '{1}' in the map colour order.</value>
+  </data>
 </root>

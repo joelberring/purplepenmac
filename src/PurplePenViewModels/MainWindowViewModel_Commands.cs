@@ -2774,7 +2774,7 @@ namespace PurplePen.ViewModels
             if (!hasContourArea)
                 return true;
 
-            await ErrorMessage("Contour-only training areas can only be exported with OCAD/OpenMapper vector maps.");
+            await ErrorMessage(MiscText.ContourOnly_NeedsVectorMap);
             return false;
         }
 
@@ -2791,14 +2791,14 @@ namespace PurplePen.ViewModels
             if (String.IsNullOrEmpty(settings.PrintProfileId))
                 return true;
             if (MapDisplay == null) {
-                await ErrorMessage("A map must be open before a print profile can be preflighted.");
+                await ErrorMessage(MiscText.PrintProfile_NeedsOpenMap);
                 return false;
             }
 
             PrintProfile? profile = PrintProfileCatalog.FindById(settings.PrintProfileId);
 
             if (profile == null) {
-                await ErrorMessage("The selected print profile is not available in this version of Purple Pen.");
+                await ErrorMessage(MiscText.PrintProfile_NotAvailable);
                 return false;
             }
 
@@ -2808,10 +2808,14 @@ namespace PurplePen.ViewModels
                 PdfExportCapabilities.CreateCurrentImplementation(), settings.ConfirmedPrintProfileRuleIds,
                 settings.PrintProfileColorMappings);
             if (!report.CanExport) {
-                List<ColorPreflightRuleResult> ambiguousRules = report.RuleResults
-                    .Where(result => result.MatchStatus == ColorPreflightMatchStatus.Ambiguous)
+                // Ambiguous and partial matches are both resolved in the mapping dialog, which comes
+                // pre-filled with automatic suggestions so the user normally only reviews and applies.
+                List<ColorPreflightRuleResult> unresolvedRules = report.RuleResults
+                    .Where(result => result.MatchStatus == ColorPreflightMatchStatus.Ambiguous
+                                     || (result.MatchStatus == ColorPreflightMatchStatus.NeedsConfirmation && !result.UserConfirmed)
+                                     || result.MappingMissing)
                     .ToList();
-                if (ambiguousRules.Count > 0) {
+                if (unresolvedRules.Count > 0) {
                     PrintProfileMappingsDialogViewModel mappingVm = new PrintProfileMappingsDialogViewModel();
                     mappingVm.Configure(profile, sourceColors, report.RuleResults);
 
@@ -2833,11 +2837,11 @@ namespace PurplePen.ViewModels
                         || confirmationCandidates.Any(candidate => candidate.Rule.Id == finding.RuleId));
                 if (onlyConfirmationIsBlocking) {
                     StringBuilder confirmationMessage = new StringBuilder();
-                    confirmationMessage.AppendFormat("The {0} print-profile preflight found partial colour matches:", profile.Name);
+                    confirmationMessage.AppendFormat(MiscText.PrintProfile_PartialMatchesHeader, profile.Name);
                     foreach (ColorPreflightRuleResult candidate in confirmationCandidates) {
                         confirmationMessage.AppendFormat("\n• {0}", candidate.Rule.Name);
                     }
-                    confirmationMessage.Append("\n\nConfirm these mappings for this PDF export?");
+                    confirmationMessage.Append("\n\n" + MiscText.PrintProfile_ConfirmMappings);
 
                     if (await OKCancelMessage(confirmationMessage.ToString(), false)) {
                         foreach (ColorPreflightRuleResult candidate in confirmationCandidates) {
@@ -2851,7 +2855,7 @@ namespace PurplePen.ViewModels
                 }
 
                 StringBuilder message = new StringBuilder();
-                message.AppendFormat("The {0} print-profile preflight blocked PDF export:", profile.Name);
+                message.AppendFormat(MiscText.PrintProfile_BlockedHeader, profile.Name);
                 foreach (ColorPreflightFinding finding in report.Findings) {
                     if (finding.Severity == ColorPreflightSeverity.Blocking)
                         message.AppendFormat("\n• {0}", finding.Message);
@@ -2866,7 +2870,7 @@ namespace PurplePen.ViewModels
                 .ToList();
             if (warnings.Count > 0) {
                 StringBuilder warningMessage = new StringBuilder();
-                warningMessage.AppendFormat("The {0} print-profile preflight reported warnings:", profile.Name);
+                warningMessage.AppendFormat(MiscText.PrintProfile_WarningsHeader, profile.Name);
                 foreach (ColorPreflightFinding warning in warnings) {
                     warningMessage.AppendFormat("\n• {0}", warning.Message);
                 }

@@ -45,6 +45,12 @@ namespace PurplePen
         /// <summary>Gets or sets the source drawing-order index, from lowest to highest.</summary>
         public int DrawOrder { get; set; }
 
+        /// <summary>
+        /// Gets or sets whether the map uses this colour to cover surfaces (area fills, road fills,
+        /// wide lines). Such colours must never be drawn on top of the course purple.
+        /// </summary>
+        public bool FillsSurfaces { get; set; }
+
         /// <summary>Gets the map symbols that actually use this colour layer.</summary>
         public List<SourceMapSymbol> Symbols { get; set; } = new List<SourceMapSymbol>();
 
@@ -108,6 +114,12 @@ namespace PurplePen
         /// <summary>Gets or sets whether the export path can preserve true PDF overprint semantics.</summary>
         public bool SupportsTrueOverprint { get; set; }
 
+        /// <summary>
+        /// Gets or sets whether the export replaces the CMYK value and overprint setting of every paired
+        /// map colour with the profile's values. Differences are then reported as information, not warnings.
+        /// </summary>
+        public bool ConvertsMatchedMapColors { get; set; }
+
         /// <summary>Creates the capabilities currently verified by Purple Pen's PDF export path.</summary>
         /// <remarks>PDF/X and ICC embedding stay false until verified end-to-end.</remarks>
         public static PdfExportCapabilities CreateCurrentImplementation()
@@ -117,6 +129,7 @@ namespace PurplePen
                 SupportsPdfXOutputIntent = false,
                 SupportsEmbeddedIccProfile = false,
                 SupportsTrueOverprint = true,
+                ConvertsMatchedMapColors = true,
             };
         }
     }
@@ -229,11 +242,31 @@ namespace PurplePen
                 ColorPreflightRuleResult result = CreateRuleResult(rule, sourceColorList, confirmedRules.Contains(rule.Id), mapping);
                 report.RuleResults.Add(result);
                 AddMatchFinding(report, result);
-                AddEffectiveColorFindings(report, result);
+                AddEffectiveColorFindings(report, result, capabilities.ConvertsMatchedMapColors);
             }
 
             AddDrawOrderFindings(report);
+            AddRegistrationColorFindings(report, profile.Requirements, sourceColorList);
             return report;
+        }
+
+        /// <summary>Warns about registration colours (CMYK 100/100/100/100) when the printer forbids them.</summary>
+        /// <param name="report">The report that receives findings.</param>
+        /// <param name="requirements">The selected profile's production requirements.</param>
+        /// <param name="sourceColors">Read-only snapshots of the source-map colours.</param>
+        private static void AddRegistrationColorFindings(ColorPreflightReport report, PrintProfileRequirements requirements,
+                                                         List<SourceMapColor> sourceColors)
+        {
+            if (requirements == null || !requirements.ForbidRegistrationColor)
+                return;
+
+            PrintProfileCmyk registration = new PrintProfileCmyk { Cyan = 100, Magenta = 100, Yellow = 100, Black = 100 };
+            foreach (SourceMapColor color in sourceColors.Where(candidate => CmykMatches(candidate.Cmyk, registration))) {
+                report.Findings.Add(new ColorPreflightFinding {
+                    Severity = ColorPreflightSeverity.Warning,
+                    Message = String.Format(MiscText.PrintProfile_RegistrationColor, color.Name),
+                });
+            }
         }
 
         /// <summary>Creates an evaluated result for a single profile rule.</summary>
@@ -243,7 +276,12 @@ namespace PurplePen
             List<SourceMapColor> candidates;
             ColorPreflightMatchStatus matchStatus;
             bool userMapped = mapping != null;
-            if (userMapped) {
+            if (userMapped && mapping.NotInMap) {
+                candidates = new List<SourceMapColor>();
+                matchStatus = ColorPreflightMatchStatus.NotPresent;
+                userMapped = false;
+            }
+            else if (userMapped) {
                 candidates = sourceColors.Where(color => MappingMatches(mapping, color)).ToList();
                 matchStatus = candidates.Count == 1 ? ColorPreflightMatchStatus.Matched : ColorPreflightMatchStatus.NotPresent;
             }
@@ -326,13 +364,13 @@ namespace PurplePen
                                                   PdfExportCapabilities capabilities)
         {
             AddCapabilityFinding(report, requirements.RequireCmykOutput, capabilities.SupportsCmykOutput,
-                                 "CMYK output is required, but the selected export path cannot provide it.");
+                                 MiscText.PrintProfile_NeedsCmyk);
             AddCapabilityFinding(report, requirements.RequirePdfXOutputIntent, capabilities.SupportsPdfXOutputIntent,
-                                 "PDF/X OutputIntent is required, but the selected export path cannot provide it.");
+                                 MiscText.PrintProfile_NeedsPdfX);
             AddCapabilityFinding(report, requirements.RequireEmbeddedIccProfile, capabilities.SupportsEmbeddedIccProfile,
-                                 "An embedded ICC profile is required, but the selected export path cannot provide it.");
+                                 MiscText.PrintProfile_NeedsIcc);
             AddCapabilityFinding(report, requirements.RequireTrueOverprint, capabilities.SupportsTrueOverprint,
-                                 "True PDF overprint is required, but the selected export path cannot provide it.");
+                                 MiscText.PrintProfile_NeedsOverprint);
         }
 
         /// <summary>Adds one blocking finding if a required capability is unavailable.</summary>
@@ -354,8 +392,8 @@ namespace PurplePen
                     Severity = result.MappingMissing ? ColorPreflightSeverity.Blocking : ColorPreflightSeverity.Information,
                     RuleId = result.Rule.Id,
                     Message = result.MappingMissing
-                        ? String.Format("The saved mapping for profile colour '{0}' no longer identifies a map colour; choose the mapping again.", result.Rule.Name)
-                        : String.Format("Profile colour '{0}' is not present in this map.", result.Rule.Name),
+                        ? String.Format(MiscText.PrintProfile_MappingMissing, result.Rule.Name)
+                        : String.Format(MiscText.PrintProfile_NotPresent, result.Rule.Name),
                 });
             }
             else if (result.MatchStatus == ColorPreflightMatchStatus.NeedsConfirmation) {
@@ -363,41 +401,49 @@ namespace PurplePen
                     Severity = result.UserConfirmed ? ColorPreflightSeverity.Warning : ColorPreflightSeverity.Blocking,
                     RuleId = result.Rule.Id,
                     Message = result.UserConfirmed
-                        ? String.Format("Profile colour '{0}' matched only part of its identifiers and was explicitly confirmed for this export.", result.Rule.Name)
-                        : String.Format("Profile colour '{0}' matched only part of its identifiers; confirm the mapping before export.", result.Rule.Name),
+                        ? String.Format(MiscText.PrintProfile_PartialConfirmed, result.Rule.Name)
+                        : String.Format(MiscText.PrintProfile_PartialNeedsConfirmation, result.Rule.Name),
                 });
             }
             else if (result.MatchStatus == ColorPreflightMatchStatus.Ambiguous) {
                 report.Findings.Add(new ColorPreflightFinding {
                     Severity = ColorPreflightSeverity.Blocking,
                     RuleId = result.Rule.Id,
-                    Message = String.Format("Profile colour '{0}' matches multiple map colours; choose a mapping before export.", result.Rule.Name),
+                    Message = String.Format(MiscText.PrintProfile_Ambiguous, result.Rule.Name),
                 });
             }
         }
 
-        /// <summary>Adds non-destructive warnings when a confirmed source colour differs from its profile value.</summary>
-        private static void AddEffectiveColorFindings(ColorPreflightReport report, ColorPreflightRuleResult result)
+        /// <summary>
+        /// Reports when a confirmed source colour differs from its profile value. When the export converts paired
+        /// colours the difference is only information (the PDF gets the profile value); otherwise it is a warning.
+        /// </summary>
+        /// <param name="report">The report that receives findings.</param>
+        /// <param name="result">The evaluated rule.</param>
+        /// <param name="convertsColors">Whether the export replaces paired colours with the profile values.</param>
+        private static void AddEffectiveColorFindings(ColorPreflightReport report, ColorPreflightRuleResult result, bool convertsColors)
         {
             if (!result.HasConfirmedMatch)
                 return;
 
             SourceMapColor sourceColor = result.CandidateColors[0];
             PrintProfileCmyk expected = result.Rule.EffectiveCmyk;
+            ColorPreflightSeverity severity = convertsColors ? ColorPreflightSeverity.Information : ColorPreflightSeverity.Warning;
             if (!CmykMatches(sourceColor.Cmyk, expected)) {
                 report.Findings.Add(new ColorPreflightFinding {
-                    Severity = ColorPreflightSeverity.Warning,
+                    Severity = severity,
                     RuleId = result.Rule.Id,
-                    Message = String.Format("Profile colour '{0}' has CMYK {1}, but the map uses {2}.",
+                    Message = String.Format(convertsColors ? MiscText.PrintProfile_CmykConverted : MiscText.PrintProfile_CmykDiffers,
                                             result.Rule.Name, FormatCmyk(expected), FormatCmyk(sourceColor.Cmyk)),
                 });
             }
 
             if (result.Rule.OverprintIntent == PrintProfileOverprintIntent.Overprint && !sourceColor.Overprint) {
                 report.Findings.Add(new ColorPreflightFinding {
-                    Severity = ColorPreflightSeverity.Warning,
+                    Severity = severity,
                     RuleId = result.Rule.Id,
-                    Message = String.Format("Profile colour '{0}' should overprint, but the map colour is set to knockout.", result.Rule.Name),
+                    Message = String.Format(convertsColors ? MiscText.PrintProfile_OverprintConverted : MiscText.PrintProfile_ShouldOverprint,
+                                            result.Rule.Name),
                 });
             }
         }
@@ -449,11 +495,11 @@ namespace PurplePen
                 SourceMapColor relatedColor = relatedResult.CandidateColors[0];
                 bool hasExpectedOrder = mustBeBelow ? sourceColor.DrawOrder < relatedColor.DrawOrder : sourceColor.DrawOrder > relatedColor.DrawOrder;
                 if (!hasExpectedOrder) {
-                    string direction = mustBeBelow ? "below" : "above";
                     report.Findings.Add(new ColorPreflightFinding {
                         Severity = ColorPreflightSeverity.Warning,
                         RuleId = rule.Id,
-                        Message = String.Format("Profile colour '{0}' should be {1} '{2}' in the map colour order.", rule.Name, direction, relatedResult.Rule.Name),
+                        Message = String.Format(mustBeBelow ? MiscText.PrintProfile_ShouldBeBelow : MiscText.PrintProfile_ShouldBeAbove,
+                                                rule.Name, relatedResult.Rule.Name),
                     });
                 }
             }

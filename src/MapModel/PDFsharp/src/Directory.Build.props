@@ -40,6 +40,11 @@
     <DisableGitVersionTask>true</DisableGitVersionTask>
   </PropertyGroup>
 
+  <!-- Without the GitVersion task, compile a static GitVersionInformation fallback. -->
+  <ItemGroup Condition="'$(DisableGitVersionTask)' == 'true' and '$(MSBuildProjectName)' == 'PdfSharp.Shared'">
+    <Compile Include="$(MSBuildThisFileDirectory)GitVersionInformationFallback.cs" />
+  </ItemGroup>
+
   <ItemGroup>
   <PackageReference Include="GitVersion.MsBuild">
     <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

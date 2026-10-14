@@ -24,6 +24,14 @@ namespace PurplePen
         PdfMapMultiUp,
         /// <summary>One or more selected course views require more than one map page.</summary>
         MultiplePagesPerCourse,
+        /// <summary>A print profile is selected, but the base map is a PDF or image, so the course
+        /// purple cannot be placed under brown, black and blue lines.</summary>
+        PrintProfileNeedsVectorMap,
+        /// <summary>No map colour could be matched to the print profile, so the position of the course
+        /// purple in the map's colour order could not be determined from the profile.</summary>
+        PrintProfileLayerNotFromProfile,
+        /// <summary>The map's own colour order contradicts the print profile for some colours.</summary>
+        PrintProfileColorOrderConflict,
     }
 
     /// <summary>Number of map views planned for one course or relay variation.</summary>
@@ -124,5 +132,8 @@ namespace PurplePen
 
         /// <summary>Settings that should be explicitly reviewed before export.</summary>
         public List<PdfProductionWarning> Warnings { get; } = new List<PdfProductionWarning>();
+
+        /// <summary>The export-only course-colour plan from the selected print profile, or null without a profile.</summary>
+        public PrintProfileCourseLayering PrintLayering { get; internal set; }
     }
 }

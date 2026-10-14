@@ -670,6 +670,13 @@ namespace PurplePen.MapModel
             return newSymDef;
         }
 
+        // Pens are created from the colour's brush key, not from a bare CMYK value, so that output
+        // backends can carry colour properties such as overprint (PDF) over to stroked lines.
+        object PenSource(IGraphicsTarget g, SymColor color, bool highlight)
+        {
+            return highlight ? map.GetHighlightBrush(g) : color.GetBrushKey(g);
+        }
+
         void CreatePens(IGraphicsTarget g, LineSymDefPens pens, bool highlight)
         {
             if (thickness > 0.0F && lineColor != null) {
@@ -678,10 +685,10 @@ namespace PurplePen.MapModel
                 if (!g.HasPen(pens.mainPen)) {
                     if (shortenInfo.shortenBeginning > 0 && shortenInfo.pointyEnds) {
                         // Always use round line cap with pointy ends.
-                        g.CreatePen(pens.mainPen, mainColorValue, thickness, LineCapMode.Round, lineJoin, GraphicsUtil.MITER_LIMIT);
+                        g.CreatePen(pens.mainPen, PenSource(g, lineColor, highlight), thickness, LineCapMode.Round, lineJoin, GraphicsUtil.MITER_LIMIT);
                     }
                     else {
-                        g.CreatePen(pens.mainPen, mainColorValue, thickness, lineCap, lineJoin, GraphicsUtil.MITER_LIMIT);
+                        g.CreatePen(pens.mainPen, PenSource(g, lineColor, highlight), thickness, lineCap, lineJoin, GraphicsUtil.MITER_LIMIT);
                     }
                 }
 
@@ -693,32 +700,25 @@ namespace PurplePen.MapModel
             }
 
             if (secondLineColor != null && secondThickness > 0) {
-                CmykColor secondLineColorValue = highlight ? map.HighlightColor : secondLineColor.ColorValue;
-
                 if (!g.HasPen(pens.secondPen)) {
-                    g.CreatePen(pens.secondPen, secondLineColorValue, secondThickness, secondLineCap, secondLineJoin, GraphicsUtil.MITER_LIMIT);
+                    g.CreatePen(pens.secondPen, PenSource(g, secondLineColor, highlight), secondThickness, secondLineCap, secondLineJoin, GraphicsUtil.MITER_LIMIT);
                 }
             }
 
             if (isDoubleLine) {
                 if (doubleLines.doubleFillColor != null) {
-                    CmykColor doubleFillColorValue = highlight ? map.HighlightColor : doubleLines.doubleFillColor.ColorValue;
-
                     if (!g.HasPen(pens.doubleFillPen)) {
-                        GraphicsUtil.CreateSolidPen(g, pens.doubleFillPen, doubleFillColorValue, doubleLines.doubleThick, LineStyle.Mitered);
+                        GraphicsUtil.CreateSolidPen(g, pens.doubleFillPen, PenSource(g, doubleLines.doubleFillColor, highlight), doubleLines.doubleThick, LineStyle.Mitered);
                     }
                 }
                 if (doubleLines.doubleLeftColor != null && doubleLines.doubleLeftWidth > 0.0F) {
-                    CmykColor doubleLeftColorValue = highlight ? map.HighlightColor : doubleLines.doubleLeftColor.ColorValue;
-
                     if (!g.HasPen(pens.doubleLeftPen)) {
-                        GraphicsUtil.CreateSolidPen(g, pens.doubleLeftPen, doubleLeftColorValue, doubleLines.doubleLeftWidth, LineStyle.FlatRounded);
+                        GraphicsUtil.CreateSolidPen(g, pens.doubleLeftPen, PenSource(g, doubleLines.doubleLeftColor, highlight), doubleLines.doubleLeftWidth, LineStyle.FlatRounded);
                     }
                 }
                 if (doubleLines.doubleRightColor != null && doubleLines.doubleRightWidth > 0.0F) {
-                    CmykColor doubleRightColorValue = highlight ? map.HighlightColor : doubleLines.doubleRightColor.ColorValue;
                     if (!g.HasPen(pens.doubleRightPen)) {
-                        GraphicsUtil.CreateSolidPen(g, pens.doubleRightPen, doubleRightColorValue, doubleLines.doubleRightWidth, LineStyle.FlatRounded);
+                        GraphicsUtil.CreateSolidPen(g, pens.doubleRightPen, PenSource(g, doubleLines.doubleRightColor, highlight), doubleLines.doubleRightWidth, LineStyle.FlatRounded);
                     }
                 }
             }
@@ -2818,7 +2818,7 @@ namespace PurplePen.MapModel
                     }
 
                     if (! g.HasPen(framingPens[iPen]))
-                        GraphicsUtil.CreateSolidPen(g, framingPens[iPen], framing.framingColor.ColorValue, width, LineStyle.Beveled);
+                        GraphicsUtil.CreateSolidPen(g, framingPens[iPen], framing.framingColor.GetBrushKey(g), width, LineStyle.Beveled);
                     ++iPen;
                 }
 
@@ -2828,7 +2828,7 @@ namespace PurplePen.MapModel
                 }
 
                 if (!g.HasPen(framingPens[iPen]))
-                    GraphicsUtil.CreateSolidPen(g, framingPens[iPen], framing.framingColor.ColorValue, framing.lineWidth * 2, framing.lineStyle);
+                    GraphicsUtil.CreateSolidPen(g, framingPens[iPen], framing.framingColor.GetBrushKey(g), framing.lineWidth * 2, framing.lineStyle);
             }
         }
 
@@ -3224,7 +3224,7 @@ namespace PurplePen.MapModel
 
                 // Create pen (use the Underlining object for the pen)
                 if (!g.HasPen(underlining))
-                    GraphicsUtil.CreateSolidPen(g, underlining, underlining.underlineColor.ColorValue, underlining.underlineWidth, LineStyle.Mitered);
+                    GraphicsUtil.CreateSolidPen(g, underlining, underlining.underlineColor.GetBrushKey(g), underlining.underlineWidth, LineStyle.Mitered);
 
                 // draw the line.
                 g.DrawLine(underlining, new PointF(l, y), new PointF(r, y));
@@ -4506,13 +4506,13 @@ namespace PurplePen.MapModel
         {
             if (thickness > 0.0F && lineColor != null) {
                 if (! g.HasPen(mainPen)) {
-                    GraphicsUtil.CreateSolidPen(g, mainPen, lineColor.ColorValue, thickness, ((cornerRadius > 0) ? LineStyle.Rounded : LineStyle.Mitered));
+                    GraphicsUtil.CreateSolidPen(g, mainPen, lineColor.GetBrushKey(g), thickness, ((cornerRadius > 0) ? LineStyle.Rounded : LineStyle.Mitered));
                 }
             }
 
             if (lineColor != null && (gridFlags & 1) != 0) {
                 if (! g.HasPen(gridPen))
-                    GraphicsUtil.CreateSolidPen(g, gridPen, lineColor.ColorValue, gridWidth, LineStyle.Beveled);
+                    GraphicsUtil.CreateSolidPen(g, gridPen, lineColor.GetBrushKey(g), gridWidth, LineStyle.Beveled);
             }
 
             if (lineColor != null && (gridFlags & 1) != 0 && (gridFlags & 2) != 0) {

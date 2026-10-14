@@ -32,6 +32,7 @@ namespace PurplePen.ViewModels
         [NotifyCanExecuteChangedFor(nameof(RemoveSelectedRuleCommand))]
         private PrintProfileRuleEditorItem? selectedRule;
         private string sourceCourseColorRuleId = "";
+        private string sourceUpperCourseColorRuleId = "";
         private string sourceUrl = "";
         private string sourceDescription = "";
         private PrintProfileRequirements requirements = new PrintProfileRequirements();
@@ -146,6 +147,7 @@ namespace PurplePen.ViewModels
             PreflightFindings.Clear();
             History.Clear();
             sourceCourseColorRuleId = "";
+            sourceUpperCourseColorRuleId = "";
             sourceUrl = "";
             sourceDescription = "";
             requirements = new PrintProfileRequirements();
@@ -166,6 +168,7 @@ namespace PurplePen.ViewModels
             History.Clear();
             foreach (PrintProfileHistoryEntry entry in source.History ?? new List<PrintProfileHistoryEntry>()) History.Add(entry);
             sourceCourseColorRuleId = source.CourseColorRuleId;
+            sourceUpperCourseColorRuleId = source.UpperCourseColorRuleId ?? "";
             sourceUrl = source.SourceUrl;
             sourceDescription = source.SourceDescription;
             requirements = CloneRequirements(source.Requirements);
@@ -263,6 +266,8 @@ namespace PurplePen.ViewModels
         public void ApplyMapPairings(IEnumerable<PrintProfileColorMapping> mappings)
         {
             foreach (PrintProfileColorMapping mapping in mappings ?? Enumerable.Empty<PrintProfileColorMapping>()) {
+                if (mapping.NotInMap)
+                    continue;
                 PrintProfileRuleEditorItem? rule = Rules.FirstOrDefault(item => String.Equals(item.Id, mapping.RuleId, StringComparison.Ordinal));
                 SourceMapColor? mapColor = currentMapColors.FirstOrDefault(color =>
                     String.Equals(color.Name, mapping.MapColorName, StringComparison.Ordinal)
@@ -332,6 +337,10 @@ namespace PurplePen.ViewModels
             profile.CourseColorRuleId = CourseColorRuleIndex >= 0 && CourseColorRuleIndex < Rules.Count
                 ? Rules[CourseColorRuleIndex].Id
                 : sourceCourseColorRuleId;
+            // Keep the upper (opaque) course colour only while its rule still exists in the copy.
+            profile.UpperCourseColorRuleId = retainedRuleIds.Contains(sourceUpperCourseColorRuleId)
+                ? sourceUpperCourseColorRuleId
+                : "";
             return profile;
         }
 
@@ -346,6 +355,7 @@ namespace PurplePen.ViewModels
                 RequirePdfXOutputIntent = source.RequirePdfXOutputIntent,
                 RequireEmbeddedIccProfile = source.RequireEmbeddedIccProfile,
                 RequireTrueOverprint = source.RequireTrueOverprint,
+                ForbidRegistrationColor = source.ForbidRegistrationColor,
             };
         }
 
