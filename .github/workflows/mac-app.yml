@@ -29,6 +29,12 @@ jobs:
         with:
           dotnet-version: 10.0.x
 
+      - name: Restore projects built inside the publish
+        working-directory: src
+        run: |
+          dotnet restore PdfConverter/PdfConverter.csproj
+          dotnet restore AvPurplePen/AvPurplePen.csproj
+
       - name: Build PurplePen.app
         working-directory: src/Installer/MacInstaller
         run: ./build-mac-app.sh --skip-sign --skip-dmg --skip-zip
